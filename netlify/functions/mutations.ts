@@ -1,11 +1,12 @@
 /**
  * POST /api/mutations
  *
- * Unified mutation endpoint for incident lifecycle transitions, dispatch
- * creation, and dispatch status updates. All actions are JWT-verified and
- * tenant-guarded (ADR-0003).
+ * Unified mutation endpoint for incident lifecycle transitions, incident
+ * creation (manual triage), dispatch creation, and dispatch status updates.
+ * All actions are JWT-verified and tenant-guarded (ADR-0003).
  *
  * Action-based routing via request body:
+ *   { action: 'create_incident', category, severity, locationSector, rawText }
  *   { action: 'transition_incident', incidentId, nextStatus }
  *   { action: 'create_dispatch', incidentId, targetStaffPhone, directiveText }
  *   { action: 'update_dispatch', dispatchId, nextStatus }
@@ -18,10 +19,11 @@
  */
 import { type Config } from '@netlify/functions';
 import { authenticateRequest } from '../lib/jwt';
-import type { JwtClaims } from '../../src/types';
+import type { JwtClaims, IncidentSeverity, InfoTier } from '../../src/types';
 import { query } from '../lib/db';
 import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } from '../lib/http';
 import { mapIncident, mapDispatch } from '../lib/mappers';
+import { createIncident } from '../lib/incidents';
 import { randomUUID } from 'node:crypto';
 
 // ─── Status flow validation ───────────────────────────────────────────────────
@@ -41,6 +43,43 @@ function isAdmin(claims: JwtClaims): boolean {
 }
 
 // ─── Action handlers ──────────────────────────────────────────────────────────
+
+/** Infers an InfoTier from severity for manual triage submissions. */
+function inferTier(severity: IncidentSeverity): InfoTier {
+	const map: Record<IncidentSeverity, InfoTier> = {
+		CRITICAL: 1,
+		HIGH: 2,
+		MEDIUM: 3,
+		LOW: 4,
+	};
+	return map[severity] ?? 3;
+}
+
+async function createIncidentAction(
+	claims: JwtClaims,
+	body: { category: string; severity: string; locationSector: string; rawText: string },
+): Promise<Response> {
+	// Staff, admins, and superadmins can create incidents.
+	if (claims.role !== 'staff' && !isAdmin(claims)) {
+		return unauthorized('Only staff and admins can file incidents.');
+	}
+
+	if (!body.category || !body.severity || !body.locationSector) {
+		return badRequest('category, severity, and locationSector are required.');
+	}
+
+	const incident = await createIncident({
+		tenantId: claims.tenantId,
+		source: 'field_staff',
+		tier: inferTier(body.severity as IncidentSeverity),
+		rawText: body.rawText || `Manual triage — ${body.category} / ${body.severity} at ${body.locationSector}`,
+		category: body.category as never,
+		severity: body.severity as IncidentSeverity,
+		locationSector: body.locationSector,
+	});
+
+	return jsonResponse({ incident });
+}
 
 async function transitionIncident(
 	claims: JwtClaims,
@@ -212,6 +251,14 @@ export default async (request: Request): Promise<Response> => {
 		};
 
 		switch (body.action) {
+			case 'create_incident':
+				return await createIncidentAction(claims, {
+					category: body.category ?? '',
+					severity: body.severity ?? '',
+					locationSector: body.locationSector ?? '',
+					rawText: body.rawText ?? '',
+				});
+
 			case 'transition_incident':
 				if (!body.incidentId || !body.nextStatus) {
 					return badRequest('incidentId and nextStatus are required.');

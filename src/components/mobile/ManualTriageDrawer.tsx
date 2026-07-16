@@ -75,15 +75,14 @@ export function ManualTriageDrawer({
 		setSubmitting(true);
 		setFeedback(null);
 		try {
-			await apiFetch('/api/incidents', {
+			await apiFetch('/api/mutations', {
 				method: 'POST',
 				body: JSON.stringify({
+					action: 'create_incident',
 					category,
 					severity,
 					locationSector: zone,
 					rawText: `Manual triage — ${category} / ${severity} at ${zone}`,
-					sourceStaffPhone: staffPhone,
-					tenantId,
 				}),
 			});
 			setFeedback({ kind: 'ok', text: 'Report filed.' });
