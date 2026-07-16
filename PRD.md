@@ -64,92 +64,92 @@ $$\text{Hash}_n = \text{SHA-256}(\text{Data}_n \parallel \text{Hash}_{n-1})$$
 
 ## 4. Development & Build Phases
 
-The construction lifecycle of the SaaS platform is planned across 5 sequential phases:
+> **Architectural context:** The build follows a **solo-developer, real-production**
+> trajectory on **Netlify-only infrastructure** (no Firebase). Key decisions are
+> recorded in [`docs/adr/`](docs/adr/) (ADR-0001 through ADR-0008). The social
+> listening pipeline is **deferred** (ADR-0008). See [`CONTEXT.md`](CONTEXT.md)
+> for the domain glossary.
+
+The construction lifecycle is organized as **8 milestone-driven vertical
+slices**, each producing a demonstrable end-to-end capability. Estimated total:
+~8 weeks for a solo build.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  PHASE 1: Grid Emulation & Math Proofs (Weeks 1 - 4)                    │
-│  - Map coordinate projection math, double-buffering canvas engine      │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
+│  MILESTONE 0: Foundation & Unification (~3 days)                        │
+│  - Unified types, Postgres schema, .env.example, vitest config          │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│  PHASE 2: SaaS Multi-Tenant Authentication (Weeks 5 - 8)               │
-│  - Edge functions, OTP gateways, hierarchical Firestore rules          │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
+│  MILESTONE 1: Auth Vertical Slice (~5 days)                             │
+│  - Edge JWT + Twilio OTP, AuthContext, protected endpoints              │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│  PHASE 3: Serverless AI Voice Pipelines (Weeks 9 - 12)                 │
-│  - Audio capture WebM streams, structured JSON extraction              │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
+│  MILESTONE 2: Live Map + Diff Polling (~6 days)                         │
+│  - state-poll endpoint, polling hook, OptimizedStadiumMapCanvas         │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│  PHASE 4: Immutable Ledger & Hardening (Weeks 13 - 16)                 │
-│  - WORM audit logger, SHA-256 chain validation, forensic timelines     │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
+│  MILESTONE 3: Control Room Surface (~5 days)                            │
+│  - Dashboard, incident CRUD, tenant switching, mutation audit hook      │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│  PHASE 5: Scale-Testing, Profiling & Runbook Ready (Weeks 17 - 20)     │
-│  - Load simulation, FPS memory leak tracing, field rehearsal runs      │
+│  MILESTONE 4: Voice AI Pipeline (~5 days)                               │
+│  - Whisper + Gemini two-call triage, VoiceIngest, manual fallback       │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  MILESTONE 5: Dispatch Loop (~4 days)                                   │
+│  - Two-way dispatch, mobile full-screen takeover, ack/resolve flow      │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  MILESTONE 6: WORM Audit Ledger (~4 days)                               │
+│  - Server-side SHA-256 chain in Netlify Blobs, real verifier, timeline  │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  MILESTONE 7: Offline + PWA (~4 days)                                   │
+│  - IndexedDB queue, offline reconciliation, PWA manifest (staff client) │
+└───────────────────────────────────────────┬────────────────────────────┘
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  MILESTONE 8: Hardening, Testing & Deploy (~4 days)                     │
+│  - Unit + integration tests, stress simulation, Netlify production dep  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 1: Proof of Concept & Spatial Grid Emulation (Weeks 1 - 4)
+### Milestone Details
 
-- **Goal**: Establish the performance baseline of the 2D mapping canvas.
-- **Deliverables**:
-  - Build the initial `OptimizedStadiumMapCanvas.tsx` component with offscreen buffering.
-  - Establish spatial math units to map physical arena blueprint pixel coordinates to a normalized **0 ... 1000** coordinate grid.
-  - Run performance benchmarks measuring CPU vs. GPU overhead under stress loads of **1000+** active vectors.
-
-### Phase 2: Core SaaS Multi-Tenant Architecture & Auth (Weeks 5 - 8)
-
-- **Goal**: Isolate and secure multi-tenant data boundaries at the network edge.
-- **Deliverables**:
-  - Build the `auth-bootstrap.ts` edge authentication function to process telephone OTP SMS and OAuth admin logins.
-  - Define hierarchical security rules preventing cross-tenant document queries.
-  - Introduce `TenantSwitcher.tsx` to handle authenticated administrative workspace switches.
-
-### Phase 3: AI Telemetry Pipelines & Voice Ingestion (Weeks 9 - 12)
-
-- **Goal**: Develop the ambient hands-free verbal incident logging system.
-- **Deliverables**:
-  - Build the mobile-responsive `VoiceIngest.tsx` recording component with binary WebM encoding.
-  - Write the `ai-orchestrator.ts` serverless function parsing text dispatches into coordinate parameters.
-  - Connect the AI extraction outcomes directly to the live dashboard and canvas state.
-
-### Phase 4: Cryptographic Ledger, Forensics & Hardening (Weeks 13 - 16)
-
-- **Goal**: Guarantee immutable data history to satisfy compliance audits.
-- **Deliverables**:
-  - Implement the sequential SHA-256 `auditLogger.ts` engine utilizing the native SubtleCrypto API.
-  - Implement `ledgerVerifier.ts` to perform deep data integrity checks on demand.
-  - Integrate the visual tracking dashboard `AuditTimelineInspector.tsx`.
-
-### Phase 5: Scale-Testing, Profiling & Operational Launch (Weeks 17 - 20)
-
-- **Goal**: Verify total system stability under dense matchday stress loads.
-- **Deliverables**:
-  - Execute headless multi-tenant simulations via `runSimulation.ts` to stress-test data pipelines.
-  - Run continuous browser-profiling checks to prevent memory leaks during long-running tracking sessions.
-  - Conduct real-world rehearsal runs with venue operations crews ahead of the main matchday.
+- **M0 — Foundation:** Unified `src/types/index.ts`, Postgres schema migration, `.env.example`, vitest config, PWA manifest icons.
+- **M1 — Auth:** `auth-bootstrap.ts` edge function (RS256 JWT via Web Crypto, OTP via Twilio), `OtpGateway.tsx`, `AuthContext.tsx`, seed tenants/staff.
+- **M2 — Live Map:** `state-poll.ts` diff endpoint, `usePollingState.ts` hook (2s interval, backoff), `ActiveOpsContext.tsx` (refs not state), `OptimizedStadiumMapCanvas.tsx` (offscreen buffer + DPR + viewport pan/zoom).
+- **M3 — Control Room:** `OperationalDashboard.tsx`, `mutations.ts` (tenant-guarded CRUD), `useTenantMutations.ts` (audit intercept), `TenantSwitcher.tsx`.
+- **M4 — Voice AI:** `useVoiceRecorder.ts`, `ai-triage.ts` (Whisper → Gemini, 5-tier schema), `VoiceIngest.tsx`, `ManualTriageDrawer.tsx` (3-tap fallback).
+- **M5 — Dispatch:** Dispatches CRUD, `DispatchModal.tsx` (mobile full-screen takeover), two-way status sync.
+- **M6 — Audit Ledger:** Server-side `auditLogger.ts` (Netlify Blobs, SHA-256 chain), real `verify-ledger.ts`, `AuditTimelineInspector.tsx`. _Tamper-evident, not tamper-proof_ (ADR-0005).
+- **M7 — Offline + PWA:** `useOfflineQueue.ts` (IndexedDB), online/offline drain with original timestamps, `vite-plugin-pwa` (staff client).
+- **M8 — Hardening:** Crypto/coordinate/JWT unit tests, full-flow integration tests, `runSimulation.ts` stress test, Netlify production deploy.
 
 ---
 
 ## 5. Team Skills & Engineering Resource Requirements
 
-Building and maintaining this SaaS system requires a highly specialized team of 5 engineers working with modern development practices:
+This is a **solo-developer, real-production build** (assisted by AI tooling).
+The original PRD assumed a 5-engineer team; the milestone plan above (§4) is
+scoped for one developer. The specialized skill areas below are still relevant —
+a solo developer must cover all of them, delegating depth to reference docs and
+automated tooling where possible.
 
-### 5.1 Required Engineering Matrix
+### 5.1 Engineering Skill Areas
 
 1. **Frontend / Canvas Specialist**: Expert in HTML5 2D contexts, mathematical vector projections, and browser layout profiling.
-2. **Cloud & Edge Security Architect**: Deep knowledge of edge workers (V8 runtimes), JSON Web Token structures, and declarative routing rules.
+2. **Cloud & Edge Security Architect**: Deep knowledge of edge workers (Deno runtimes), JWT structures, and imperative authorization logic.
 3. **AI / Cognitive Ingest Engineer**: Experience designing serverless prompts and structuring extraction pipelines.
-4. **Security & Compliance Engineer**: Background in asymmetric cryptography, hash chaining, WORM storage solutions, and compliance standards.
-5. **QA & Site Reliability Engineer (SRE)**: Focused on designing headless load simulators, monitoring real-time telemetry pipelines, and scaling serverless databases.
+4. **Security & Compliance Engineer**: Background in asymmetric cryptography, hash chaining, and tamper-evident audit systems.
+5. **QA & Site Reliability Engineer (SRE)**: Focused on designing load simulators, monitoring polling pipelines, and scaling Postgres.
 
 ### 5.2 Key Development Paradigms
 

@@ -1,93 +1,116 @@
 # Frontend Development & Code Design Guidelines
 
+> **Stack note:** The platform uses **HeroUI v3** (not shadcn/ui), **Tailwind CSS
+> v4** (not v3), and **React Router v8** framework mode. See
+> [ADR-0001](adr/0001-frontend-stack-hybriderui-react-router-tailwind.md). The
+> code examples below are reference implementations — translate shadcn/Radix
+> patterns to HeroUI v3 components during implementation.
+
 ## 1. Directory Blueprint
 
-The codebase enforces an immutable, decoupled folder structure ensuring that logic, components, types, and services are fully modular.
+The codebase enforces a decoupled folder structure ensuring that logic, components, types, and services are fully modular.
 
 ```text
 /
 ├── .env.example
 ├── netlify/
-│   └── edge-functions/
-│       ├── auth-bootstrap.ts
-│       └── twilio-gateway.ts
+│   ├── edge-functions/
+│   │   └── auth-bootstrap.ts       # RS256 JWT mint + OTP verify (ADR-0003)
+│   └── functions/
+│       ├── state-poll.ts           # Diff-based polling endpoint (ADR-0004)
+│       ├── ai-triage.ts            # Whisper + Gemini pipeline (ADR-0006)
+│       ├── mutations.ts            # Incident/dispatch CRUD + audit hook
+│       └── verify-ledger.ts        # Chain integrity scan (ADR-0005)
 ├── src/
 │   ├── assets/
 │   ├── components/
-│   │   ├── ui/               # Pure atomic components (shadcn/ui copies)
-│   │   ├── mobile/           # Mobile Field interface components
-│   │   ├── control-room/     # Desktop dashboard widgets
-│   │   └── shared/           # Cross-surface utilities
-│   │       └── StadiumMapCanvas.tsx  # GPU-accelerated Canvas map
+│   │   ├── ui/                     # HeroUI v3 wrappers (NOT shadcn/ui)
+│   │   ├── mobile/                 # Mobile Field interface components
+│   │   ├── control-room/           # Desktop dashboard widgets
+│   │   └── shared/                 # Cross-surface utilities
+│   │       └── OptimizedStadiumMapCanvas.tsx  # Offscreen-buffered Canvas
 │   ├── context/
-│   │   ├── AuthContext.tsx
-│   │   └── ActiveMatchContext.tsx
+│   │   ├── AuthContext.tsx         # JWT verify, claims, tenant scope
+│   │   └── ActiveOpsContext.tsx    # Polling hook, diff-merge into refs
 │   ├── hooks/
-│   │   ├── useFirestoreSync.ts
-│   │   └── useVoiceRecorder.ts
+│   │   ├── usePollingState.ts      # 2s diff-poll engine
+│   │   ├── useVoiceRecorder.ts     # MediaRecorder → webm
+│   │   ├── useTenantMutations.ts   # Write + audit-log intercept
+│   │   └── useOfflineQueue.ts      # IndexedDB queue + drain
 │   ├── services/
-│   │   ├── firebase.ts
-│   │   ├── gemini.ts
-│   │   └── whisper.ts
+│   │   ├── api.ts                  # Fetch wrapper, JWT injection
+│   │   └── crypto.ts               # Client-side SHA-256 (audit verify)
 │   ├── types/
 │   │   └── index.ts
-│   ├── App.tsx
+│   ├── pages/                      # RR8 routes: auth, control, field
+│   ├── routes.ts                   # RR8 route config
+│   ├── root.tsx                    # RR8 root layout
 │   └── main.tsx
-├── vite.config.ts
-└── tailwind.config.js
+├── vite.config.ts                  # Tailwind v4 via @tailwindcss/vite
+└── docs/adr/                       # Architecture Decision Records
 ```
 
 ## 2. Strong Type Architecture (TypeScript Contract)
 
-All domain data models must be backed by explicit, strictly declared types. No runtime implicit types (`any`) are permitted.
+All domain data models must be backed by explicit, strictly declared types. No runtime implicit types (`any`) are permitted. The **authoritative** type definitions live in `src/types/index.ts` (see also `docs/STRUCTURAL-TYPES.md`).
 
 ```typescript
-// src/types/index.ts
+// src/types/index.ts — UNIFIED (resolves all prior doc contradictions)
 
-export type UserRole = 'superadmin' | 'admin' | 'staff';
-
-export type InfoTier = 1 | 2 | 3 | 4 | 5;
-
+export type OperationalRole = 'superadmin' | 'admin' | 'staff';
 export type StaffSpecialty = 'security' | 'medical' | 'cleaning' | 'supervisor';
-
+export type IncidentCategory = 'SECURITY' | 'MEDICAL' | 'CROWD' | 'FACILITIES' | 'ADVISORY';
+export type IncidentSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type IncidentStatus = 'OPEN' | 'ACKNOWLEDGED' | 'ON_SCENE' | 'RESOLVED';
 export type DispatchStatus = 'SENT' | 'ACKNOWLEDGED' | 'ON_SCENE' | 'RESOLVED';
+export type StaffStatus = 'AVAILABLE' | 'DISPATCHED' | 'OFF_DUTY';
+export type InfoTier = 1 | 2 | 3 | 4 | 5;          // 5-tier system (ADR-0007)
 
 export interface MapCoordinates {
 	x: number; // Normalized coordinate (0 to 1000) for stadium grid scaling
 	y: number; // Normalized coordinate (0 to 1000) for stadium grid scaling
 }
 
+export interface TenantConfig {
+	tenantId: string;
+	orgName: string;
+	createdAt: number;
+	status: 'ACTIVE' | 'SUSPENDED';
+}
+
 export interface WhitelistUser {
-	id: string; // E.164 phone number used as identifier
-	name: string;
-	role: 'staff';
+	id: string;                    // E.164 phone number used as identifier
+	tenantId: string;              // SaaS isolation boundary
+	fullName: string;
+	role: OperationalRole;
 	specialty: StaffSpecialty;
 	assignedZone: string;
+	status: StaffStatus;
+	phoneNumber: string;
 	currentCoords?: MapCoordinates;
-	status: 'AVAILABLE' | 'DISPATCHED' | 'OFF_DUTY';
 	createdAt: number;
 }
 
 export interface IncidentReport {
 	id: string;
+	tenantId: string;
 	source: 'field_staff' | 'social_media';
 	tier: InfoTier;
-	reporterUid?: string;
-	reporterName?: string;
+	status: IncidentStatus;
 	rawText: string;
-	extractedMetadata: {
-		category: 'SECURITY' | 'MEDICAL' | 'CROWD' | 'FACILITIES' | 'ADVISORY';
-		severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-		locationSector: string;
-		actionRequired: string;
-	};
-	coordinates: MapCoordinates;
 	timestamp: number;
-	status: 'OPEN' | 'INVESTIGATING' | 'DISPATCHED' | 'CLOSED';
+	coordinates: MapCoordinates;
+	extractedMetadata: {
+		category: IncidentCategory;
+		severity: IncidentSeverity;
+		locationSector: string;
+		actionRequired?: string;
+	};
 }
 
 export interface DispatchDirective {
 	id: string;
+	tenantId: string;
 	incidentId: string;
 	targetStaffPhone: string;
 	directiveText: string;
@@ -95,6 +118,23 @@ export interface DispatchDirective {
 	sentTimestamp: number;
 	ackTimestamp?: number;
 	resolvedTimestamp?: number;
+}
+
+export interface AuditLogEntry {
+	eventId: string;
+	tenantId: string;
+	timestamp: number;
+	actor: {
+		uid: string;
+		role: OperationalRole;
+		phoneOrEmail: string;
+		deviceFingerprint: string;
+		ipAddress: string;
+	};
+	action: string;
+	targetResourceId: string;
+	stateDelta: { before: Record<string, unknown> | null; after: Record<string, unknown> | null };
+	cryptographicHash: string; // SHA-256 chain link
 }
 ```
 
@@ -323,6 +363,12 @@ If no operational anomalies are identified, return an object containing an empty
 ```
 
 ## 6. State Management & Real-time Synchronization Strategy
+
+> **⚠️ Superseded by ADR-0004.** The example below uses Firestore `onSnapshot`
+> WebSocket listeners, which are no longer the architecture. The platform now
+> uses **diff-based polling** (`POST /api/state-poll`, ~2s interval). The
+> example is retained as reference for the context pattern only — the data
+> source must be a polling hook, not Firestore listeners.
 
 To manage operational changes without causing global rendering layout lag, the client maintains decoupled custom contexts with localized query listeners.
 

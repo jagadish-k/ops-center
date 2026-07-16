@@ -1,25 +1,31 @@
 # Architecture Summary & Decision Ledger
 
-This document serves as a master summary of the entire architectural design session for the **SaaS Multi-Tenant Stadium Operations Core Engine**. It defines the core engineering choices, maps out the subsystem interfaces, and tracks every artifact designed across this lifecycle sprint.
+> **Resolved architecture:** This summary reflects the Netlify-only platform
+> per [ADR-0001](adr/0001-frontend-stack-hybriderui-react-router-tailwind.md)
+> through [ADR-0008](adr/0008-defer-social-listening.md). Earlier drafts
+> assumed Firebase/Firestore — those assumptions are superseded. See
+> [`CONTEXT.md`](../CONTEXT.md) for the glossary.
+
+This document serves as a master summary of the entire architectural design for the **Stadium Ops Grid Matrix**. It defines the core engineering choices, maps out the subsystem interfaces, and tracks every artifact.
 
 ---
 
 ## 1. Core Architectural Pillars & Strategy Decisions
 
-During the session, the platform was modeled around four non-negotiable architectural requirements:
+During the design session, the platform was modeled around four non-negotiable architectural requirements:
 
 ### A. Multi-Tenant Data Isolation (Zero-Leakage Guarantee)
 
 Instead of provisioning separate databases per customer, the system implements a **shared-process, partitioned-data SaaS architecture**.
 
-- **Decisions:** Tenant boundaries are governed using a single key (`tenantId`).
-- **Enforcement:** Security boundaries are applied at the network edge via custom token claims (JWT), validated inside serverless functions, and rigidly enforced at the storage tier using declarative database rules (`firestore.rules`). Operators can never access or accidentally read telemetry belonging to another stadium.
+- **Decisions:** Tenant boundaries are governed using a single key (`tenantId`). See [ADR-0002](adr/0002-netlify-postgres-blobs-data-layer.md).
+- **Enforcement:** Security boundaries are applied at the network edge via RS256 JWT claims (ADR-0003), validated inside Netlify Functions, and enforced at the storage tier using imperative `tenant_id` column checks in Postgres queries. Operators can never access or accidentally read telemetry belonging to another stadium.
 
 ### B. Serverless Cognitive Telemetry Extraction
 
 Field operations use asynchronous radio voice/text dispatches that lack structured tracking formats.
 
-- **Decisions:** A serverless gateway endpoint utilizes upstream LLM cognitive models (Gemini) to execute real-time, structured JSON payload extractions.
+- **Decisions:** A serverless gateway endpoint utilizes upstream LLM cognitive models (Gemini) to execute real-time, structured JSON payload extractions. See [ADR-0006](adr/0006-whisper-gemini-voice-pipeline.md).
 - **Enforcement:** The gateway takes noisy radio inputs and maps them into rigid coordinate coordinates $(x, y)$, emergency classification zones, severity indices, and structured operational action descriptions.
 
 ### C. Hardware-Accelerated Dynamic Map Canvas
@@ -33,13 +39,13 @@ Rendering dozens of moving security assets and live incoming emergency vectors c
 
 To protect historical records against internal administrative tampering or database intrusions, security event timelines require forensic verify-at-will guarantees.
 
-- **Decisions:** An append-only ledger system applies cryptographic constraints to every single event mutation.
-- **Enforcement:** Each log entry captures state differences (`before` and `after` deltas), computes a deterministic SHA-256 hash of the payload, and signs it against the hash of the preceding block log. A separate validation engine can instantly trace the historical chain to identify the exact block entry where data corruption or tampering occurred.
+- **Decisions:** An append-only ledger system applies cryptographic constraints to every single event mutation. See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
+- **Enforcement:** Each log entry captures state differences (`before` and `after` deltas), computes a deterministic SHA-256 hash **server-side** of the payload, and signs it against the hash of the preceding block log. The chain is stored in Netlify Blobs. A separate validation engine can instantly trace the historical chain to identify the exact block entry where data corruption or tampering occurred. _Note: this is tamper-evident (detectable), not tamper-proof (preventable)._
 
-### E. Fully Custom Client Domain Integration & Ingress Redirection
+### E. Fully Custom Client Domain Integration & Ingress Redirection — DEFERRED
 
-- **Decisions**: Supported dynamic hostname resolution to facilitate white-labeled application deployment. Avoided building costly isolated infrastructure clusters for individual customers by implementing a smart CDN reverse-proxy layer.
-- **Enforcement**: Netlify Edge Functions intercept the `Host` request header, query our dynamic map index database in real time, and pass the resolved `tenantId` parameter downstream. Custom brand variables are dynamically hydrated via CSS properties (`var(--brand-*)`), ensuring individual club identities are isolated without introducing styling compile leaks.
+- **Decisions**: Supported dynamic hostname resolution to facilitate white-labeled application deployment.
+- **Status**: Deferred to a future phase after the core platform ships. See `docs/CUSTOM-DOMAINS.md` for the reference design.
 
 ---
 
@@ -82,11 +88,11 @@ Below is a complete index of all configuration blueprints, logic modules, and UI
 | `src/components/shared/OptimizedStadiumMapCanvas.tsx` | **Tactical Canvas Map**       | Renders high-performance asset updates, grids, and event hotspots using double-buffered 2D canvas steps.             |
 | `src/components/mobile/VoiceIngest.tsx`               | **Radio Transceiver**         | Emulates Push-To-Talk radio captures, sending audio telemetry metadata out to edge extractions.                      |
 | `src/components/dashboard/OperationalDashboard.tsx`   | **Unified Command Shell**     | The central interface matrix linking the canvas view, administrative controls, tenant selectors, and logs.           |
-| `netlify/edge-functions/ai-orchestrator.ts`           | **Serverless AI Gateway**     | Decodes bearer configurations, extracts structured telemetry variables, and locks reports into tenant spaces.        |
+| `netlify/functions/ai-triage.ts`                      | **Serverless AI Gateway**     | Whisper transcription + Gemini structured extraction pipeline (ADR-0006).                                            |
 | `netlify/edge-functions/telemetry-monitor.ts`         | **System Diagnostics**        | Collects error telemetry, catching environment issues and system delays before they cascade.                         |
-| `firestore.rules`                                     | **Storage Sandbox Gates**     | Server-side declarative code restricting database reads, creates, and updates strictly within a user's token claims. |
+| `netlify/functions/mutations.ts`                      | **Mutation + Authz Layer**    | Server-side tenant-guarded CRUD + audit hook. Replaces `firestore.rules` with imperative checks. |
 | `package.json`                                        | **System Manifest**           | Standardizes structural framework versions, tool build targets, and lint dependencies.                               |
-| `tailwind.config.js`                                  | **HUD Styling Theme**         | Configures dark slate styles, console grid themes, and tactical color palettes across the UI layout.                 |
+| `vite.config.ts` (`@tailwindcss/vite`)                 | **HUD Styling Theme**         | Tailwind v4 CSS-first config (`@theme` directive); dark slate styles and tactical color palettes.                    |
 | `netlify.toml`                                        | **Edge Ingress Controller**   | Provisions proxy routes, secure CSP headers, and edge execution pathways.                                            |
 | `src/utils/runSimulation.ts`                          | **Lifecycle Testing Harness** | A sandbox execution engine that validates token handling, AI extractions, and ledger immutability out-of-the-box.    |
 
@@ -94,9 +100,14 @@ Below is a complete index of all configuration blueprints, logic modules, and UI
 
 ## 4. Current Platform State & Readiness Vector
 
-- **Type Safety:** 100% strict TypeScript domain modeling ensures clear interfaces across the system.
-- **Security Posture:** Data separation is completely sandboxed at the root database line via declarative matching path queries.
-- **Audit Capability:** The cryptographic ledger guarantees that data tampering can be caught immediately on the client dashboard.
+> The architectural decisions are recorded in [`docs/adr/`](adr/). The reference
+> implementations in `docs/*.md` are written against Firebase + shadcn/ui and
+> must be treated as **reference pseudo-code** — they will be rewritten against
+> HeroUI v3 + Netlify during implementation.
+
+- **Type Safety:** Strict TypeScript domain modeling ensures clear interfaces across the system (see `docs/STRUCTURAL-TYPES.md`).
+- **Security Posture:** Data separation is enforced via `tenant_id` checks in Netlify Functions + RS256 JWT claims (ADR-0003).
+- **Audit Capability:** The tamper-evident SHA-256 chain guarantees that data tampering can be detected immediately (ADR-0005).
 - **UI Layout:** The architecture is fully prepped for heavy multi-asset testing thanks to the hardware-accelerated canvas implementation.
 
 ```
