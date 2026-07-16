@@ -1,75 +1,89 @@
-# React + TypeScript + Vite
+# Stadium Ops Grid Matrix
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mission-critical, low-latency SaaS incident management and tactical
+coordination platform for large-scale sports tournaments and multi-tenant
+arena networks.
 
-Currently, two official plugins are available:
+Built with **React 19 + HeroUI v3 + React Router v8 + Tailwind v4**, deployed
+on **Netlify** (Postgres + Blobs + Functions).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+cp .env.example .env          # fill in DATABASE_URL + JWT keys
+npm run db:migrate            # create schema + seed data
+netlify dev                   # → http://localhost:8888
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+**Full setup guide:** [`DEVELOPMENT.md`](DEVELOPMENT.md) (includes SMS
+emulation, seeded test users, API reference, troubleshooting).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [`DEVELOPMENT.md`](DEVELOPMENT.md) | **How to run locally** — setup, DB, SMS emulation, testing |
+| [`PRD.md`](PRD.md) | Product requirements, feature scope, build milestones |
+| [`CONTEXT.md`](CONTEXT.md) | Domain glossary — canonical vocabulary |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records (ADR-0001 through ADR-0008) |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System topology, component stack, data pipelines |
+| [`docs/CODE-DESIGN.md`](docs/CODE-DESIGN.md) | Frontend guidelines, directory blueprint, type contracts |
+| [`docs/STRUCTURAL-TYPES.md`](docs/STRUCTURAL-TYPES.md) | Canonical TypeScript type definitions |
+| [`docs/DEPLOYMENT-RUNBOOK.md`](docs/DEPLOYMENT-RUNBOOK.md) | Production deployment & env var reference |
+
+---
+
+## Architecture (Summary)
 
 ```
+Client (React 19 / HeroUI v3) ──HTTPS──► Netlify Functions (Deno/Node)
+                                              ├── Postgres (tenants, incidents, staff)
+                                              ├── Blobs (audit chain — SHA-256 WORM)
+                                              ├── Twilio (OTP SMS)
+                                              ├── Whisper API (audio transcription)
+                                              └── Gemini 1.5 Flash (structured extraction)
+```
+
+Real-time via **diff-based polling** (~2s). Auth via **RS256 JWT** minted at the
+edge. See [ADR-0001](docs/adr/0001-frontend-stack-hybriderui-react-router-tailwind.md)
+through [ADR-0008](docs/adr/0008-defer-social-listening.md).
+
+---
+
+## Build Progress
+
+| Milestone | Status | Description |
+|---|---|---|
+| M0 — Foundation | ✅ Done | Types, Postgres schema, migration runner, test infra |
+| M1 — Auth | ✅ Done | Edge JWT, Twilio OTP, AuthContext, OtpGateway |
+| M2 — Live Map | Next | Diff polling endpoint, canvas engine |
+| M3 — Control Room | — | Dashboard, incident CRUD, tenant switching |
+| M4 — Voice AI | — | Whisper + Gemini triage pipeline |
+| M5 — Dispatch | — | Two-way dispatch loop, mobile takeover |
+| M6 — Audit Ledger | — | Server-side SHA-256 chain, forensic timeline |
+| M7 — Offline + PWA | — | IndexedDB queue, offline reconciliation |
+| M8 — Hardening | — | Integration tests, stress simulation, production deploy |
+
+---
+
+## Scripts
+
+```bash
+npm run dev          # Vite dev server (frontend only, no functions)
+npm run build        # TypeScript check + Vite production build
+npm test             # Run vitest suite (37 tests)
+npm run test:watch   # Watch mode
+npm run db:migrate   # Apply Postgres schema migrations
+npm run lint         # ESLint
+```
+
+---
+
+## License
+
+Private. See project configuration for details.

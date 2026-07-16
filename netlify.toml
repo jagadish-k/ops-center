@@ -7,7 +7,17 @@
 [functions]
   directory = "netlify/functions"
 
-# Redirect all frontend traffic to index.html for React Router SPA handling
+# Local development server (netlify dev)
+# See DEVELOPMENT.md for full setup guide
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  autoLaunch = true
+  framework = "#custom"
+
+# Redirect all frontend traffic to index.html for React Router SPA handling.
+# API routes (/api/*) are handled by Functions before this redirect applies.
 [[redirects]]
   from = "/*"
   to = "/index.html"
