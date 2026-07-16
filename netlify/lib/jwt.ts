@@ -20,18 +20,27 @@ const ALG = 'RS256';
 let cachedPrivateKey: CryptoKey | null = null;
 let cachedPublicKey: CryptoKey | null = null;
 
+/**
+ * Reads a PEM key from an environment variable.
+ * Handles both real newlines and \n-escaped single-line values (which is how
+ * setup-env.ts stores them in .env for dotenv compatibility).
+ */
+function readPemEnv(key: string): string {
+	const raw = process.env[key];
+	if (!raw) throw new Error(`${key} environment variable is not set.`);
+	return raw.replace(/\\n/g, '\n');
+}
+
 async function getPrivateKey(): Promise<CryptoKey> {
 	if (cachedPrivateKey) return cachedPrivateKey;
-	const pem = process.env.JWT_PRIVATE_KEY;
-	if (!pem) throw new Error('JWT_PRIVATE_KEY environment variable is not set.');
+	const pem = readPemEnv('JWT_PRIVATE_KEY');
 	cachedPrivateKey = await importPKCS8(pem, ALG);
 	return cachedPrivateKey;
 }
 
 async function getPublicKey(): Promise<CryptoKey> {
 	if (cachedPublicKey) return cachedPublicKey;
-	const pem = process.env.JWT_PUBLIC_KEY;
-	if (!pem) throw new Error('JWT_PUBLIC_KEY environment variable is not set.');
+	const pem = readPemEnv('JWT_PUBLIC_KEY');
 	cachedPublicKey = await importSPKI(pem, ALG);
 	return cachedPublicKey;
 }

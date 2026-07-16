@@ -4,7 +4,10 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
+		"dev": "tsx scripts/dev.ts",
+		"dev:db": "docker compose up -d",
+		"dev:db:stop": "docker compose down",
+		"dev:db:reset": "docker compose down -v && docker compose up -d",
 		"build": "tsc -b && vite build",
 		"lint": "eslint .",
 		"preview": "vite preview",

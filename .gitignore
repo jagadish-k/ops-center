@@ -25,3 +25,8 @@ build
 *.sln
 *.sw?
 graphify-out/
+
+# Local environment + secrets (never commit)
+.env
+*.pem
+jwt-*.pem

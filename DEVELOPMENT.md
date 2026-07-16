@@ -11,192 +11,82 @@ SMS-based authentication without a real Twilio account.
 
 ## Table of Contents
 
-1. [Prerequisites](#1-prerequisites)
-2. [Initial Setup](#2-initial-setup)
-3. [Database Setup](#3-database-setup)
-4. [Running Locally](#4-running-locally)
-5. [Accessing the UI](#5-accessing-the-ui)
-6. [SMS Emulation (Dev Mode)](#6-sms-emulation-dev-mode)
-7. [Seeded Test Users](#7-seeded-test-users)
-8. [Testing the Auth Flow](#8-testing-the-auth-flow)
-9. [API Endpoints Reference](#9-api-endpoints-reference)
-10. [Running Tests](#10-running-tests)
+1. [Quick Start](#1-quick-start)
+2. [What `npm run dev` Does](#2-what-npm-run-dev-does)
+3. [Helper Scripts](#3-helper-scripts)
+4. [Accessing the UI](#4-accessing-the-ui)
+5. [SMS Emulation (Dev Mode)](#5-sms-emulation-dev-mode)
+6. [Seeded Test Users](#6-seeded-test-users)
+7. [Testing the Auth Flow](#7-testing-the-auth-flow)
+8. [API Endpoints Reference](#8-api-endpoints-reference)
+9. [Running Tests](#9-running-tests)
+10. [Manual Setup (Advanced)](#10-manual-setup-advanced)
 11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
-## 1. Prerequisites
-
-| Tool | Version | Purpose |
-|---|---|---|
-| **Node.js** | ≥ 20 LTS | Runtime + build |
-| **npm** | ≥ 10 | Package manager |
-| **Netlify CLI** | latest (`npm i -g netlify-cli`) | Local function emulator (`netlify dev`) |
-| **Docker** | latest | Local Postgres (recommended) |
-| **openssl** | any | Generate RSA keypair for JWT signing |
-
-Install the Netlify CLI globally:
+## 1. Quick Start
 
 ```bash
-npm install -g netlify-cli
-```
-
----
-
-## 2. Initial Setup
-
-```bash
-# Clone the repo (if you haven't already)
-git clone <repo-url> stad-ops && cd stad-ops
-
-# Install dependencies
 npm install
+npm run dev
 ```
 
-### Generate JWT signing keys
+That's it. The `npm run dev` command automatically:
 
-The auth system uses RS256 JWTs (ADR-0003). You need an RSA keypair stored as
-PEM files. **Do not commit these** — they're local development secrets.
+- Generates `.env` with a Docker Postgres URL and an RSA keypair for JWT signing
+- Starts a local Postgres container via Docker Compose
+- Waits for the database to accept connections
+- Runs all pending migrations (schema + seed data)
+- Starts `netlify dev` (frontend + API functions on **`http://localhost:8888`**)
 
-```bash
-# Generate a 2048-bit RSA private key
-openssl genrsa -out jwt-private.pem 2048
+**Prerequisites:** [Node.js](https://nodejs.org/) ≥ 20, [Docker](https://docker.com), and [Netlify CLI](https://docs.netlify.com/cli/get-started/) (`npm i -g netlify-cli`).
 
-# Derive the public key from it
-openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
-```
-
-### Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and fill in the following **required** values for local dev:
-
-```bash
-# ── Database ──
-# Point to your local Postgres (see §3 below)
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/stadium_ops
-
-# ── JWT keys ──
-# Paste the FULL PEM contents (including -----BEGIN/END----- lines).
-# Multi-line values work in .env files.
-JWT_PRIVATE_KEY=<contents of jwt-private.pem>
-JWT_PUBLIC_KEY=<contents of jwt-public.pem>
-```
-
-**Leave these BLANK for local dev** (they enable SMS emulation):
-
-```bash
-# Leave empty — the system detects "dev mode" and emulates SMS
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_FROM_NUMBER=
-```
-
-> **That's it.** You do NOT need real Twilio, OpenAI, or Gemini keys for local
-> development of the auth flow. Those are only needed for voice triage
-> (Milestone 4) and production deployment.
+> No openssl, no manual `.env` editing, no `docker run` — the script handles everything.
 
 ---
 
-## 3. Database Setup
+## 2. What `npm run dev` Does
 
-### Option A: Docker (recommended)
+```
+npm run dev
+  → scripts/dev.ts
+    → 1. Pre-flight: checks Docker installed + running, Netlify CLI present
+    → 2. Setup: ensures .env exists (auto-generates JWT RSA keypair if missing)
+    → 3. Docker: docker compose up -d (starts Postgres — no-op if already running)
+    → 4. Poll: waits up to 30s for Postgres to accept connections
+    → 5. Migrate: applies pending schema migrations (idempotent — skips applied)
+    → 6. Serve: spawns netlify dev (Vite frontend + Netlify Functions API)
+    → Ctrl+C: stops the dev server, leaves Docker running for fast restart
+```
+
+The `.env` file is created on first run and **never overwritten** — only missing
+values are filled in. If you've already configured custom values, they're
+preserved.
+
+---
+
+## 3. Helper Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Full orchestration: .env → Docker → migrate → netlify dev |
+| `npm run dev:db` | Start the Postgres Docker container only |
+| `npm run dev:db:stop` | Stop the Postgres container (data is preserved in volume) |
+| `npm run dev:db:reset` | **Wipe all data** and recreate a fresh Postgres container |
+| `npm run db:migrate` | Apply pending migrations manually |
+| `npm test` | Run the test suite (37 tests) |
+
+**Full reset (clean slate):**
 
 ```bash
-# Start a local Postgres 16 container
-docker run --name stad-ops-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=stadium_ops \
-  -p 5432:5432 \
-  -d postgres:16
-
-# Verify it's running
-docker ps | grep stad-ops-db
-```
-
-Your `DATABASE_URL` should be:
-```
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/stadium_ops
-```
-
-### Option B: Homebrew (macOS)
-
-```bash
-brew install postgresql@16
-brew services start postgresql@16
-createdb stadium_ops
-```
-
-Your `DATABASE_URL` should be:
-```
-DATABASE_URL=postgres:///stadium_ops
-```
-
-### Run the migration
-
-```bash
-npm run db:migrate
-```
-
-This creates all tables, indexes, triggers, and **seed data** (3 tenants + 3
-staff users + the operational switch config). You should see:
-
-```
-▶ Found 1 migration file(s).
-  → Applying 0001_init.sql...
-  ✓ 0001_init.sql — applied
-✔ All migrations complete.
-```
-
-To re-run the migration from scratch (drops everything and recreates):
-
-```bash
-# Docker
-docker rm -f stad-ops-db && docker run --name stad-ops-db ...  # recreate container
-npm run db:migrate
-
-# Homebrew
-dropdb stadium_ops && createdb stadium_ops
-npm run db:migrate
+npm run dev:db:reset   # wipes the Docker volume
+npm run dev            # re-provisions .env + migrates + starts
 ```
 
 ---
 
-## 4. Running Locally
-
-```bash
-netlify dev
-```
-
-This command:
-
-1. **Auto-detects Vite** and starts the frontend dev server.
-2. **Starts the Netlify Functions runtime** — serves `netlify/functions/*.ts`
-   at their declared `config.path` routes.
-3. **Proxies everything** through a single port (default: **`http://localhost:8888`**).
-
-You should see output like:
-
-```
-◈ Netlify Dev ◈
-◈ Loaded function auth-request-otp
-◈ Loaded function auth-verify-otp
-◈ Loaded function hello
-───────────────────────────────────────────────────
-   ◈ Server now ready on http://localhost:8888
-───────────────────────────────────────────────────
-```
-
-**Keep this terminal running.** The frontend, API functions, and database all
-work together through this single port.
-
----
-
-## 5. Accessing the UI
+## 4. Accessing the UI
 
 Open your browser to:
 
@@ -214,7 +104,7 @@ with:
 
 ---
 
-## 6. SMS Emulation (Dev Mode)
+## 5. SMS Emulation (Dev Mode)
 
 When Twilio credentials are **not set** in `.env`, the system automatically
 enters **dev mode**. In this mode:
@@ -262,7 +152,7 @@ If you want to test real SMS delivery locally:
 
 ---
 
-## 7. Seeded Test Users
+## 6. Seeded Test Users
 
 The migration seeds three users into the `tenant_metlife_ops` tenant. Use these
 phone numbers for local testing:
@@ -287,7 +177,7 @@ Three tenants are also seeded:
 
 ---
 
-## 8. Testing the Auth Flow
+## 7. Testing the Auth Flow
 
 ### Via the UI
 
@@ -337,7 +227,7 @@ echo "eyJhbGciOi..." | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 
 ---
 
-## 9. API Endpoints Reference
+## 8. API Endpoints Reference
 
 ### Auth Endpoints (Milestone 1)
 
@@ -375,7 +265,7 @@ Common status codes:
 
 ---
 
-## 10. Running Tests
+## 9. Running Tests
 
 ```bash
 # Run all tests once
@@ -397,6 +287,45 @@ Current test coverage (37 tests, 5 files):
 | `jwt.test.ts` | 6 | RS256 sign/verify roundtrip, tamper rejection, bearer extraction |
 | `otp.test.ts` | 5 | Code generation format/range, SMS formatting |
 | `api.test.ts` | 4 | Client-side claims decoding, malformed token handling |
+
+---
+
+## 10. Manual Setup (Advanced)
+
+If you prefer to set things up manually (without `npm run dev` orchestration),
+or need a non-Docker Postgres:
+
+### Generate JWT keys manually
+
+```bash
+openssl genrsa -out jwt-private.pem 2048
+openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
+```
+
+Then paste the PEM contents into `.env` as `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY`
+(use `\n` for line breaks in the .env value, or let `scripts/setup-env.ts`
+generate them: `npx tsx scripts/setup-env.ts`).
+
+### Use Homebrew Postgres instead of Docker
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createdb stadium_ops
+```
+
+Update `.env`:
+```
+DATABASE_URL=postgres:///stadium_ops
+```
+
+### Start manually (without the orchestrator)
+
+```bash
+docker compose up -d         # start Postgres
+npm run db:migrate           # apply schema
+netlify dev                  # start frontend + functions
+```
 
 ---
 
@@ -453,19 +382,15 @@ Or start on a different port: `netlify dev --port 8889`
 ## Quick Reference
 
 ```bash
-# One-time setup
-npm install
-openssl genrsa -out jwt-private.pem 2048
-openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
-cp .env.example .env          # edit: DATABASE_URL + JWT keys
+# Start everything (first run or subsequent)
+npm run dev                    # → http://localhost:8888
 
-# Database (Docker)
-docker run --name stad-ops-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=stadium_ops -p 5432:5432 -d postgres:16
-npm run db:migrate
+# Stop Postgres
+npm run dev:db:stop
 
-# Run the app
-netlify dev                    # → http://localhost:8888
+# Full reset (wipe all data)
+npm run dev:db:reset && npm run dev
 
-# Test
+# Run tests
 npm test                       # → 37 tests
 ```

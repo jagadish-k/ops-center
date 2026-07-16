@@ -10,7 +10,7 @@
 # Local development server (netlify dev)
 # See DEVELOPMENT.md for full setup guide
 [dev]
-  command = "npm run dev"
+  command = "vite"
   targetPort = 5173
   port = 8888
   autoLaunch = true
