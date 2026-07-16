@@ -22,6 +22,7 @@
 		"@react-router/node": "^8.2.0",
 		"@react-router/serve": "^8.2.0",
 		"@tailwindcss/vite": "^4.3.2",
+		"dotenv": "^17.4.2",
 		"i18next": "^26.3.6",
 		"isbot": "^5.2.1",
 		"jose": "^6.2.3",

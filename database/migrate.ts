@@ -10,6 +10,7 @@
  * Note: This is a lightweight local-dev runner. For production hardening
  * (Milestone 8), consider adopting drizzle-kit or node-pg-migrate.
  */
+import 'dotenv/config';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import pg from 'pg';

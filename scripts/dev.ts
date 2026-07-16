@@ -11,6 +11,7 @@
  *
  * Usage: npm run dev
  */
+import 'dotenv/config';
 import { spawn, execSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -128,10 +129,11 @@ function runMigrations(): void {
 	log('📦', 'Running migrations...');
 
 	try {
-		execSync('npx tsx database/migrate.ts', { stdio: 'pipe', cwd: process.cwd() });
+		execSync('npx tsx database/migrate.ts', { stdio: 'inherit', cwd: process.cwd() });
 		ok('Migrations applied');
-	} catch {
-		fail('Migration failed. Check DATABASE_URL in .env and that Postgres is running.');
+	} catch (err) {
+		console.error('\n');
+		fail(`Migration failed. Check DATABASE_URL in .env (current: ${process.env.DATABASE_URL ?? 'NOT SET'})`);
 	}
 }
 
