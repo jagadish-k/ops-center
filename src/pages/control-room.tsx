@@ -9,11 +9,13 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ActiveOpsProvider } from '@/context/ActiveOpsContext';
 import { OperationalDashboard } from '@/components/control-room/OperationalDashboard';
 
 export default function ControlRoom() {
 	const { claims, loading } = useAuth();
+	const { can, tenantId: jwtTenantId } = usePermissions();
 	const [overrideTenantId, setOverrideTenantId] = useState<string | undefined>(undefined);
 
 	if (loading) {
@@ -24,14 +26,13 @@ export default function ControlRoom() {
 		);
 	}
 
-	// No session or wrong role → back to the gate.
-	if (!claims) return <Navigate to="/" replace />;
-	if (claims.role !== 'admin' && claims.role !== 'superadmin') {
+	// No session or lacks control-room permission → back to the gate.
+	if (!claims || !can('surface:control-room')) {
 		return <Navigate to="/" replace />;
 	}
 
 	return (
-		<ActiveOpsProvider tenantId={claims.tenantId} overrideTenantId={overrideTenantId}>
+		<ActiveOpsProvider tenantId={jwtTenantId ?? claims.tenantId} overrideTenantId={overrideTenantId}>
 			<OperationalDashboard onTenantChange={setOverrideTenantId} />
 		</ActiveOpsProvider>
 	);

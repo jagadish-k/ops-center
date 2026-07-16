@@ -11,6 +11,7 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import type { IncidentReport } from '@/types';
 import { OptimizedStadiumMapCanvas } from '@/shared/OptimizedStadiumMapCanvas';
@@ -26,6 +27,7 @@ interface OperationalDashboardProps {
 
 export function OperationalDashboard({ onTenantChange }: OperationalDashboardProps) {
 	const { signOut, claims } = useAuth();
+	const { can, phoneNumber } = usePermissions();
 	const { incidents, staff, activeTenantId, connectionHealthy } = useActiveOps();
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,20 +73,22 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				</div>
 
 				<div className="ml-auto flex items-center gap-2">
-					{claims.role === 'superadmin' && (
+					{can('tenant:switch') && (
 						<TenantSwitcher
 							tenants={mockTenants}
 							activeTenantId={activeTenantId}
 							onTenantChange={onTenantChange}
 						/>
 					)}
-					<Button
-						size="sm"
-						variant="secondary"
-						onPress={() => setAuditOpen(true)}
-						className="font-bold uppercase tracking-widest">
-						Compliance Log
-					</Button>
+					{can('audit:view') && (
+						<Button
+							size="sm"
+							variant="secondary"
+							onPress={() => setAuditOpen(true)}
+							className="font-bold uppercase tracking-widest">
+							Compliance Log
+						</Button>
+					)}
 					<Button
 						size="sm"
 						variant="secondary"
@@ -96,10 +100,10 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			</header>
 
 			{/* ── Operator identity (footprint) ─────────────────────────── */}
-			{claims?.phoneNumber && (
+			{phoneNumber && (
 				<div className="border-b border-slate-800/60 bg-slate-950 px-4 py-1">
 					<p className="font-mono text-[9px] uppercase tracking-widest text-slate-600">
-						Operator {claims.phoneNumber} · {claims.role}
+						Operator {phoneNumber} · {claims?.role}
 					</p>
 				</div>
 			)}

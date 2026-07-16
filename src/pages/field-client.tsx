@@ -6,11 +6,13 @@
  */
 import { Navigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ActiveOpsProvider } from '@/context/ActiveOpsContext';
 import { FieldShell } from '@/components/mobile/FieldShell';
 
 export default function FieldClient() {
 	const { claims, loading, signOut } = useAuth();
+	const { can, phoneNumber, tenantId } = usePermissions();
 
 	if (loading) {
 		return (
@@ -20,19 +22,17 @@ export default function FieldClient() {
 		);
 	}
 
-	if (!claims) return <Navigate to="/" replace />;
-	// Staff surface is for the 'staff' role; admins who land here are bounced.
-	if (claims.role !== 'staff') {
+	if (!claims || !can('surface:field-client')) {
 		return <Navigate to="/" replace />;
 	}
 
-	const staffPhone = claims.phoneNumber ?? claims.tenantId; // phone is the staff id
+	const staffPhone = phoneNumber ?? claims.tenantId;
 
 	return (
-		<ActiveOpsProvider tenantId={claims.tenantId}>
+		<ActiveOpsProvider tenantId={tenantId ?? claims.tenantId}>
 			<FieldShell
 				staffPhone={staffPhone}
-				tenantId={claims.tenantId}
+				tenantId={tenantId ?? claims.tenantId}
 				onDisconnect={signOut}
 			/>
 		</ActiveOpsProvider>

@@ -13,10 +13,12 @@
 import { Navigate } from 'react-router';
 import { Spinner } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { OtpGateway } from '@/components/auth/OtpGateway';
 
 export default function AuthGate() {
-	const { token, claims, loading } = useAuth();
+	const { token, loading } = useAuth();
+	const { isAuthenticated, can } = usePermissions();
 
 	if (loading) {
 		return (
@@ -30,12 +32,12 @@ export default function AuthGate() {
 	}
 
 	// No valid session — present the OTP login gateway.
-	if (!token || !claims) {
+	if (!token || !isAuthenticated) {
 		return <OtpGateway />;
 	}
 
-	// Route by role. Unknown roles fall back to the field surface.
-	if (claims.role === 'admin' || claims.role === 'superadmin') {
+	// Route by permission. Control-room access → /control, else → /field.
+	if (can('surface:control-room')) {
 		return <Navigate to="/control" replace />;
 	}
 
