@@ -61,13 +61,13 @@ through [ADR-0008](docs/adr/0008-defer-social-listening.md).
 |---|---|---|
 | M0 — Foundation | ✅ Done | Types, Postgres schema, migration runner, test infra |
 | M1 — Auth | ✅ Done | Edge JWT, Twilio OTP, AuthContext, OtpGateway |
-| M2 — Live Map | Next | Diff polling endpoint, canvas engine |
-| M3 — Control Room | — | Dashboard, incident CRUD, tenant switching |
-| M4 — Voice AI | — | Whisper + Gemini triage pipeline |
-| M5 — Dispatch | — | Two-way dispatch loop, mobile takeover |
-| M6 — Audit Ledger | — | Server-side SHA-256 chain, forensic timeline |
-| M7 — Offline + PWA | — | IndexedDB queue, offline reconciliation |
-| M8 — Hardening | — | Integration tests, stress simulation, production deploy |
+| M2 — Live Map | ✅ Done | Diff polling endpoint, canvas engine, real data |
+| M3 — Control Room | ✅ Done | Dashboard, incident CRUD, dispatch creation |
+| M4 — Voice AI | ✅ Done | Whisper + Gemini triage pipeline |
+| M5 — Dispatch | ✅ Done | Two-way dispatch loop, mobile takeover |
+| M6 — Audit Ledger | Next | Server-side SHA-256 chain, forensic timeline |
+| M7 — Offline + PWA | Pending | IndexedDB queue, offline reconciliation |
+| M8 — Hardening | Pending | Integration tests, stress simulation, production deploy |
 
 ---
 

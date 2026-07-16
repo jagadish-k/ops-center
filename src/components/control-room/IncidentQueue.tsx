@@ -5,8 +5,8 @@
  * delegates to the parent via `onSelect`. The active selection is highlighted.
  */
 import { useMemo } from 'react';
-import type { IncidentReport } from '../../types';
-import { tierBadge, severityBadge, statusBadge, timeAgo } from '../../lib/ui';
+import type { IncidentReport } from '@/types';
+import { tierBadge, severityBadge, statusBadge, timeAgo } from '@/lib/ui';
 
 interface IncidentQueueProps {
 	incidents: IncidentReport[];

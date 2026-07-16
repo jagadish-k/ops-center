@@ -10,15 +10,15 @@
  */
 import { useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
-import { useAuth } from '../../context/AuthContext';
-import { useActiveOps } from '../../context/ActiveOpsContext';
-import type { IncidentReport } from '../../types';
-import { OptimizedStadiumMapCanvas } from '../shared/OptimizedStadiumMapCanvas';
+import { useAuth } from '@/context/AuthContext';
+import { useActiveOps } from '@/context/ActiveOpsContext';
+import type { IncidentReport } from '@/types';
+import { OptimizedStadiumMapCanvas } from '@/shared/OptimizedStadiumMapCanvas';
 import { IncidentQueue } from './IncidentQueue';
 import { IncidentInspector } from './IncidentInspector';
 import { TenantSwitcher } from './TenantSwitcher';
 import { AuditTimelineInspector } from './AuditTimelineInspector';
-import { mockTenants } from '../../lib/mockData';
+import { mockTenants } from '@/lib/mockData';
 
 interface OperationalDashboardProps {
 	onTenantChange: (tenantId: string) => void;
@@ -71,11 +71,13 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				</div>
 
 				<div className="ml-auto flex items-center gap-2">
-					<TenantSwitcher
-						tenants={mockTenants}
-						activeTenantId={activeTenantId}
-						onTenantChange={onTenantChange}
-					/>
+					{claims.role === 'superadmin' && (
+						<TenantSwitcher
+							tenants={mockTenants}
+							activeTenantId={activeTenantId}
+							onTenantChange={onTenantChange}
+						/>
+					)}
 					<Button
 						size="sm"
 						variant="secondary"

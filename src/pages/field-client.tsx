@@ -5,9 +5,9 @@
  * Disconnect signs the operator out and returns to the auth gate.
  */
 import { Navigate } from 'react-router';
-import { useAuth } from '../context/AuthContext';
-import { ActiveOpsProvider } from '../context/ActiveOpsContext';
-import { FieldShell } from '../components/mobile/FieldShell';
+import { useAuth } from '@/context/AuthContext';
+import { ActiveOpsProvider } from '@/context/ActiveOpsContext';
+import { FieldShell } from '@/components/mobile/FieldShell';
 
 export default function FieldClient() {
 	const { claims, loading, signOut } = useAuth();

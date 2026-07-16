@@ -8,9 +8,9 @@
  */
 import { useState } from 'react';
 import { Navigate } from 'react-router';
-import { useAuth } from '../context/AuthContext';
-import { ActiveOpsProvider } from '../context/ActiveOpsContext';
-import { OperationalDashboard } from '../components/control-room/OperationalDashboard';
+import { useAuth } from '@/context/AuthContext';
+import { ActiveOpsProvider } from '@/context/ActiveOpsContext';
+import { OperationalDashboard } from '@/components/control-room/OperationalDashboard';
 
 export default function ControlRoom() {
 	const { claims, loading } = useAuth();

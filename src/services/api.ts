@@ -5,7 +5,7 @@
  * Bearer header. The SERVER re-verifies the JWT signature on every call —
  * client-decoded claims are for UI rendering only, never for authorization.
  */
-import type { JwtClaims } from '../types';
+import type { JwtClaims } from '@/types';
 
 const TOKEN_KEY = 'stadiumops_jwt';
 
@@ -136,7 +136,7 @@ export async function verifyOtp(phoneNumber: string, code: string): Promise<Veri
 
 // ─── Mutation API methods (M3) ────────────────────────────────────────────────
 
-import type { IncidentReport, IncidentStatus, DispatchDirective, DispatchStatus } from '../types';
+import type { IncidentReport, IncidentStatus, DispatchDirective, DispatchStatus } from '@/types';
 
 interface MutationResponse {
 	incident?: IncidentReport;

@@ -8,8 +8,8 @@
  */
 import { useState } from 'react';
 import { Drawer, Button, Spinner } from '@heroui/react';
-import type { IncidentCategory, IncidentSeverity } from '../../types';
-import { apiFetch, ApiError } from '../../services/api';
+import type { IncidentCategory, IncidentSeverity } from '@/types';
+import { apiFetch, ApiError } from '@/services/api';
 
 interface ManualTriageDrawerProps {
 	isOpen: boolean;

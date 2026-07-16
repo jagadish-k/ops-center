@@ -17,6 +17,7 @@ import { type Config } from '@netlify/functions';
 import { authenticateRequest } from '../lib/jwt';
 import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } from '../lib/http';
 import { createIncident } from '../lib/incidents';
+import { checkOperationalWindow } from '../lib/operational-window';
 import type { TriageResult, IncidentCategory, IncidentSeverity, InfoTier } from '../../src/types';
 
 // ─── AI helpers ───────────────────────────────────────────────────────────────
@@ -146,6 +147,12 @@ export default async (request: Request): Promise<Response> => {
 		return unauthorized('Only staff and admins can file reports.');
 	}
 
+	// Enforce the operational time window.
+	const windowCheck = await checkOperationalWindow(claims);
+	if (!windowCheck.ok) {
+		return jsonResponse({ error: windowCheck.reason }, 403);
+	}
+
 	try {
 		// Extract the audio blob from multipart form data.
 		const formData = await request.formData();
@@ -159,14 +166,40 @@ export default async (request: Request): Promise<Response> => {
 		const transcribedText = await transcribeAudio(audioFile);
 
 		// Stage 2: Extract structured triage data.
-		const triage = await extractTriage(transcribedText);
+		// Partial-failure fallback (ADR-0006): if Gemini extraction fails after
+		// successful transcription, still create the incident with defaults so
+		// the operator's report is not lost. Flag it for admin review.
+		let triage: {
+			tier: InfoTier;
+			category: IncidentCategory;
+			severity: IncidentSeverity;
+			locationSector: string;
+			actionRequired: string;
+		};
+		let extractionFailed = false;
+
+		try {
+			triage = await extractTriage(transcribedText);
+		} catch (extractErr) {
+			console.error('Gemini extraction failed, creating incident with defaults:', extractErr);
+			extractionFailed = true;
+			triage = {
+				tier: 3,
+				category: 'ADVISORY',
+				severity: 'MEDIUM',
+				locationSector: 'UNKNOWN',
+				actionRequired: 'AI extraction failed — manual classification required.',
+			};
+		}
 
 		// Stage 3: Create the incident in Postgres.
 		const incident = await createIncident({
 			tenantId: claims.tenantId,
 			source: 'field_staff',
 			tier: triage.tier,
-			rawText: transcribedText,
+			rawText: extractionFailed
+				? `[REVIEW NEEDED] ${transcribedText}`
+				: transcribedText,
 			category: triage.category,
 			severity: triage.severity,
 			locationSector: triage.locationSector,

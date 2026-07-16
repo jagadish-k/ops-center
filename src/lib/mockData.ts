@@ -12,7 +12,7 @@ import type {
 	WhitelistUser,
 	DispatchDirective,
 	InfoTier,
-} from '../types';
+} from '@/types';
 
 const TENANT_ID = 'tenant_metlife';
 

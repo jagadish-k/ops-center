@@ -10,7 +10,7 @@
  */
 import { useState, type FormEvent } from 'react';
 import { Input, Button, Spinner } from '@heroui/react';
-import { useAuth, isApiError } from '../../context/AuthContext';
+import { useAuth, isApiError } from '@/context/AuthContext';
 
 type Step = 'phone' | 'code';
 

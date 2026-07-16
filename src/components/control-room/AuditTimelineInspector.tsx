@@ -8,8 +8,8 @@
  */
 import { useMemo } from 'react';
 import { Drawer, Button } from '@heroui/react';
-import type { AuditLogEntry } from '../../types';
-import { timeAgo } from '../../lib/ui';
+import type { AuditLogEntry } from '@/types';
+import { timeAgo } from '@/lib/ui';
 
 interface AuditTimelineInspectorProps {
 	isOpen: boolean;

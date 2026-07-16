@@ -30,3 +30,5 @@ graphify-out/
 .env
 *.pem
 jwt-*.pem
+# Local Netlify folder
+.netlify

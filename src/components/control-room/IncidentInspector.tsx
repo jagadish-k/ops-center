@@ -7,10 +7,10 @@
  */
 import { useState } from 'react';
 import { Button, Spinner } from '@heroui/react';
-import type { IncidentReport, IncidentStatus } from '../../types';
-import { ApiError, transitionIncident, createDispatch } from '../../services/api';
-import { useActiveOps } from '../../context/ActiveOpsContext';
-import { tierBadge, severityBadge, statusBadge } from '../../lib/ui';
+import type { IncidentReport, IncidentStatus } from '@/types';
+import { ApiError, transitionIncident, createDispatch } from '@/services/api';
+import { useActiveOps } from '@/context/ActiveOpsContext';
+import { tierBadge, severityBadge, statusBadge } from '@/lib/ui';
 
 interface IncidentInspectorProps {
 	incident: IncidentReport | null;

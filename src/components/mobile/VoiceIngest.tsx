@@ -14,7 +14,7 @@
  */
 import { useRef, useState, useCallback } from 'react';
 import { Spinner } from '@heroui/react';
-import { getAuthToken, ApiError } from '../../services/api';
+import { getAuthToken, ApiError } from '@/services/api';
 
 type VoiceState = 'IDLE' | 'RECORDING' | 'UPLOADING' | 'SUCCESS' | 'ERROR';
 

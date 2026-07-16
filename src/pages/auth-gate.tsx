@@ -12,8 +12,8 @@
  */
 import { Navigate } from 'react-router';
 import { Spinner } from '@heroui/react';
-import { useAuth } from '../context/AuthContext';
-import { OtpGateway } from '../components/auth/OtpGateway';
+import { useAuth } from '@/context/AuthContext';
+import { OtpGateway } from '@/components/auth/OtpGateway';
 
 export default function AuthGate() {
 	const { token, claims, loading } = useAuth();

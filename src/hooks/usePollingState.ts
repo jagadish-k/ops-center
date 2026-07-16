@@ -19,9 +19,9 @@ import type {
 	WhitelistUser,
 	DispatchDirective,
 	StatePollDiff,
-} from '../types';
-import { apiFetch, ApiError } from '../services/api';
-import { mockIncidents, mockStaff, mockDispatches } from '../lib/mockData';
+} from '@/types';
+import { apiFetch, ApiError } from '@/services/api';
+import { mockIncidents, mockStaff, mockDispatches } from '@/lib/mockData';
 
 export interface PollingState {
 	incidents: IncidentReport[];

@@ -7,7 +7,7 @@
  * these client-decoded claims are never trusted for authorization.
  */
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import type { JwtClaims } from '../types';
+import type { JwtClaims } from '@/types';
 import {
 	getAuthToken,
 	setAuthToken,
@@ -17,7 +17,7 @@ import {
 	verifyOtp,
 	type ApiError,
 	type RequestOtpResponse,
-} from '../services/api';
+} from '@/services/api';
 
 interface AuthContextValue {
 	/** The raw JWT string, or null if signed out. */

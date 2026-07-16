@@ -4,7 +4,7 @@
  * Pure functions only; no React. Used by the Control Room and Field surfaces to
  * keep badge/color language consistent across components.
  */
-import type { InfoTier, IncidentSeverity, IncidentStatus, StaffSpecialty } from '../types';
+import type { InfoTier, IncidentSeverity, IncidentStatus, StaffSpecialty } from '@/types';
 
 export interface BadgeStyle {
 	/** Tailwind classes for a small badge (bg/text/border). */

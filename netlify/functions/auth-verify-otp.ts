@@ -15,6 +15,7 @@ import { type Config } from '@netlify/functions';
 import { verifyOtp, clearOtp } from '../lib/otp';
 import { signAuthJwt } from '../lib/jwt';
 import { query } from '../lib/db';
+import { jsonResponse, handlePreflight, badRequest, unauthorized, serverError } from '../lib/http';
 import type { OperationalRole } from '../../src/types';
 
 interface StaffRecord {
@@ -22,26 +23,13 @@ interface StaffRecord {
 	tenant_id: string;
 }
 
-function json(body: unknown, status = 200): Response {
-	return new Response(JSON.stringify(body), {
-		status,
-		headers: {
-			'Content-Type': 'application/json',
-			'Access-Control-Allow-Origin': process.env.CORS_ALLOWED_ORIGINS ?? '*',
-			'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-			'Access-Control-Allow-Methods': 'POST, OPTIONS',
-		},
-	});
-}
-
 export default async (request: Request): Promise<Response> => {
 	// CORS preflight.
-	if (request.method === 'OPTIONS') {
-		return new Response('OK', { status: 200 });
-	}
+	const preflight = handlePreflight(request);
+	if (preflight) return preflight;
 
 	if (request.method !== 'POST') {
-		return json({ error: 'Method Not Allowed' }, 405);
+		return jsonResponse({ error: 'Method Not Allowed' }, 405);
 	}
 
 	try {
@@ -51,7 +39,7 @@ export default async (request: Request): Promise<Response> => {
 		};
 
 		if (!phoneNumber || !code) {
-			return json({ error: 'Phone number and code are required.' }, 400);
+			return badRequest('Phone number and code are required.');
 		}
 
 		// 1. Verify the OTP.
@@ -63,7 +51,7 @@ export default async (request: Request): Promise<Response> => {
 				max_attempts: 'Too many failed attempts. Request a new code.',
 				wrong_code: `Invalid code. ${result.attemptsLeft ?? 0} attempts remaining.`,
 			};
-			return json({ error: messages[result.reason] ?? 'Verification failed.' }, 401);
+			return jsonResponse({ error: messages[result.reason] ?? 'Verification failed.' }, 401);
 		}
 
 		// 2. Look up the user in the staff roster.
@@ -76,7 +64,7 @@ export default async (request: Request): Promise<Response> => {
 			// Do NOT reveal whether the phone exists vs. the code was wrong
 			// (information leakage). Clear the OTP either way.
 			await clearOtp(phoneNumber);
-			return json({ error: 'Phone number is not on the active staff roster.' }, 403);
+			return jsonResponse({ error: 'Phone number is not on the active staff roster.' }, 403);
 		}
 
 		const user = staff[0];
@@ -97,7 +85,7 @@ export default async (request: Request): Promise<Response> => {
 			Buffer.from(payloadB64, 'base64url').toString('utf8'),
 		);
 
-		return json({ token, claims });
+		return jsonResponse({ token, claims });
 	} catch (err) {
 		console.error('auth-verify-otp error:', err);
 		return json({ error: 'Internal server error.' }, 500);

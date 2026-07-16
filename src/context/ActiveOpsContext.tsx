@@ -12,8 +12,8 @@ import type {
 	IncidentReport,
 	WhitelistUser,
 	DispatchDirective,
-} from '../types';
-import { usePollingState, type PollingState } from '../hooks/usePollingState';
+} from '@/types';
+import { usePollingState, type PollingState } from '@/hooks/usePollingState';
 
 interface ActiveOpsContextValue extends PollingState {
 	activeTenantId: string;

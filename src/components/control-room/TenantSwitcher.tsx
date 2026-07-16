@@ -7,7 +7,7 @@
  */
 import { Select, ListBox, Label } from '@heroui/react';
 import type { Key } from '@heroui/react';
-import type { TenantOption } from '../../lib/mockData';
+import type { TenantOption } from '@/lib/mockData';
 
 interface TenantSwitcherProps {
 	tenants: TenantOption[];

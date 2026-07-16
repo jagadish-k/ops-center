@@ -8,9 +8,9 @@
  */
 import { useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
-import { useActiveOps } from '../../context/ActiveOpsContext';
-import type { DispatchDirective } from '../../types';
-import { updateDispatchStatus } from '../../services/api';
+import { useActiveOps } from '@/context/ActiveOpsContext';
+import type { DispatchDirective } from '@/types';
+import { updateDispatchStatus } from '@/services/api';
 import { VoiceIngest } from './VoiceIngest';
 import { ManualTriageDrawer } from './ManualTriageDrawer';
 import { DispatchModal } from './DispatchModal';
@@ -39,6 +39,14 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 			await updateDispatchStatus(dispatch.id, 'ACKNOWLEDGED');
 		} catch (err) {
 			console.error('Failed to acknowledge dispatch:', err);
+		}
+	};
+
+	const handleOnScene = async (dispatch: DispatchDirective): Promise<void> => {
+		try {
+			await updateDispatchStatus(dispatch.id, 'ON_SCENE');
+		} catch (err) {
+			console.error('Failed to mark on-scene:', err);
 		}
 	};
 
@@ -82,6 +90,7 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 					<DispatchModal
 						dispatch={activeDispatch}
 						onAcknowledge={handleAck}
+						onOnScene={handleOnScene}
 						onResolve={handleResolve}
 					/>
 				) : (

@@ -24,6 +24,7 @@ import { query } from '../lib/db';
 import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } from '../lib/http';
 import { mapIncident, mapDispatch } from '../lib/mappers';
 import { createIncident } from '../lib/incidents';
+import { checkOperationalWindow } from '../lib/operational-window';
 import { randomUUID } from 'node:crypto';
 
 // ─── Status flow validation ───────────────────────────────────────────────────
@@ -238,6 +239,12 @@ export default async (request: Request): Promise<Response> => {
 	const claims = await authenticateRequest(request);
 	if (!claims) {
 		return unauthorized('Invalid or missing authentication token.');
+	}
+
+	// Enforce the operational time window for write actions.
+	const windowCheck = await checkOperationalWindow(claims);
+	if (!windowCheck.ok) {
+		return jsonResponse({ error: windowCheck.reason }, 403);
 	}
 
 	try {

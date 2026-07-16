@@ -25,7 +25,7 @@ import type {
 	InfoTier,
 	StaffSpecialty,
 	MapCoordinates,
-} from '../../types';
+} from '@/types';
 
 interface OptimizedStadiumMapCanvasProps {
 	incidents: IncidentReport[];
@@ -36,9 +36,13 @@ interface OptimizedStadiumMapCanvasProps {
 // ── Color mapping ─────────────────────────────────────────────────────────────
 
 function tierColor(tier: InfoTier): string {
-	if (tier <= 2) return '#ef4444'; // life-safety / crisis — red
-	if (tier === 3) return '#f59e0b'; // elevated — amber
-	return '#3b82f6'; // advisory / ops — blue
+	switch (tier) {
+		case 1: return '#ef4444'; // life safety — red
+		case 2: return '#f97316'; // tactical — orange
+		case 3: return '#f59e0b'; // crowd/logistics — amber
+		case 4: return '#3b82f6'; // facilities — blue
+		case 5: return '#64748b'; // advisory — slate
+	}
 }
 
 function specialtyColor(specialty: StaffSpecialty): string {
@@ -303,7 +307,7 @@ export function OptimizedStadiumMapCanvas({
 			for (const incident of inc) {
 				const pos = gridToScreen(incident.coordinates);
 				const color = tierColor(incident.tier);
-				const baseRadius = incident.tier <= 2 ? 9 : 7;
+				const baseRadius = incident.tier <= 2 ? 9 : incident.tier === 3 ? 7 : 6;
 				// Outer pulse halo.
 				ctx.beginPath();
 				ctx.arc(pos.x, pos.y, baseRadius + pulse * 8, 0, Math.PI * 2);

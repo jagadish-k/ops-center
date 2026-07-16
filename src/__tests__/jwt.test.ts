@@ -71,10 +71,14 @@ describe('JWT sign + verify roundtrip (RS256 via jose)', () => {
 			phoneNumber: '+14155552026',
 		});
 
-		// Tamper: flip the last character of the signature segment.
+		// Tamper: flip a character in the MIDDLE of the signature segment
+		// (flipping the last char is unreliable — base64url padding may not
+		// affect the decoded signature bytes).
 		const parts = token.split('.');
-		const tamperedSig = parts[2].slice(0, -1) + (parts[2].endsWith('A') ? 'B' : 'A');
-		const tamperedToken = `${parts[0]}.${parts[1]}.${tamperedSig}`;
+		const sigChars = parts[2].split('');
+		const midIdx = Math.floor(sigChars.length / 2);
+		sigChars[midIdx] = sigChars[midIdx] === 'A' ? 'B' : 'A';
+		const tamperedToken = `${parts[0]}.${parts[1]}.${sigChars.join('')}`;
 
 		await expect(verifyAuthJwt(tamperedToken)).rejects.toThrow();
 	});

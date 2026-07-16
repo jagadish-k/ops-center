@@ -7,16 +7,18 @@
  * can Acknowledge (on arrival of intent) or Mark Resolved (task complete).
  */
 import { Button } from '@heroui/react';
-import type { DispatchDirective } from '../../types';
+import type { DispatchDirective } from '@/types';
 
 interface DispatchModalProps {
 	dispatch: DispatchDirective;
 	onAcknowledge: (dispatch: DispatchDirective) => void;
+	onOnScene: (dispatch: DispatchDirective) => void;
 	onResolve: (dispatch: DispatchDirective) => void;
 }
 
-export function DispatchModal({ dispatch, onAcknowledge, onResolve }: DispatchModalProps) {
+export function DispatchModal({ dispatch, onAcknowledge, onOnScene, onResolve }: DispatchModalProps) {
 	const acknowledged = dispatch.status === 'ACKNOWLEDGED' || dispatch.status === 'ON_SCENE';
+	const onScene = dispatch.status === 'ON_SCENE';
 
 	return (
 		<div
@@ -52,8 +54,18 @@ export function DispatchModal({ dispatch, onAcknowledge, onResolve }: DispatchMo
 					fullWidth
 					size="lg"
 					variant="secondary"
+					isDisabled={!acknowledged || onScene}
+					onPress={() => onOnScene(dispatch)}
+					className="border-amber-400/60 bg-amber-900/30 font-bold uppercase tracking-widest text-amber-100 hover:bg-amber-900/50">
+					{onScene ? 'On Scene' : 'Mark On-Scene'}
+				</Button>
+				<Button
+					fullWidth
+					size="lg"
+					variant="secondary"
+					isDisabled={!acknowledged}
 					onPress={() => onResolve(dispatch)}
-					className="border-red-400/60 bg-slate-900 font-bold uppercase tracking-widest text-red-100 hover:bg-slate-800">
+					className="border-slate-400/40 bg-slate-800 font-bold uppercase tracking-widest text-slate-100 hover:bg-slate-700">
 					Mark Resolved
 				</Button>
 			</div>
