@@ -58,6 +58,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 	const abortRef = useRef<AbortController | null>(null);
 	const backoffRef = useRef(BASE_INTERVAL_MS);
 	const seededRef = useRef(false);
+	const everSucceededRef = useRef(false);
 	const mountedRef = useRef(true);
 
 	const seedMockData = useCallback((): void => {
@@ -92,6 +93,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 			setConnectionHealthy(true);
 			setLoading(false);
 			backoffRef.current = BASE_INTERVAL_MS;
+			everSucceededRef.current = true;
 		} catch (err) {
 			if (!mountedRef.current) return;
 			// Aborted requests are expected on unmount / rapid re-poll — ignore.
@@ -99,7 +101,9 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 
 			// Endpoint missing or errored — seed mock fixtures once so the UI is
 			// populated for visual review, then keep retrying with backoff.
-			if (!seededRef.current) seedMockData();
+			// Only seed if we've never received real data (avoids mock flicker
+			// after a transient network blip).
+			if (!seededRef.current && !everSucceededRef.current) seedMockData();
 			setConnectionHealthy(false);
 			if (loading) setLoading(false);
 
