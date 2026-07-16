@@ -31,6 +31,6 @@ export async function query<T = Record<string, unknown>>(
 	text: string,
 	params?: unknown[],
 ): Promise<T[]> {
-	const result = await pool.query<T>(text, params);
-	return result.rows;
+	const result = await pool.query(text, params);
+	return result.rows as T[];
 }

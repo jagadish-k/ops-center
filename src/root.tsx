@@ -1,6 +1,7 @@
 // src/root.tsx
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import './index.css'; // Imports Tailwind v4 and HeroUI v3 styles
+import { AuthProvider } from './context/AuthContext';
 
 // 1. Global Shell Layout (Document Structure)
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -27,8 +28,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 // 2. Main App Component (Required: Renders the matched route layout)
+// AuthProvider wraps every route so useAuth() is available across surfaces.
 export default function App() {
-	return <Outlet />;
+	return (
+		<AuthProvider>
+			<Outlet />
+		</AuthProvider>
+	);
 }
 
 // 3. Hydration Fallback (Crucial for SPA mode)

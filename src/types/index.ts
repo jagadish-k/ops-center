@@ -24,6 +24,8 @@ export interface JwtClaims {
 	tenantId: string;
 	phoneNumber?: string;
 	email?: string;
+	iss?: string; // standard JWT registered claim (issuer)
+	aud?: string; // standard JWT registered claim (audience)
 	exp: number; // Unix seconds
 	iat: number; // Unix seconds
 }

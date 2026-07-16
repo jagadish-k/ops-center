@@ -4,7 +4,6 @@ import type {
 	StaffSpecialty,
 	StaffStatus,
 	IncidentCategory,
-	IncidentSeverity,
 	IncidentStatus,
 	InfoTier,
 	DispatchStatus,
@@ -12,10 +11,7 @@ import type {
 	MapCoordinates,
 	WhitelistUser,
 	IncidentReport,
-	DispatchDirective,
-	AuditLogEntry,
 	TriageResult,
-	StatePollRequest,
 	StatePollDiff,
 } from '../types';
 

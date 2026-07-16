@@ -54,12 +54,14 @@ export function decodeClaims(token: string): JwtClaims | null {
 // ─── Fetch wrapper ─────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
+	readonly status: number;
 	constructor(
 		message: string,
-		public readonly status: number,
+		status: number,
 	) {
 		super(message);
 		this.name = 'ApiError';
+		this.status = status;
 	}
 }
 

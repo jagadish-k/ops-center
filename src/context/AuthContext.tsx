@@ -16,6 +16,7 @@ import {
 	requestOtp,
 	verifyOtp,
 	type ApiError,
+	type RequestOtpResponse,
 } from '../services/api';
 
 interface AuthContextValue {
@@ -26,7 +27,7 @@ interface AuthContextValue {
 	/** True while the initial session load is in progress. */
 	loading: boolean;
 	/** Requests an OTP code to be sent to the phone number. */
-	sendOtp: (phoneNumber: string) => Promise<void>;
+	sendOtp: (phoneNumber: string) => Promise<RequestOtpResponse>;
 	/** Verifies the OTP code, stores the JWT, and sets claims. */
 	signInWithOtp: (phoneNumber: string, code: string) => Promise<void>;
 	/** Clears the token and claims. */
@@ -56,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 		setLoading(false);
 	}, []);
 
-	const sendOtp = useCallback(async (phoneNumber: string): Promise<void> => {
-		await requestOtp(phoneNumber);
+	const sendOtp = useCallback(async (phoneNumber: string): Promise<RequestOtpResponse> => {
+		return requestOtp(phoneNumber);
 	}, []);
 
 	const signInWithOtp = useCallback(
