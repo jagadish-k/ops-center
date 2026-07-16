@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
 import { useActiveOps } from '../../context/ActiveOpsContext';
 import type { DispatchDirective } from '../../types';
+import { updateDispatchStatus } from '../../services/api';
 import { VoiceIngest } from './VoiceIngest';
 import { ManualTriageDrawer } from './ManualTriageDrawer';
 import { DispatchModal } from './DispatchModal';
@@ -33,14 +34,20 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 		);
 	}, [dispatches, staffPhone]);
 
-	const handleAck = (dispatch: DispatchDirective): void => {
-		// Acknowledge endpoint arrives in M4; the directive stays visible until
-		// the polling diff reports the server-side status change.
-		void dispatch;
+	const handleAck = async (dispatch: DispatchDirective): Promise<void> => {
+		try {
+			await updateDispatchStatus(dispatch.id, 'ACKNOWLEDGED');
+		} catch (err) {
+			console.error('Failed to acknowledge dispatch:', err);
+		}
 	};
 
-	const handleResolve = (dispatch: DispatchDirective): void => {
-		void dispatch;
+	const handleResolve = async (dispatch: DispatchDirective): Promise<void> => {
+		try {
+			await updateDispatchStatus(dispatch.id, 'RESOLVED');
+		} catch (err) {
+			console.error('Failed to resolve dispatch:', err);
+		}
 	};
 
 	return (

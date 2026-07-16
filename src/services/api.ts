@@ -133,3 +133,52 @@ export async function verifyOtp(phoneNumber: string, code: string): Promise<Veri
 		body: JSON.stringify({ phoneNumber, code }),
 	});
 }
+
+// ─── Mutation API methods (M3) ────────────────────────────────────────────────
+
+import type { IncidentReport, IncidentStatus, DispatchDirective, DispatchStatus } from '../types';
+
+interface MutationResponse {
+	incident?: IncidentReport;
+	dispatch?: DispatchDirective;
+}
+
+/** Transitions an incident to the next status (admin/superadmin only). */
+export async function transitionIncident(
+	incidentId: string,
+	nextStatus: IncidentStatus,
+): Promise<IncidentReport> {
+	const result = await apiFetch<MutationResponse>('/api/mutations', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'transition_incident', incidentId, nextStatus }),
+	});
+	if (!result.incident) throw new ApiError('Server did not return the updated incident.', 500);
+	return result.incident;
+}
+
+/** Creates a dispatch directive targeting a specific staff member (admin/superadmin only). */
+export async function createDispatch(
+	incidentId: string,
+	targetStaffPhone: string,
+	directiveText: string,
+): Promise<DispatchDirective> {
+	const result = await apiFetch<MutationResponse>('/api/mutations', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'create_dispatch', incidentId, targetStaffPhone, directiveText }),
+	});
+	if (!result.dispatch) throw new ApiError('Server did not return the created dispatch.', 500);
+	return result.dispatch;
+}
+
+/** Updates a dispatch status (admin/superadmin, or the target staff member). */
+export async function updateDispatchStatus(
+	dispatchId: string,
+	nextStatus: DispatchStatus,
+): Promise<DispatchDirective> {
+	const result = await apiFetch<MutationResponse>('/api/mutations', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'update_dispatch', dispatchId, nextStatus }),
+	});
+	if (!result.dispatch) throw new ApiError('Server did not return the updated dispatch.', 500);
+	return result.dispatch;
+}

@@ -2,14 +2,14 @@
  * IncidentInspector — detail panel for the currently selected incident.
  *
  * Surfaces the full report (raw text, classification grid, coordinates) and the
- * primary lifecycle actions: Acknowledge, Resolve, Dispatch Personnel (M5).
- * Actions attempt the lifecycle endpoint optimistically; failures fall back to a
- * local status override so the UI stays functional while the backend is built.
+ * primary lifecycle actions: Acknowledge, Resolve, Dispatch Personnel.
+ * All actions call the real /api/mutations endpoint (M3).
  */
 import { useState } from 'react';
 import { Button, Spinner } from '@heroui/react';
 import type { IncidentReport, IncidentStatus } from '../../types';
-import { apiFetch, ApiError } from '../../services/api';
+import { ApiError, transitionIncident, createDispatch } from '../../services/api';
+import { useActiveOps } from '../../context/ActiveOpsContext';
 import { tierBadge, severityBadge, statusBadge } from '../../lib/ui';
 
 interface IncidentInspectorProps {
@@ -17,9 +17,11 @@ interface IncidentInspectorProps {
 }
 
 export function IncidentInspector({ incident }: IncidentInspectorProps) {
+	const { staff } = useActiveOps();
 	const [localStatus, setLocalStatus] = useState<IncidentStatus | null>(null);
 	const [pending, setPending] = useState<string | null>(null);
 	const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+	const [showDispatchPicker, setShowDispatchPicker] = useState(false);
 
 	if (!incident) {
 		return (
@@ -39,19 +41,19 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 	const sev = severityBadge(incident.extractedMetadata.severity);
 	const st = statusBadge(effectiveStatus);
 
+	const availableStaff = staff.filter((s) => s.status === 'AVAILABLE');
+
 	const mutate = async (action: string, next: IncidentStatus): Promise<void> => {
 		setPending(action);
 		setFeedback(null);
 		try {
-			await apiFetch(`/api/incidents/${incident.id}/${action}`, { method: 'POST' });
-			setLocalStatus(next);
-			setFeedback({ kind: 'ok', text: `${action.toUpperCase()} acknowledged by server.` });
+			const updated = await transitionIncident(incident.id, next);
+			setLocalStatus(updated.status);
+			setFeedback({ kind: 'ok', text: `${action.toUpperCase()} confirmed by server.` });
 		} catch (err) {
-			// Endpoint unbuilt (M3) — advance locally for review, flag offline.
-			setLocalStatus(next);
 			const text =
 				err instanceof ApiError || err instanceof Error
-					? `Offline mode — ${action} staged locally.`
+					? `${action} failed: ${err.message}`
 					: 'Unknown error.';
 			setFeedback({ kind: 'err', text });
 		} finally {
@@ -66,7 +68,29 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 		void mutate('resolve', 'RESOLVED');
 	};
 	const handleDispatch = (): void => {
-		setFeedback({ kind: 'ok', text: 'Dispatch workflow arrives in M5.' });
+		setShowDispatchPicker(true);
+	};
+
+	const handleSelectStaff = async (staffPhone: string): Promise<void> => {
+		setPending('dispatch');
+		setFeedback(null);
+		try {
+			await createDispatch(
+				incident.id,
+				staffPhone,
+				`Respond to ${incident.extractedMetadata.locationSector}: ${incident.rawText.slice(0, 100)}`,
+			);
+			setFeedback({ kind: 'ok', text: 'Dispatch sent to staff member.' });
+			setShowDispatchPicker(false);
+		} catch (err) {
+			const text =
+				err instanceof ApiError || err instanceof Error
+					? `Dispatch failed: ${err.message}`
+					: 'Unknown error.';
+			setFeedback({ kind: 'err', text });
+		} finally {
+			setPending(null);
+		}
 	};
 
 	return (
@@ -130,40 +154,82 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 
 			{/* Action rail */}
 			<div className="border-t border-slate-800 p-3">
-				<div className="grid grid-cols-2 gap-2">
-					<Button
-						size="md"
-						variant="secondary"
-						isDisabled={effectiveStatus !== 'OPEN' || pending !== null}
-						onPress={handleAck}
-						className="font-bold uppercase tracking-widest">
-						{({ isPending }) => (
-							<>
-								{pending === 'acknowledge' || isPending ? <Spinner color="current" size="sm" /> : null}
-								{pending === 'acknowledge' ? 'Ack…' : 'Acknowledge'}
-							</>
-						)}
-					</Button>
-					<Button
-						size="md"
-						isDisabled={effectiveStatus === 'RESOLVED' || pending !== null}
-						onPress={handleResolve}
-						className="font-bold uppercase tracking-widest">
-						{({ isPending }) => (
-							<>
-								{pending === 'resolve' || isPending ? <Spinner color="current" size="sm" /> : null}
-								{pending === 'resolve' ? 'Res…' : 'Resolve'}
-							</>
-						)}
-					</Button>
-				</div>
-				<Button
-					fullWidth
-					variant="secondary"
-					className="mt-2 font-bold uppercase tracking-widest"
-					onPress={handleDispatch}>
-					Dispatch Personnel
-				</Button>
+				{showDispatchPicker ? (
+					/* Dispatch staff picker */
+					<div className="space-y-2">
+						<p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+							Select staff to dispatch ({availableStaff.length} available)
+						</p>
+						<div className="max-h-40 space-y-1.5 overflow-y-auto">
+							{availableStaff.length === 0 ? (
+								<p className="py-2 text-center font-mono text-[10px] text-slate-600">
+									No available staff.
+								</p>
+							) : (
+								availableStaff.map((s) => (
+									<button
+										key={s.id}
+										disabled={pending !== null}
+										onClick={() => void handleSelectStaff(s.phoneNumber)}
+										className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-left transition-colors hover:border-blue-600 disabled:opacity-40">
+										<span className="font-mono text-xs font-bold text-slate-200">
+											{s.fullName}
+										</span>
+										<span className="ml-auto font-mono text-[10px] text-slate-500">
+											{s.specialty} · {s.assignedZone}
+										</span>
+									</button>
+								))
+							)}
+						</div>
+						<Button
+							fullWidth
+							variant="secondary"
+							isDisabled={pending !== null}
+							onPress={() => setShowDispatchPicker(false)}
+							className="font-bold uppercase tracking-widest">
+							Cancel
+						</Button>
+					</div>
+				) : (
+					<>
+						<div className="grid grid-cols-2 gap-2">
+							<Button
+								size="md"
+								variant="secondary"
+								isDisabled={effectiveStatus !== 'OPEN' || pending !== null}
+								onPress={handleAck}
+								className="font-bold uppercase tracking-widest">
+								{({ isPending }) => (
+									<>
+										{pending === 'acknowledge' || isPending ? <Spinner color="current" size="sm" /> : null}
+										{pending === 'acknowledge' ? 'Ack…' : 'Acknowledge'}
+									</>
+								)}
+							</Button>
+							<Button
+								size="md"
+								isDisabled={effectiveStatus === 'RESOLVED' || pending !== null}
+								onPress={handleResolve}
+								className="font-bold uppercase tracking-widest">
+								{({ isPending }) => (
+									<>
+										{pending === 'resolve' || isPending ? <Spinner color="current" size="sm" /> : null}
+										{pending === 'resolve' ? 'Res…' : 'Resolve'}
+									</>
+								)}
+							</Button>
+						</div>
+						<Button
+							fullWidth
+							variant="secondary"
+							isDisabled={effectiveStatus === 'RESOLVED' || pending !== null}
+							className="mt-2 font-bold uppercase tracking-widest"
+							onPress={handleDispatch}>
+							{pending === 'dispatch' ? 'Dispatching…' : 'Dispatch Personnel'}
+						</Button>
+					</>
+				)}
 			</div>
 		</div>
 	);
