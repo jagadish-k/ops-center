@@ -25,7 +25,17 @@ import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } 
 import { mapIncident, mapDispatch } from '../lib/mappers';
 import { createIncident } from '../lib/incidents';
 import { checkOperationalWindow } from '../lib/operational-window';
+import { commitAuditLog, type AuditActor } from '../lib/auditLogger';
 import { randomUUID } from 'node:crypto';
+
+/** Helper: builds an AuditActor from JWT claims. */
+function actorFromClaims(claims: JwtClaims): AuditActor {
+	return {
+		uid: claims.phoneNumber ?? claims.email ?? 'unknown',
+		role: claims.role,
+		phoneOrEmail: claims.phoneNumber ?? claims.email ?? 'unknown',
+	};
+}
 
 // ─── Status flow validation ───────────────────────────────────────────────────
 
@@ -79,6 +89,15 @@ async function createIncidentAction(
 		locationSector: body.locationSector,
 	});
 
+	// Audit log the creation.
+	await commitAuditLog({
+		tenantId: claims.tenantId,
+		actor: actorFromClaims(claims),
+		action: 'INCIDENT_CREATE',
+		targetResourceId: incident.id,
+		stateDelta: { before: null, after: { status: incident.status, tier: incident.tier, category: incident.extractedMetadata.category } },
+	});
+
 	return jsonResponse({ incident });
 }
 
@@ -115,9 +134,20 @@ async function transitionIncident(
 		[nextStatus, incidentId, claims.tenantId],
 	);
 
-	// Fetch + return the updated record.
+	// Fetch the updated record.
 	const updated = await query(`SELECT * FROM incidents WHERE id = $1`, [incidentId]);
-	return jsonResponse({ incident: mapIncident(updated[0] as never) });
+	const updatedIncident = mapIncident(updated[0] as never);
+
+	// Audit log the transition.
+	await commitAuditLog({
+		tenantId: claims.tenantId,
+		actor: actorFromClaims(claims),
+		action: 'INCIDENT_STATUS_MUTATION',
+		targetResourceId: incidentId,
+		stateDelta: { before: { status: current }, after: { status: nextStatus } },
+	});
+
+	return jsonResponse({ incident: updatedIncident });
 }
 
 async function createDispatch(
@@ -167,7 +197,18 @@ async function createDispatch(
 
 	// Fetch + return the created dispatch.
 	const created = await query(`SELECT * FROM dispatches WHERE id = $1`, [dispatchId]);
-	return jsonResponse({ dispatch: mapDispatch(created[0] as never) });
+	const createdDispatch = mapDispatch(created[0] as never);
+
+	// Audit log the dispatch creation.
+	await commitAuditLog({
+		tenantId: claims.tenantId,
+		actor: actorFromClaims(claims),
+		action: 'DISPATCH_CREATE',
+		targetResourceId: dispatchId,
+		stateDelta: { before: null, after: { status: 'SENT', target: targetStaffPhone, incidentId } },
+	});
+
+	return jsonResponse({ dispatch: createdDispatch });
 }
 
 async function updateDispatch(
@@ -223,7 +264,18 @@ async function updateDispatch(
 
 	// Fetch + return the updated dispatch.
 	const updated = await query(`SELECT * FROM dispatches WHERE id = $1`, [dispatchId]);
-	return jsonResponse({ dispatch: mapDispatch(updated[0] as never) });
+	const updatedDispatch = mapDispatch(updated[0] as never);
+
+	// Audit log the dispatch status change.
+	await commitAuditLog({
+		tenantId: claims.tenantId,
+		actor: actorFromClaims(claims),
+		action: 'DISPATCH_STATUS_MUTATION',
+		targetResourceId: dispatchId,
+		stateDelta: { before: { status: current }, after: { status: nextStatus } },
+	});
+
+	return jsonResponse({ dispatch: updatedDispatch });
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
