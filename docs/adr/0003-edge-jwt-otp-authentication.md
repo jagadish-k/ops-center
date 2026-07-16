@@ -32,11 +32,12 @@ is no Firebase Auth to lean on either.
 
 Implement **edge-based JWT authentication** with the following properties:
 
-1. **OTP delivery via Twilio Verify** (managed OTP service — handles
-   rate-limiting, expiry, and fraud detection) or raw Twilio SMS with
-   server-generated codes stored in the `otp_sessions` Postgres table.
-   Recommend Twilio Verify for solo production to avoid reimplementing OTP
-   security.
+1. **OTP delivery via raw Twilio SMS with self-generated codes.** The edge
+   function generates a 6-digit code, stores it in the `otp_sessions` Postgres
+   table (with expiry + attempt count), sends it via Twilio SMS, and verifies
+   it server-side. We own the security logic (cooldown, attempt limits, expiry).
+   _Previously considered: Twilio Verify (managed) — rejected in favor of more
+   control and lower per-verification cost._
 2. **Whitelist verification** — the edge function queries `staff_roster` in
    Postgres to confirm the phone number is authorized and resolve its role +
    tenant.

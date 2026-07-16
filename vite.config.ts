@@ -22,8 +22,26 @@ export default defineConfig(({ mode }) => {
 				manifest: {
 					name: 'Stadium Ops Grid Matrix',
 					short_name: 'StadiumOps',
-					theme_color: '#000000',
-					icons: [/* Add your asset icon paths here */],
+					description: 'Mission-critical incident management and tactical coordination for stadium operations.',
+					theme_color: '#020617',
+					background_color: '#020617',
+					display: 'standalone',
+					orientation: 'portrait',
+					start_url: '/',
+					icons: [
+						{
+							src: '/icons.svg',
+							sizes: 'any',
+							type: 'image/svg+xml',
+							purpose: 'any',
+						},
+						{
+							src: '/favicon.svg',
+							sizes: 'any',
+							type: 'image/svg+xml',
+							purpose: 'maskable',
+						},
+					],
 				},
 			}),
 		],
