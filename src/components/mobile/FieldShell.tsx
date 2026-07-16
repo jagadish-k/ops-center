@@ -11,6 +11,7 @@ import { Button } from '@heroui/react';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import type { DispatchDirective } from '@/types';
 import { updateDispatchStatus } from '@/services/api';
+import { useGeolocationTracking } from '@/hooks/useGeolocationTracking';
 import { VoiceIngest } from './VoiceIngest';
 import { ManualTriageDrawer } from './ManualTriageDrawer';
 import { DispatchModal } from './DispatchModal';
@@ -24,6 +25,9 @@ interface FieldShellProps {
 export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellProps) {
 	const { dispatches, connectionHealthy } = useActiveOps();
 	const [triageOpen, setTriageOpen] = useState(false);
+
+	// Live GPS tracking — 3m debounce, 500ms throttle, POSTs to /api/staff-location.
+	useGeolocationTracking(staffPhone, true);
 
 	// Active (non-resolved) dispatch targeting this operator.
 	const activeDispatch = useMemo<DispatchDirective | null>(() => {
