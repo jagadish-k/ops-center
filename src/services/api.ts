@@ -182,3 +182,181 @@ export async function updateDispatchStatus(
 	if (!result.dispatch) throw new ApiError('Server did not return the updated dispatch.', 500);
 	return result.dispatch;
 }
+
+// ─── Admin API methods (M9.3) ────────────────────────────────────────────────
+//
+// All admin endpoints use action-based routing via POST /api/admin/{users,roles,tenants}.
+// The body always includes { action, ...fields }. See DEVELOPMENT.md §8 for the
+// full reference.
+
+import type { Permission } from '@/lib/permissions';
+
+export interface AdminUser {
+	userId: string;
+	phone: string;
+	fullName: string;
+	globalRole: 'superadmin' | 'member';
+	status: 'active' | 'disabled';
+	permsVersion: number;
+	roles: string[];
+}
+
+export interface AdminRole {
+	name: string;
+	description: string;
+	isSystem: boolean;
+	createdAt: string;
+	permissions: string[];
+}
+
+export interface AdminTenant {
+	id: string;
+	orgName: string;
+	status: 'ACTIVE' | 'SUSPENDED';
+	createdAt: string;
+}
+
+interface AdminUsersResponse { users: AdminUser[] }
+interface AdminRolesResponse { roles: AdminRole[] }
+interface AdminTenantsResponse { tenants: AdminTenant[] }
+interface AdminMutationResponse {
+	userId?: string;
+	roles?: string[];
+	name?: string;
+	tenantId?: string;
+	created?: boolean;
+	deleted?: boolean;
+	updated?: unknown;
+	affectedUserCount?: number;
+	revokedFromUsers?: number;
+	granted?: boolean;
+	permission?: Permission;
+	unchanged?: boolean;
+}
+
+// ── Users ──
+
+export async function adminListUsers(targetTenantId?: string): Promise<AdminUser[]> {
+	const r = await apiFetch<AdminUsersResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'list', targetTenantId }),
+	});
+	return r.users;
+}
+
+export interface CreateStaffInput {
+	phone: string;
+	fullName: string;
+	specialty?: 'security' | 'medical' | 'cleaning' | 'supervisor';
+	assignedZone?: string;
+	roles?: string[];
+}
+
+export async function adminCreateStaff(input: CreateStaffInput, targetTenantId?: string): Promise<{ userId: string; phone: string; roles: string[] }> {
+	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'create', ...input, targetTenantId }),
+	});
+}
+
+export async function adminUpdateUser(userId: string, updates: { fullName?: string; status?: 'active' | 'disabled' }, targetTenantId?: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'update', userId, ...updates, targetTenantId }),
+	});
+}
+
+export async function adminAssignRole(userId: string, role: string, targetTenantId?: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'assign_role', userId, role, targetTenantId }),
+	});
+}
+
+export async function adminRevokeRole(userId: string, role: string, targetTenantId?: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'revoke_role', userId, role, targetTenantId }),
+	});
+}
+
+export async function adminGrantPermission(userId: string, permission: Permission, targetTenantId?: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'grant_permission', userId, permission, targetTenantId }),
+	});
+}
+
+export async function adminRevokePermission(userId: string, permission: Permission, targetTenantId?: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'revoke_permission', userId, permission, targetTenantId }),
+	});
+}
+
+// ── Roles ──
+
+export async function adminListRoles(): Promise<AdminRole[]> {
+	const r = await apiFetch<AdminRolesResponse>('/api/admin/roles', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'list' }),
+	});
+	return r.roles;
+}
+
+export interface CreateRoleInput {
+	name: string;
+	description: string;
+	permissions: Permission[];
+}
+
+export async function adminCreateRole(input: CreateRoleInput): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/roles', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'create', ...input }),
+	});
+}
+
+export async function adminUpdateRole(name: string, updates: { description?: string; permissions?: Permission[] }): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/roles', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'update', name, ...updates }),
+	});
+}
+
+export async function adminDeleteRole(name: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/roles', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'delete', name }),
+	});
+}
+
+export async function adminCascadeRevoke(roleName: string, permission: Permission, userIds: string[]): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/roles', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'cascade_revoke', name: roleName, permission, userIds }),
+	});
+}
+
+// ── Tenants ──
+
+export async function adminListTenants(): Promise<AdminTenant[]> {
+	const r = await apiFetch<AdminTenantsResponse>('/api/admin/tenants', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'list' }),
+	});
+	return r.tenants;
+}
+
+export interface CreateTenantInput {
+	tenantId: string;
+	orgName: string;
+	bbox?: { minLat: number; maxLat: number; minLng: number; maxLng: number };
+}
+
+export async function adminCreateTenant(input: CreateTenantInput): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'create', ...input }),
+	});
+}

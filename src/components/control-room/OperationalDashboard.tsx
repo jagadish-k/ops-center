@@ -1,15 +1,17 @@
 /**
  * OperationalDashboard — the Control Room command shell.
  *
- * Desktop layout: a tactical header bar over a 2-column grid. The left column
- * (≈2/3) is the live stadium map canvas; the right column (≈1/3) stacks the
- * incident queue above the incident inspector. A compliance-log slide-out
- * (AuditTimelineInspector) is triggered from the header.
+ * Tabbed layout (M9.5): Operations / Team / Roles / Tenants. The Operations
+ * tab is the original 2-column dashboard (map + queue + inspector). The other
+ * tabs are admin surfaces gated by permission:
+ *   - Team:        staff:manage (admin + superadmin)
+ *   - Roles:       tenant:manage (superadmin only)
+ *   - Tenants:     tenant:switch (superadmin only)
  *
  * Live operational state is consumed from the ActiveOps context (diff-polling).
  */
 import { useMemo, useState } from 'react';
-import { Button } from '@heroui/react';
+import { Button, Tabs, Tab, TabList, TabPanel } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
@@ -19,8 +21,13 @@ import { IncidentQueue } from './IncidentQueue';
 import { IncidentInspector } from './IncidentInspector';
 import { TenantSwitcher } from './TenantSwitcher';
 import { AuditTimelineInspector } from './AuditTimelineInspector';
+import { TeamTab } from './TeamTab';
+import { RolesTab } from './RolesTab';
+import { TenantsTab } from './TenantsTab';
 import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
+
+type TabId = 'operations' | 'team' | 'roles' | 'tenants';
 
 interface OperationalDashboardProps {
 	onTenantChange: (tenantId: string) => void;
@@ -33,6 +40,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [auditOpen, setAuditOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState<TabId>('operations');
 
 	// Derive the freshest selected incident from the polled list.
 	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
@@ -96,30 +104,48 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				</div>
 			)}
 
-			{/* ── Main grid ─────────────────────────────────────────────── */}
-			<main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-3">
-				{/* Left: canvas (spans 2 of 3 columns on large screens) */}
-				<section className="min-h-[320px] lg:col-span-2 lg:min-h-0">
-					<OptimizedStadiumMapCanvas
-						incidents={incidents}
-						staffMembers={staff}
-						onIncidentSelect={handleSelect}
-					/>
-				</section>
+			{/* ── Tab nav (M9.5) ────────────────────────────────────────── */}
+			<nav className="border-b border-slate-800 bg-slate-900/30 px-4">
+				<Tabs
+					selectedKey={activeTab}
+					onSelectionChange={(k) => setActiveTab(k as TabId)}
+					aria-label="Control Room sections"
+				>
+					<Tab id="operations" label="Operations" />
+					{can('staff:manage') && <Tab id="team" label="Team" />}
+					{can('tenant:manage') && <Tab id="roles" label="Roles" />}
+					{can('tenant:switch') && <Tab id="tenants" label="Tenants" />}
+				</Tabs>
+			</nav>
 
-				{/* Right: queue + inspector */}
-				<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
-					<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
-						<IncidentQueue
-							incidents={incidents}
-							selectedId={selectedId}
-							onSelect={handleSelect}
-						/>
+			{/* ── Tab content ───────────────────────────────────────────── */}
+			<main className="min-h-0 flex-1 overflow-hidden">
+				{activeTab === 'operations' && (
+					<div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">
+						<section className="min-h-[320px] lg:col-span-2 lg:min-h-0">
+							<OptimizedStadiumMapCanvas
+								incidents={incidents}
+								staffMembers={staff}
+								onIncidentSelect={handleSelect}
+							/>
+						</section>
+						<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
+							<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+								<IncidentQueue
+									incidents={incidents}
+									selectedId={selectedId}
+									onSelect={handleSelect}
+								/>
+							</div>
+							<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+								<IncidentInspector incident={selected} />
+							</div>
+						</aside>
 					</div>
-					<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
-						<IncidentInspector incident={selected} />
-					</div>
-				</aside>
+				)}
+				{activeTab === 'team' && can('staff:manage') && <TeamTab />}
+				{activeTab === 'roles' && can('tenant:manage') && <RolesTab />}
+				{activeTab === 'tenants' && can('tenant:switch') && <TenantsTab />}
 			</main>
 
 			{/* ── Compliance slide-out ──────────────────────────────────── */}
@@ -130,3 +156,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 		</div>
 	);
 }
+
+// Re-export for consumers that want HeroUI tab primitives directly.
+void TabList;
+void TabPanel;
