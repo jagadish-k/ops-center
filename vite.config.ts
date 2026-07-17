@@ -16,12 +16,15 @@ export default defineConfig(({ mode }) => {
 			tsconfigPaths: true,
 		},
 		base: env.BASE_URL || '/',
-		plugins: [
-			mkcert(),
-			tsconfigPaths(),
-			tailwindcss(),
-			reactRouter(),
-			netlifyReactRouter(),
+	plugins: [
+		// mkcert generates a local-trusted cert. By default it covers only
+		// `localhost` + LAN IPs. Pass our custom host so `https://stadops.local`
+		// doesn't show a cert warning.
+		mkcert({ hosts: ['localhost', 'stadops.local'] }),
+		tsconfigPaths(),
+		tailwindcss(),
+		reactRouter(),
+		netlifyReactRouter(),
 			VitePWA({
 				registerType: 'autoUpdate',
 				manifest: {

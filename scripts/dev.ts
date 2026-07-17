@@ -14,6 +14,7 @@
 import 'dotenv/config';
 import { spawn, execSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { readFileSync } from 'node:fs';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -170,7 +171,78 @@ function cleanNetlifyArtifacts(): void {
 	}
 }
 
+// ─── Step 4d: Kill any orphan processes on dev ports ─────────────────────────
+
+function killOrphanDevProcesses(): void {
+	// If a previous npm run dev crashed or Ctrl+C didn't propagate cleanly,
+	// vite (5173) or netlify dev (8888) may still be bound. Kill them so the
+	// new run gets the expected ports instead of bumping to 5174/8889.
+	const ports = [5173, 8888];
+	let killedAny = false;
+	for (const port of ports) {
+		try {
+			// `lsof -ti :PORT` returns PIDs of processes bound to the port.
+			const pids = execSync(`lsof -ti :${port} 2>/dev/null`, { stdio: ['pipe', 'pipe', 'ignore'] })
+				.toString()
+				.trim()
+				.split('\n')
+				.filter(Boolean);
+			for (const pid of pids) {
+				try {
+					process.kill(Number(pid), 'SIGKILL');
+					killedAny = true;
+				} catch {
+					// Process may have already exited.
+				}
+			}
+		} catch {
+			// No process on this port — that's the happy path.
+		}
+	}
+	if (killedAny) {
+		ok('Killed orphan dev processes on 5173/8888');
+	}
+}
+
 // ─── Step 5: Start dev servers (vite + netlify dev in parallel) ──────────────
+
+/**
+ * Reads vite.config.ts to detect the actual scheme + host the UI will use.
+ * Falls back to http://localhost:5173 if detection fails.
+ *
+ * Returns the URL to print for the user plus a one-liner about the API proxy.
+ *
+ * Detection rules:
+ *   - HTTPS is on if EITHER `https: true`/`https: {` is set OR the
+ *     `vite-plugin-mkcert` is imported (it auto-enables HTTPS).
+ *   - Custom host: looks for `host: '...'` inside the server block.
+ */
+function detectViteUrl(): { viteUrl: string; apiProxyNote: string } {
+	try {
+		const config = readFileSync('vite.config.ts', 'utf8');
+
+		const hasMkcert = /vite-plugin-mkcert/.test(config);
+		const hasExplicitHttps = /https:\s*(true|{)/.test(config);
+		const isHttps = hasMkcert || hasExplicitHttps;
+		const scheme = isHttps ? 'https' : 'http';
+
+		// Match host: 'something' inside server block; skip hmr.host.
+		// Use the first occurrence in `server:` scope (hmr is nested deeper).
+		const hostMatch = config.match(/server:\s*{[\s\S]*?\n\t+host:\s*['"]([^'"]+)['"]/);
+		const host = hostMatch?.[1] ?? 'localhost';
+
+		const url = `${scheme}://${host}:5173/`;
+		const note = isHttps
+			? 'HTTPS self-signed (mkcert) — accept the browser warning. Vite proxies /api → netlify dev.'
+			: 'Vite proxies /api → netlify dev automatically.';
+		return { viteUrl: url, apiProxyNote: note };
+	} catch {
+		return {
+			viteUrl: 'http://localhost:5173/',
+			apiProxyNote: 'Vite proxies /api → netlify dev automatically.',
+		};
+	}
+}
 
 interface Child {
 	process: ReturnType<typeof spawn>;
@@ -210,18 +282,33 @@ function prefixStream(child: Child): void {
 function startDevServers(): void {
 	console.log();
 	log('🚀', 'Starting vite (UI) + netlify dev (API) in parallel...');
-	console.log(`  ${C.dim}UI:${C.reset}  http://localhost:5173/`);
+
+	// Detect vite's scheme/host from vite.config.ts so we print the URL the
+	// browser actually needs (mkcert setups use https + custom domain).
+	const { viteUrl, apiProxyNote } = detectViteUrl();
+	console.log(`  ${C.dim}UI:${C.reset}  ${viteUrl}`);
 	console.log(`  ${C.dim}API:${C.reset} http://localhost:8888/api/*`);
-	console.log(`  ${C.dim}Vite proxies /api → netlify dev automatically.${C.reset}`);
+	console.log(`  ${C.dim}${apiProxyNote}${C.reset}`);
+	console.log();
+	console.log(`${C.dim}  Note: netlify dev's spinner output is buffered when piped; if the${C.reset}`);
+	console.log(`${C.dim}  terminal looks 'stuck' after vite is ready, the stack is up. Open${C.reset}`);
+	console.log(`${C.dim}  the UI URL in your browser — both servers are running in parallel.${C.reset}`);
 	console.log();
 
 	const children: Child[] = [];
+
+	// Spawn each child as its own process group (`detached: true`) so we can
+	// later kill the entire tree (including grandchildren like the actual
+	// `node vite` process that `npx vite` spawns) with `process.kill(-pid)`.
+	// Without this, Ctrl+C kills the npx wrapper but leaves vite itself
+	// running, leaking port 5173 and forcing the next run to 5174, 5175...
 
 	// Vite — UI dev server on 5173.
 	const vite = spawn('npx', ['vite', '--port', '5173', '--host'], {
 		cwd: process.cwd(),
 		env: process.env,
 		stdio: ['ignore', 'pipe', 'pipe'],
+		detached: true,
 	});
 	const viteChild: Child = { process: vite, label: 'vite', color: C.cyan };
 	prefixStream(viteChild);
@@ -232,6 +319,7 @@ function startDevServers(): void {
 		cwd: process.cwd(),
 		env: process.env,
 		stdio: ['ignore', 'pipe', 'pipe'],
+		detached: true,
 	});
 	const netlifyChild: Child = { process: netlify, label: 'api', color: C.green };
 	prefixStream(netlifyChild);
@@ -240,9 +328,16 @@ function startDevServers(): void {
 	const killAll = (signal: NodeJS.Signals = 'SIGTERM'): void => {
 		for (const child of children) {
 			try {
-				child.process.kill(signal);
+				// Negative PID kills the entire process group (child + all
+				// descendants — e.g., the actual vite process under npx).
+				process.kill(-child.process.pid!, signal);
 			} catch {
-				// Already dead — ignore.
+				// Process group leader already dead — try direct kill as fallback.
+				try {
+					child.process.kill(signal);
+				} catch {
+					// Already gone — ignore.
+				}
 			}
 		}
 	};
@@ -251,10 +346,13 @@ function startDevServers(): void {
 	// Docker stays running for fast restart.
 	process.on('SIGINT', () => {
 		killAll('SIGINT');
+		// Give them a moment to flush, then SIGKILL anything still alive.
+		setTimeout(() => killAll('SIGKILL'), 500);
 	});
 
 	process.on('SIGTERM', () => {
 		killAll('SIGTERM');
+		setTimeout(() => killAll('SIGKILL'), 500);
 	});
 
 	// If either dies, kill the other and exit (don't leave half a stack running).
@@ -283,6 +381,7 @@ async function main(): Promise<void> {
 	runMigrations();
 	runSeed();
 	cleanNetlifyArtifacts();
+	killOrphanDevProcesses();
 	startDevServers();
 }
 
