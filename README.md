@@ -65,9 +65,9 @@ through [ADR-0008](docs/adr/0008-defer-social-listening.md).
 | M3 — Control Room | ✅ Done | Dashboard, incident CRUD, dispatch creation |
 | M4 — Voice AI | ✅ Done | Whisper + Gemini triage pipeline |
 | M5 — Dispatch | ✅ Done | Two-way dispatch loop, mobile takeover |
-| M6 — Audit Ledger | Next | Server-side SHA-256 chain, forensic timeline |
-| M7 — Offline + PWA | Pending | IndexedDB queue, offline reconciliation |
-| M8 — Hardening | Pending | Integration tests, stress simulation, production deploy |
+| M6 — Audit Ledger | ✅ Done | SHA-256 chain, WORM triggers, forensic timeline |
+| M7 — Offline + PWA | ✅ Done | IndexedDB queue, auto-drain, pending indicator |
+| M8 — Hardening | ✅ Done | Stress simulator, integration tests, FPS audit, deploy check |
 
 ---
 

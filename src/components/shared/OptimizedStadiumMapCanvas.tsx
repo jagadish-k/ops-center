@@ -107,10 +107,15 @@ export function OptimizedStadiumMapCanvas({
 	// Whether the latest pointer gesture moved enough to count as a drag (vs. a tap).
 	const dragMovedRef = useRef(false);
 
+	// FPS tracking (updated ~every 500ms in the rAF loop).
+	const fpsFrames = useRef(0);
+	const fpsLastUpdate = useRef(0);
+
 	// HUD DOM text nodes (written imperatively each frame).
 	const hudZoomRef = useRef<HTMLSpanElement | null>(null);
 	const hudCoordRef = useRef<HTMLSpanElement | null>(null);
 	const hudCountRef = useRef<HTMLSpanElement | null>(null);
+	const hudFpsRef = useRef<HTMLSpanElement | null>(null);
 
 	// Track the selected incident id so the beacon ring renders (kept in state
 	// only so parent-driven selection re-renders the component — not the loop).
@@ -351,6 +356,19 @@ export function OptimizedStadiumMapCanvas({
 				hudCountRef.current.textContent = `${inc.length} INC / ${staff.length} STAFF`;
 			}
 
+			// FPS counter (updated ~every 500ms).
+			const nowMs = performance.now();
+			fpsFrames.current++;
+			if (nowMs - fpsLastUpdate.current >= 500) {
+				const fps = Math.round((fpsFrames.current * 1000) / (nowMs - fpsLastUpdate.current));
+				if (hudFpsRef.current) {
+					hudFpsRef.current.textContent = `${fps}`;
+					hudFpsRef.current.className = `font-bold ${fps >= 55 ? 'text-emerald-400' : fps >= 30 ? 'text-amber-400' : 'text-red-400'}`;
+				}
+				fpsFrames.current = 0;
+				fpsLastUpdate.current = nowMs;
+			}
+
 			rafId = requestAnimationFrame(render);
 		};
 
@@ -536,6 +554,10 @@ export function OptimizedStadiumMapCanvas({
 					<span ref={hudCountRef} className="font-bold text-blue-400">
 						0 INC / 0 STAFF
 					</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<span className="text-slate-600">FPS</span>
+					<span ref={hudFpsRef} className="font-bold text-emerald-400">--</span>
 				</div>
 			</div>
 		</div>

@@ -13,7 +13,9 @@
 		"preview": "vite preview",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"db:migrate": "tsx database/migrate.ts"
+		"db:migrate": "tsx database/migrate.ts",
+		"simulate": "tsx scripts/matchday-simulator.ts",
+		"verify:deploy": "tsx scripts/verify-deploy.ts"
 	},
 	"dependencies": {
 		"@heroui/react": "^3.2.2",
