@@ -4,6 +4,8 @@
  * Guards on role (staff). Mounts the ActiveOpsProvider and renders the FieldShell.
  * Disconnect signs the operator out and returns to the auth gate.
  *
+ * Auto-triggers a Field Client tour on first login (role-aware).
+ *
  * Post-ADR-0013: tenant_id and phone come from JWT claims directly (no
  * separate usePermissions() call needed for these display fields).
  */
@@ -12,10 +14,14 @@ import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ActiveOpsProvider } from '@/context/ActiveOpsContext';
 import { FieldShell } from '@/components/mobile/FieldShell';
+import { useAutoFieldClientTour } from '@/components/shared/GuideTour';
 
 export default function FieldClient() {
 	const { claims, loading, signOut } = useAuth();
 	const { can } = usePermissions();
+
+	// Auto-trigger Field Client tour on first login.
+	useAutoFieldClientTour(!!claims && can('surface:field-client'));
 
 	if (loading) {
 		return (

@@ -26,7 +26,7 @@ import { RolesTab } from './RolesTab';
 import { TenantsTab } from './TenantsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { useAutoTour, startTour } from '@/components/shared/GuideTour';
+import { useAutoTour, startTour, type TourPermissions } from '@/components/shared/GuideTour';
 import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
@@ -45,8 +45,17 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 	const [auditOpen, setAuditOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<TabId>('operations');
 
-	// Auto-trigger the guide tour on first visit.
-	useAutoTour(true);
+	// Auto-trigger the guide tour on first visit — role-aware.
+	const tourPerms: TourPermissions = {
+		isSuperadmin,
+		canStaffManage: can('staff:manage'),
+		canTenantManage: can('tenant:manage'),
+		canTenantSwitch: can('tenant:switch'),
+		canAuditView: can('audit:view'),
+		canControlRoom: can('surface:control-room'),
+		canFieldClient: can('surface:field-client'),
+	};
+	useAutoTour(tourPerms);
 
 	// Derive the freshest selected incident from the polled list.
 	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
@@ -97,7 +106,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 						data-tour="help-button"
 						size="sm"
 						variant="ghost"
-						onPress={() => startTour()}
+						onPress={() => startTour(tourPerms)}
 						className="font-bold uppercase tracking-widest">
 						? Help
 					</Button>
