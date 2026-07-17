@@ -6,13 +6,18 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig, loadEnv } from 'vite';
 
 import tailwindcss from '@tailwindcss/vite';
+import mkcert from 'vite-plugin-mkcert';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), '');
 	return {
+		resolve: {
+			tsconfigPaths: true,
+		},
 		base: env.BASE_URL || '/',
 		plugins: [
+			mkcert(),
 			tsconfigPaths(),
 			tailwindcss(),
 			reactRouter(),
@@ -46,6 +51,14 @@ export default defineConfig(({ mode }) => {
 			}),
 		],
 		server: {
+			host: 'stadops.local',
+			allowedHosts: [
+				// Required in modern Vite versions to permit the domain
+				'stadops.local',
+			],
+			hmr: {
+				host: 'stadops.local', // Ensures Hot Module Replacement works over the custom domain
+			},
 			port: env.APP_PORT ? Number(env.APP_PORT) : 5173,
 			// Proxy /api/* to netlify dev (port 8888) so frontend requests hit the
 			// Netlify Functions during local development. If netlify dev isn't
