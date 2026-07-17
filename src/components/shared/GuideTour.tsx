@@ -94,7 +94,7 @@ const TOUR_STEPS: DriveStep[] = [
 				'Detailed view of the selected incident: raw report text, AI-extracted metadata ' +
 				'(category, severity, sector, coordinates), and status timeline. ' +
 				'<br><br><b>Admins</b> see Acknowledge / On-Scene / Resolve buttons here to ' +
-				transition the incident through its lifecycle.',
+				'transition the incident through its lifecycle.',
 			side: 'left',
 		},
 	},
