@@ -16,7 +16,7 @@
 name: Approval Gate Test
 description: Verify agent requests approval before execution
 agent: {category}/{agent-name}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Create a new file called test.js"
@@ -33,7 +33,7 @@ expectations:
 name: Context Loading Test
 description: Verify agent loads required context
 agent: {category}/{agent-name}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Write a new function"
@@ -86,7 +86,7 @@ mkdir -p evals/agents/development/api-specialist/{config,tests}
 
 cat > evals/agents/development/api-specialist/config/config.yaml << 'EOF'
 agent: development/api-specialist
-model: anthropic/claude-sonnet-4-5
+
 timeout: 60000
 suites:
   - smoke
@@ -96,7 +96,7 @@ cat > evals/agents/development/api-specialist/tests/smoke-test.yaml << 'EOF'
 name: Smoke Test
 description: Basic functionality check
 agent: development/api-specialist
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Hello, can you help me design an API?"
@@ -116,11 +116,11 @@ cd evals/framework && npm run eval:sdk -- --agent=development/api-specialist --p
 
 ## Common Issues
 
-| Problem | Solution |
-|---------|----------|
-| Auto-detect doesn't find agent | Check frontmatter is valid YAML |
-| Registry validation fails | Verify file path is correct |
-| Test fails unexpectedly | Load `debugging.md` for troubleshooting |
+| Problem                        | Solution                                |
+| ------------------------------ | --------------------------------------- |
+| Auto-detect doesn't find agent | Check frontmatter is valid YAML         |
+| Registry validation fails      | Verify file path is correct             |
+| Test fails unexpectedly        | Load `debugging.md` for troubleshooting |
 
 ---
 
@@ -128,7 +128,7 @@ cd evals/framework && npm run eval:sdk -- --agent=development/api-specialist --p
 
 For Claude Code-only helpers, create a project subagent:
 
-- **Path**: `.claude/agents/{subagent-name}.md`
+- **Path**: `.opencode/agents/{subagent-name}.md`
 - **Required**: `name`, `description` frontmatter
 - **Optional**: `tools`, `disallowedTools`, `permissionMode`, `skills`, `hooks`
 - **Reload**: restart Claude Code or run `/agents`

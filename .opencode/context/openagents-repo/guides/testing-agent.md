@@ -26,13 +26,14 @@ npm run eval:sdk -- --agent={category}/{agent} --debug
 ## Test Types
 
 ### 1. Smoke Test
+
 **Purpose**: Basic functionality check
 
 ```yaml
 name: Smoke Test
 description: Verify agent responds correctly
 agent: {category}/{agent}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Hello, can you help me?"
@@ -41,6 +42,7 @@ expectations:
 ```
 
 **Run**:
+
 ```bash
 npm run eval:sdk -- --agent={agent} --pattern="smoke-test.yaml"
 ```
@@ -48,13 +50,14 @@ npm run eval:sdk -- --agent={agent} --pattern="smoke-test.yaml"
 ---
 
 ### 2. Approval Gate Test
+
 **Purpose**: Verify agent requests approval
 
 ```yaml
 name: Approval Gate Test
 description: Verify agent requests approval before execution
 agent: {category}/{agent}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Create a new file called test.js"
@@ -67,13 +70,14 @@ expectations:
 ---
 
 ### 3. Context Loading Test
+
 **Purpose**: Verify agent loads required context
 
 ```yaml
 name: Context Loading Test
 description: Verify agent loads required context
 agent: {category}/{agent}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Write a new function"
@@ -85,13 +89,14 @@ expectations:
 ---
 
 ### 4. Tool Usage Test
+
 **Purpose**: Verify agent uses correct tools
 
 ```yaml
 name: Tool Usage Test
 description: Verify agent uses appropriate tools
 agent: {category}/{agent}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "Read the package.json file"
@@ -143,7 +148,7 @@ npm run eval:sdk -- --agent={agent} --pattern="{test}" --debug
 ✓ Test: smoke-test.yaml
   Status: PASS
   Duration: 5.2s
-  
+
   Evaluators:
     ✓ Approval Gate: PASS
     ✓ Context Loading: PASS
@@ -158,7 +163,7 @@ npm run eval:sdk -- --agent={agent} --pattern="{test}" --debug
 ✗ Test: approval-gate.yaml
   Status: FAIL
   Duration: 4.8s
-  
+
   Evaluators:
     ✗ Approval Gate: FAIL
       Violation: Agent executed write tool without requesting approval
@@ -197,6 +202,7 @@ cat .tmp/sessions/{session-id}/events.json | jq
 ### Step 4: Identify Issue
 
 Common issues:
+
 - **Approval Gate Violation**: Agent executed without approval
 - **Context Loading Violation**: Agent didn't load required context
 - **Tool Usage Violation**: Agent used wrong tool (bash instead of read)
@@ -216,7 +222,7 @@ Update agent prompt to address the issue, then re-test.
 name: Test Name
 description: What this test validates
 agent: {category}/{agent}
-model: anthropic/claude-sonnet-4-5
+
 conversation:
   - role: user
     content: "User message"
@@ -232,7 +238,7 @@ expectations:
 ✅ **Good description** - Explain what's being tested  
 ✅ **Realistic scenario** - Test real-world usage  
 ✅ **Specific expectations** - Clear pass/fail criteria  
-✅ **Fast execution** - Keep under 10 seconds  
+✅ **Fast execution** - Keep under 10 seconds
 
 ---
 
@@ -243,7 +249,7 @@ expectations:
 ```yaml
 conversation:
   - role: user
-    content: "Create a new file"
+    content: 'Create a new file'
 expectations:
   - type: specific_evaluator
     evaluator: approval_gate
@@ -255,10 +261,10 @@ expectations:
 ```yaml
 conversation:
   - role: user
-    content: "Write new code"
+    content: 'Write new code'
 expectations:
   - type: context_loaded
-    contexts: ["core/standards/code-quality.md"]
+    contexts: ['core/standards/code-quality.md']
 ```
 
 ### Test Tool Selection
@@ -266,10 +272,10 @@ expectations:
 ```yaml
 conversation:
   - role: user
-    content: "Read the README file"
+    content: 'Read the README file'
 expectations:
   - type: tool_usage
-    tools: ["read"]
+    tools: ['read']
     min_count: 1
 ```
 
@@ -287,6 +293,7 @@ expectations:
 ### CI/CD Integration
 
 Tests run automatically on:
+
 - Pull requests
 - Merges to main
 - Release tags

@@ -1,4 +1,5 @@
 <!-- Context: openagents-repo/core-concepts/agent-metadata | Priority: critical | Version: 1.0 | Updated: 2026-01-31 -->
+
 # Core Concept: Agent Metadata System
 
 **Purpose**: Understanding the centralized metadata system for OpenAgents Control  
@@ -22,23 +23,24 @@ Agent frontmatter contained fields that OpenCode doesn't recognize:
 
 ```yaml
 ---
-id: opencoder                    # ❌ Not valid OpenCode field
-name: OpenCoder                  # ❌ Not valid OpenCode field
-category: core                   # ❌ Not valid OpenCode field
-type: core                       # ❌ Not valid OpenCode field
-version: 1.0.0                   # ❌ Not valid OpenCode field
-author: opencode                 # ❌ Not valid OpenCode field
-tags: [development, coding]      # ❌ Not valid OpenCode field
-dependencies: []              # ❌ Not valid OpenCode field
-description: "..."               # ✅ Valid OpenCode field
-mode: primary                    # ✅ Valid OpenCode field
-temperature: 0.1                 # ✅ Valid OpenCode field
-tools: {...}                     # ✅ Valid OpenCode field
-permission: {...}                # ✅ Valid OpenCode field
+id: opencoder # ❌ Not valid OpenCode field
+name: OpenCoder # ❌ Not valid OpenCode field
+category: core # ❌ Not valid OpenCode field
+type: core # ❌ Not valid OpenCode field
+version: 1.0.0 # ❌ Not valid OpenCode field
+author: opencode # ❌ Not valid OpenCode field
+tags: [development, coding] # ❌ Not valid OpenCode field
+dependencies: [] # ❌ Not valid OpenCode field
+description: '...' # ✅ Valid OpenCode field
+mode: primary # ✅ Valid OpenCode field
+temperature: 0.1 # ✅ Valid OpenCode field
+tools: { ... } # ✅ Valid OpenCode field
+permission: { ... } # ✅ Valid OpenCode field
 ---
 ```
 
 **Result**: OpenCode validation errors:
+
 ```
 Extra inputs are not permitted, field: 'id', value: 'opencoder'
 Extra inputs are not permitted, field: 'category', value: 'core'
@@ -49,36 +51,34 @@ Extra inputs are not permitted, field: 'type', value: 'core'
 ### After (Clean Separation)
 
 **Agent frontmatter** (`.opencode/agent/core/opencoder.md`):
+
 ```yaml
 ---
 # Metadata stored in: .opencode/config/agent-metadata.json
-description: "Orchestration agent for complex coding, architecture, and multi-file refactoring"
+description: 'Orchestration agent for complex coding, architecture, and multi-file refactoring'
 mode: primary
 temperature: 0.1
-tools: {...}
-permission: {...}
+tools: { ... }
+permission: { ... }
 ---
 ```
 
 **Centralized metadata** (`.opencode/config/agent-metadata.json`):
+
 ```json
 {
-  "agents": {
-    "opencoder": {
-      "id": "opencoder",
-      "name": "OpenCoder",
-      "category": "core",
-      "type": "agent",
-      "version": "1.0.0",
-      "author": "opencode",
-      "tags": ["development", "coding", "implementation"],
-      "dependencies": [
-        "subagent:documentation",
-        "subagent:coder-agent",
-        "context:core/standards/code"
-      ]
-    }
-  }
+	"agents": {
+		"opencoder": {
+			"id": "opencoder",
+			"name": "OpenCoder",
+			"category": "core",
+			"type": "agent",
+			"version": "1.0.0",
+			"author": "opencode",
+			"tags": ["development", "coding", "implementation"],
+			"dependencies": ["subagent:documentation", "subagent:coder-agent", "context:core/standards/code"]
+		}
+	}
 }
 ```
 
@@ -91,10 +91,12 @@ permission: {...}
 Based on [OpenCode documentation](https://opencode.ai/docs/agents/), these are the ONLY valid frontmatter fields:
 
 ### Required Fields
+
 - `description` - When to use this agent (required)
 - `mode` - Agent type: `primary`, `subagent`, or `all` (defaults to `all`)
 
 ### Optional Fields
+
 - `model` - Model override (e.g., `anthropic/claude-sonnet-4-20250514`)
 - `temperature` - Response randomness (0.0-1.0)
 - `maxSteps` - Max agentic iterations
@@ -108,9 +110,9 @@ Based on [OpenCode documentation](https://opencode.ai/docs/agents/), these are t
 
 ```yaml
 ---
-description: "Code review agent with security focus"
+description: 'Code review agent with security focus'
 mode: subagent
-model: anthropic/claude-sonnet-4-20250514
+
 temperature: 0.1
 tools:
   read: true
@@ -118,10 +120,10 @@ tools:
   glob: true
   write: false
   edit: false
-permission:  # v1.1.1+ (singular, not plural)
+permission: # v1.1.1+ (singular, not plural)
   bash:
-    "*": ask
-    "git *": allow
+    '*': ask
+    'git *': allow
   edit: deny
 ---
 ```
@@ -136,53 +138,50 @@ permission:  # v1.1.1+ (singular, not plural)
 
 ```json
 {
-  "$schema": "https://opencode.ai/schemas/agent-metadata.json",
-  "schema_version": "1.0.0",
-  "description": "Centralized metadata for OpenAgents Control agents",
-  "agents": {
-    "agent-id": {
-      "id": "agent-id",
-      "name": "Agent Name",
-      "category": "core|development|content|data|product|learning|meta",
-      "type": "agent|subagent",
-      "version": "1.0.0",
-      "author": "opencode",
-      "tags": ["tag1", "tag2"],
-      "dependencies": [
-        "subagent:subagent-id",
-        "context:path/to/context"
-      ]
-    }
-  },
-  "defaults": {
-    "agent": {
-      "version": "1.0.0",
-      "author": "opencode",
-      "type": "agent",
-      "tags": []
-    },
-    "subagent": {
-      "version": "1.0.0",
-      "author": "opencode",
-      "type": "subagent",
-      "tags": []
-    }
-  }
+	"$schema": "https://opencode.ai/schemas/agent-metadata.json",
+	"schema_version": "1.0.0",
+	"description": "Centralized metadata for OpenAgents Control agents",
+	"agents": {
+		"agent-id": {
+			"id": "agent-id",
+			"name": "Agent Name",
+			"category": "core|development|content|data|product|learning|meta",
+			"type": "agent|subagent",
+			"version": "1.0.0",
+			"author": "opencode",
+			"tags": ["tag1", "tag2"],
+			"dependencies": ["subagent:subagent-id", "context:path/to/context"]
+		}
+	},
+	"defaults": {
+		"agent": {
+			"version": "1.0.0",
+			"author": "opencode",
+			"type": "agent",
+			"tags": []
+		},
+		"subagent": {
+			"version": "1.0.0",
+			"author": "opencode",
+			"type": "subagent",
+			"tags": []
+		}
+	}
 }
 ```
 
 ### Metadata Fields
 
-| Field | Required | Description | Example |
-|-------|----------|-------------|---------|
-| `id` | Yes | Unique identifier (kebab-case) | `"opencoder"` |
-| `name` | Yes | Display name | `"OpenCoder"` |
-| `category` | Yes | Agent category | `"core"` |
-| `type` | Yes | Component type | `"agent"` or `"subagent"` |
-| `version` | Yes | Version number | `"1.0.0"` |
-| `author` | Yes | Author identifier | `"opencode"` |
-| `tags` | No | Discovery tags | `["development", "coding"]` |
-| `dependencies` | No | Component dependencies | `["subagent:tester"]` |
+| Field          | Required | Description                    | Example                     |
+| -------------- | -------- | ------------------------------ | --------------------------- |
+| `id`           | Yes      | Unique identifier (kebab-case) | `"opencoder"`               |
+| `name`         | Yes      | Display name                   | `"OpenCoder"`               |
+| `category`     | Yes      | Agent category                 | `"core"`                    |
+| `type`         | Yes      | Component type                 | `"agent"` or `"subagent"`   |
+| `version`      | Yes      | Version number                 | `"1.0.0"`                   |
+| `author`       | Yes      | Author identifier              | `"opencode"`                |
+| `tags`         | No       | Discovery tags                 | `["development", "coding"]` |
+| `dependencies` | No       | Component dependencies         | `["subagent:tester"]`       |
 
 ---
 
@@ -201,14 +200,13 @@ touch .opencode/agent/category/my-agent.md
 
 ```yaml
 ---
-description: "My agent description"
+description: 'My agent description'
 mode: subagent
 temperature: 0.2
 tools:
   read: true
   write: true
 ---
-
 # Agent prompt content here
 ```
 
@@ -216,18 +214,18 @@ tools:
 
 ```json
 {
-  "agents": {
-    "my-agent": {
-      "id": "my-agent",
-      "name": "My Agent",
-      "category": "development",
-      "type": "subagent",
-      "version": "1.0.0",
-      "author": "opencode",
-      "tags": ["custom", "helper"],
-      "dependencies": ["context:core/standards/code"]
-    }
-  }
+	"agents": {
+		"my-agent": {
+			"id": "my-agent",
+			"name": "My Agent",
+			"category": "development",
+			"type": "subagent",
+			"version": "1.0.0",
+			"author": "opencode",
+			"tags": ["custom", "helper"],
+			"dependencies": ["context:core/standards/code"]
+		}
+	}
 }
 ```
 
@@ -238,6 +236,7 @@ tools:
 ```
 
 The auto-detect script:
+
 1. Reads frontmatter from agent file (description, mode, etc.)
 2. Reads metadata from `agent-metadata.json` (id, name, tags, dependencies)
 3. Merges both into registry.json entry
@@ -260,7 +259,7 @@ if [ -f "$metadata_file" ] && command -v jq &> /dev/null; then
     # Try to find metadata for this agent ID
     local metadata_entry
     metadata_entry=$(jq -r ".agents[\"$id\"] // empty" "$metadata_file" 2>/dev/null)
-    
+
     if [ -n "$metadata_entry" ] && [ "$metadata_entry" != "null" ]; then
         # Merge name, tags, dependencies from metadata
         # ...
@@ -274,18 +273,14 @@ The registry.json entry contains merged data:
 
 ```json
 {
-  "id": "opencoder",
-  "name": "OpenCoder",
-  "type": "agent",
-  "path": ".opencode/agent/core/opencoder.md",
-  "description": "Orchestration agent for complex coding...",
-  "category": "core",
-  "tags": ["development", "coding", "implementation"],
-  "dependencies": [
-    "subagent:documentation",
-    "subagent:coder-agent",
-    "context:core/standards/code"
-  ]
+	"id": "opencoder",
+	"name": "OpenCoder",
+	"type": "agent",
+	"path": ".opencode/agent/core/opencoder.md",
+	"description": "Orchestration agent for complex coding...",
+	"category": "core",
+	"tags": ["development", "coding", "implementation"],
+	"dependencies": ["subagent:documentation", "subagent:coder-agent", "context:core/standards/code"]
 }
 ```
 
@@ -312,12 +307,14 @@ vim .opencode/config/agent-metadata.json
 ### Updating Agent Metadata
 
 **To update OpenCode configuration** (tools, permissions, temperature):
+
 ```bash
 # Edit agent file frontmatter
 vim .opencode/agent/category/my-agent.md
 ```
 
 **To update registry metadata** (tags, dependencies, version):
+
 ```bash
 # Edit metadata file
 vim .opencode/config/agent-metadata.json
@@ -329,21 +326,23 @@ vim .opencode/config/agent-metadata.json
 ### Updating Dependencies
 
 **Add a dependency**:
+
 ```json
 {
-  "agents": {
-    "my-agent": {
-      "dependencies": [
-        "subagent:tester",
-        "context:core/standards/code",
-        "subagent:new-dependency"  // ← Add here
-      ]
-    }
-  }
+	"agents": {
+		"my-agent": {
+			"dependencies": [
+				"subagent:tester",
+				"context:core/standards/code",
+				"subagent:new-dependency" // ← Add here
+			]
+		}
+	}
 }
 ```
 
 Then run:
+
 ```bash
 ./scripts/registry/auto-detect-components.sh --auto-add
 ./scripts/registry/validate-registry.sh
@@ -354,26 +353,31 @@ Then run:
 ## Benefits
 
 ### ✅ OpenCode Compliance
+
 - Agent frontmatter contains ONLY valid OpenCode fields
 - No validation errors from OpenCode
 - Agents work correctly with OpenCode CLI
 
 ### ✅ Registry Compatibility
+
 - Registry still has all metadata (id, name, category, tags, dependencies)
 - Auto-detect script merges frontmatter + metadata
 - Backward compatible with existing tools
 
 ### ✅ Single Source of Truth
+
 - Metadata centralized in one file
 - Easy to update dependencies across multiple agents
 - Clear separation: OpenCode config vs. registry metadata
 
 ### ✅ Maintainability
+
 - Update dependencies in one place
 - Consistent metadata across all agents
 - Easy to add new metadata fields
 
 ### ✅ Validation
+
 - OpenCode validates frontmatter (no extra fields)
 - Registry validator checks dependencies exist
 - Clear error messages when metadata is missing
@@ -387,21 +391,25 @@ Then run:
 **OpenCode v1.1.1+ Change**: The field name changed from `permissions:` (plural) to `permission:` (singular).
 
 **Before** (deprecated):
+
 ```yaml
 permissions:
   bash:
-    "*": "deny"
+    '*': 'deny'
 ```
 
 **After** (v1.1.1+):
+
 ```yaml
 permission:
   bash:
-    "*": "deny"
+    '*': 'deny'
 ```
 
 **Migration Steps**:
+
 1. Find all agents using `permissions:` (plural)
+
    ```bash
    grep -r "^permissions:" .opencode/agent/
    ```
@@ -425,6 +433,7 @@ grep -r "^id:\|^name:\|^category:\|^type:\|^version:\|^author:\|^tags:\|^depende
 **Step 2**: Extract metadata to `agent-metadata.json`
 
 For each agent:
+
 1. Copy `id`, `name`, `category`, `type`, `version`, `author`, `tags`, `dependencies` to metadata file
 2. Remove these fields from agent frontmatter
 3. Keep ONLY valid OpenCode fields in frontmatter
@@ -452,11 +461,13 @@ jq 'del(.components.agents[] | select(.id == "agent-id"))' registry.json > tmp.j
 ### Agent Frontmatter
 
 ✅ **DO**:
+
 - Keep frontmatter minimal (only OpenCode fields)
 - Add comment pointing to metadata file
 - Use consistent formatting
 
 ❌ **DON'T**:
+
 - Add custom fields to frontmatter
 - Duplicate metadata in both places
 - Skip the metadata file
@@ -464,12 +475,14 @@ jq 'del(.components.agents[] | select(.id == "agent-id"))' registry.json > tmp.j
 ### Metadata File
 
 ✅ **DO**:
+
 - Keep metadata file in version control
 - Update metadata when adding/removing dependencies
 - Use consistent naming (kebab-case for IDs)
 - Document why dependencies exist
 
 ❌ **DON'T**:
+
 - Forget to update metadata when creating agents
 - Leave orphaned entries (agents that don't exist)
 - Skip validation after updates
@@ -477,11 +490,13 @@ jq 'del(.components.agents[] | select(.id == "agent-id"))' registry.json > tmp.j
 ### Dependencies
 
 ✅ **DO**:
+
 - Declare ALL dependencies (subagents, contexts)
 - Use correct format: `type:id`
 - Validate dependencies exist in registry
 
 ❌ **DON'T**:
+
 - Reference components without declaring dependency
 - Use invalid dependency formats
 - Forget to update when dependencies change
@@ -515,18 +530,18 @@ vim .opencode/config/agent-metadata.json
 
 ```json
 {
-  "agents": {
-    "agent-id": {
-      "id": "agent-id",
-      "name": "Agent Name",
-      "category": "core",
-      "type": "agent",
-      "version": "1.0.0",
-      "author": "opencode",
-      "tags": [],
-      "dependencies": []
-    }
-  }
+	"agents": {
+		"agent-id": {
+			"id": "agent-id",
+			"name": "Agent Name",
+			"category": "core",
+			"type": "agent",
+			"version": "1.0.0",
+			"author": "opencode",
+			"tags": [],
+			"dependencies": []
+		}
+	}
 }
 ```
 
