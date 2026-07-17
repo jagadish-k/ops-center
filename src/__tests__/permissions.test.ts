@@ -49,6 +49,9 @@ describe('ABAC_SCOPED_PERMISSIONS', () => {
 	});
 });
 
+// sanity: the manager role is granted incident:transition at flat level
+// (so the ABAC tier-gate can run); the matrix update happened post-M9.4 wire-up.
+
 describe('permissionsForClaim', () => {
 	it('returns a set from the claim array', () => {
 		const perms: Permission[] = ['incident:create', 'audit:view'];

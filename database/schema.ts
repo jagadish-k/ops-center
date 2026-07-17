@@ -17,6 +17,7 @@ import {
 	uuid,
 	boolean,
 	integer,
+	bigint,
 	smallint,
 	timestamp,
 	doublePrecision,
@@ -208,7 +209,8 @@ export const configTable = pgTable('config', {
 export const auditLedgerTable = pgTable('audit_ledger', {
 	eventId: text('event_id').primaryKey(),
 	tenantId: text('tenant_id').notNull().references(() => tenantsTable.id),
-	timestamp: integer('timestamp').notNull(), // Unix seconds — stored as BIGINT in SQL; integer is wide enough until 2038
+	// Milliseconds since Unix epoch (Date.now()). BIGINT — overflows integer around 1973.
+	timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
 	actorUid: text('actor_uid').notNull(),
 	actorRole: text('actor_role').notNull(),
 	actorPhoneEmail: text('actor_phone_email'),

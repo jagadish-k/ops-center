@@ -29,8 +29,10 @@ import { mapIncident, mapDispatch } from '../lib/mappers.ts';
 import { createIncident } from '../lib/incidents.ts';
 import { checkOperationalWindow } from '../lib/operational-window.ts';
 import { commitAuditLog, type AuditActor } from '../lib/auditLogger.ts';
+import { decide as policyDecide, subjectFromClaims, isAbacScoped } from '../lib/policy.ts';
+import { fetchSubjectContext } from '../lib/rbac.ts';
 import { randomUUID } from 'node:crypto';
-import type { JwtClaims, IncidentSeverity, InfoTier } from '../../src/types';
+import type { JwtClaims, IncidentSeverity, InfoTier, Permission } from '../../src/types';
 
 /** Builds an AuditActor from JWT claims (post-ADR-0013 shape). */
 function actorFromClaims(claims: JwtClaims, phoneOrEmail = 'unknown'): AuditActor {
@@ -135,9 +137,24 @@ async function transitionIncident(
 		return badRequest('Incident not found in your tenant.');
 	}
 
-	const current = rows[0]!.status;
+	const incident = rows[0]!;
+	const current = incident.status;
 	if (!isValidForwardTransition(current, nextStatus, INCIDENT_FLOW)) {
 		return badRequest(`Cannot transition from ${current} to ${nextStatus}.`);
+	}
+
+	// ABAC policy check (ADR-0012): tier-gated for managers.
+	const subjectCtx = await fetchSubjectContext(claims.sub, claims.tenant_id);
+	const allowed = await policyDecide({
+		action: 'incident:transition' as Permission,
+		subject: subjectFromClaims(claims, subjectCtx),
+		resource: { tier: incident.tier ?? 3 },
+	});
+	if (!allowed) {
+		return new Response(
+			JSON.stringify({ error: `Policy denied: managers cannot transition Tier ${incident.tier} incidents.` }),
+			{ status: 403, headers: { 'Content-Type': 'application/json', 'X-Reason': 'policy-denied' } },
+		);
 	}
 
 	await db
@@ -164,7 +181,7 @@ async function transitionIncident(
 		actor: actorFromClaims(claims, actorPhone),
 		action: 'INCIDENT_STATUS_MUTATION',
 		targetResourceId: incidentId,
-		stateDelta: { before: { status: current }, after: { status: nextStatus } },
+		stateDelta: { before: { status: current, tier: incident.tier }, after: { status: nextStatus } },
 	});
 
 	return jsonResponse({ incident: updatedIncident });
@@ -199,7 +216,10 @@ async function createDispatch(
 
 	// Lookup staff by phone_number (was by id pre-ADR-0010).
 	const staffRows = await db
-		.select({ id: staffRosterTable.id })
+		.select({
+			id: staffRosterTable.id,
+			zone: staffRosterTable.assignedZone,
+		})
 		.from(staffRosterTable)
 		.where(
 			and(
@@ -211,6 +231,21 @@ async function createDispatch(
 		.execute();
 	if (staffRows.length === 0) {
 		return badRequest('Target staff member not found or off-duty.');
+	}
+	const targetZone = staffRows[0]!.zone;
+
+	// ABAC policy check (ADR-0012): manager can only dispatch within own zone.
+	const subjectCtx = await fetchSubjectContext(claims.sub, claims.tenant_id);
+	const allowed = await policyDecide({
+		action: 'dispatch:create' as Permission,
+		subject: subjectFromClaims(claims, subjectCtx),
+		resource: { target_zone: targetZone },
+	});
+	if (!allowed) {
+		return new Response(
+			JSON.stringify({ error: `Policy denied: managers can only dispatch within their own zone (yours: ${subjectCtx.assignedZone ?? 'n/a'}).` }),
+			{ status: 403, headers: { 'Content-Type': 'application/json', 'X-Reason': 'policy-denied' } },
+		);
 	}
 
 	const dispatchId = `disp_${randomUUID().slice(0, 12)}`;
@@ -293,6 +328,24 @@ async function updateDispatch(
 	const isTarget = actorPhone === dispatch.targetStaffPhone;
 	if (!canUpdateAny && !isTarget) {
 		return jsonResponse({ error: 'You can only update dispatches assigned to you.' }, 403);
+	}
+
+	// ABAC policy check (ADR-0012): self-or-permitted. Even with the flat
+	// permission, run the policy so the audit trail + future attribute
+	// conditions (e.g., time-of-day) apply uniformly.
+	if (isAbacScoped('dispatch:update' as Permission)) {
+		const subjectCtx = await fetchSubjectContext(claims.sub, claims.tenant_id);
+		const allowed = await policyDecide({
+			action: 'dispatch:update' as Permission,
+			subject: subjectFromClaims(claims, subjectCtx),
+			resource: { target_staff_phone: dispatch.targetStaffPhone },
+		});
+		if (!allowed) {
+			return new Response(
+				JSON.stringify({ error: 'Policy denied for dispatch:update.' }),
+				{ status: 403, headers: { 'Content-Type': 'application/json', 'X-Reason': 'policy-denied' } },
+			);
+		}
 	}
 
 	const updateValues: Record<string, unknown> = { status: nextStatus };

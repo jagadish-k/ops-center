@@ -74,6 +74,10 @@ const ROLE_MATRIX: Record<string, readonly string[]> = {
 		'dispatch:update',
 		'incident:create',
 		'incident:read',
+		// incident:transition is granted at the flat level so the ABAC policy
+		// (ADR-0012) can restrict managers to tier 4-5. Without this grant,
+		// the flat check rejects before ABAC runs.
+		'incident:transition',
 		'staff:reassign',
 		'surface:control-room',
 	],

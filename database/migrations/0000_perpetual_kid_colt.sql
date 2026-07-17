@@ -1,7 +1,7 @@
 CREATE TABLE "audit_ledger" (
 	"event_id" text PRIMARY KEY NOT NULL,
 	"tenant_id" text NOT NULL,
-	"timestamp" integer NOT NULL,
+	"timestamp" bigint NOT NULL,
 	"actor_uid" text NOT NULL,
 	"actor_role" text NOT NULL,
 	"actor_phone_email" text,
@@ -160,13 +160,9 @@ CREATE INDEX "idx_staff_tenant" ON "staff_roster" USING btree ("tenant_id","stat
 CREATE INDEX "idx_memberships_tenant" ON "tenant_memberships" USING btree ("tenant_id");--> statement-breakpoint
 CREATE INDEX "idx_user_perms_user" ON "user_permissions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_users_global_role" ON "users" USING btree ("global_role");--> statement-breakpoint
-CREATE INDEX "idx_users_status" ON "users" USING btree ("status");
---> statement-breakpoint
+CREATE INDEX "idx_users_status" ON "users" USING btree ("status");--> statement-breakpoint
 
 -- ─── Triggers (not expressible in Drizzle schema definitions) ────────────────
--- Carried forward from legacy 0001_init.sql + 0003_audit_ledger.sql.
-
--- updated_at auto-touch function (used by incidents, staff_roster, users).
 CREATE OR REPLACE FUNCTION touch_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -187,7 +183,6 @@ DROP TRIGGER IF EXISTS trg_users_touch ON users;
 CREATE TRIGGER trg_users_touch BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION touch_updated_at();--> statement-breakpoint
 
--- Audit ledger WORM enforcement (ADR-0005, ADR-0009) — rejects UPDATE/DELETE.
 CREATE OR REPLACE FUNCTION reject_audit_mutation()
 RETURNS TRIGGER AS $$
 BEGIN

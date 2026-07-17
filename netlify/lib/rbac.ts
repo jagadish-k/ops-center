@@ -18,7 +18,13 @@
  * JWT and re-resolved only on refresh.
  */
 import { db } from './db.ts';
-import { usersTable, rolePermissionsTable, tenantMembershipsTable, userPermissionsTable } from '../../database/schema.ts';
+import {
+	usersTable,
+	rolePermissionsTable,
+	tenantMembershipsTable,
+	userPermissionsTable,
+	staffRosterTable,
+} from '../../database/schema.ts';
 import { eq, sql, and } from 'drizzle-orm';
 import { ALL_PERMISSIONS, type Permission } from '../../src/lib/permissions.ts';
 
@@ -161,6 +167,51 @@ export async function resolveUserPermissions(
 
 	return { user, permissions: [...permissions] };
 }
+
+/**
+ * Fetch a user's tenant-scoped roles + assigned zone for ABAC policy inputs.
+ * Returns {roles, assignedZone} for the active tenant. Used by netlify/lib/policy.ts
+ * to populate PolicySubject.
+ */
+export async function fetchSubjectContext(
+	userId: string,
+	tenantId: string,
+): Promise<{ roles: string[]; assignedZone?: string }> {
+	const membershipRows = await db
+		.select({
+			roles: tenantMembershipsTable.roles,
+		})
+		.from(tenantMembershipsTable)
+		.where(
+			and(
+				eq(tenantMembershipsTable.userId, userId),
+				eq(tenantMembershipsTable.tenantId, tenantId),
+			),
+		)
+		.execute();
+
+	const roles = membershipRows[0]?.roles ?? [];
+
+	// Look up assigned_zone only if the user has a staff-like role on roster.
+	const rosterRows = await db
+		.select({ zone: staffRosterTable.assignedZone })
+		.from(staffRosterTable)
+		.where(
+			and(
+				eq(staffRosterTable.userId, userId),
+				eq(staffRosterTable.tenantId, tenantId),
+			),
+		)
+		.execute();
+
+	return {
+		roles,
+		assignedZone: rosterRows[0]?.zone,
+	};
+}
+
+// `and` re-exported for callers (Drizzle's logical-and combinator).
+export { and };
 
 // ─── Perms-version stamping (ADR-0013) ────────────────────────────────────────
 
