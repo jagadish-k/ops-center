@@ -95,6 +95,19 @@ touch an area before working in it.
   stadium locations are projected. Not "map space" or "pixel grid".
 - **Optimized Stadium Map Canvas** — The offscreen-double-buffered HTML5 Canvas
   component (`OptimizedStadiumMapCanvas`). Not "the map" or "canvas widget".
+- **Map Layout** — The `tenants.mapLayout` JSONB column storing a multi-floor
+  zone + POI configuration. The TypeScript interface lives in
+  `src/lib/map-layout.ts`. Not "map config" or "stadium config".
+- **Floor** — A level of the stadium (Ground, Level 200, Suite Level). Each
+  floor has its own zones and POIs. Staff and incidents belong to a floor.
+  Not "level" (ambiguous with InfoTier) or "deck".
+- **Map Zone** — A polygon-bounded area on a specific floor (e.g., ZONE-A
+  on the Ground Level). Defined by vertices on the 0–1000 grid. Not
+  "sector" (sectors are the legacy 6-zone shorthand from `sectors.ts`;
+  zones are the richer per-floor polygon definitions).
+- **POI** — Point of Interest on the map: a gate, exit, restroom, first aid
+  station, concession, security post, elevator, stairs, parking area, or
+  vomitory. Typed via `POIType` (11 types). Not "marker" or "pin".
 
 ## Security & Audit
 

@@ -513,7 +513,101 @@ drains FIFO with original client-side timestamps preserved.
 
 ---
 
-## 15. Permission Reference
+## 15. Map Layout & Zone Management
+
+### The Map Layout System
+
+Each tenant has a `mapLayout` JSONB configuration that defines the
+physical structure of its stadium:
+
+```
+MapLayout
+  └── floors[]
+        ├── id, name, level (0=ground, 1=second, etc.)
+        ├── zones[] (polygon boundaries on the 0–1000 grid)
+        │     ├── id, name, color, anchor
+        │     └── polygon: [[x1,y1], [x2,y2], ...]
+        └── pois[] (points of interest)
+              ├── id, name, type
+              ├── x, y (0–1000 grid coords)
+              └── notes
+```
+
+### Multi-Floor Support
+
+Stadiums are multi-story. The layout supports any number of floors:
+
+| Floor | MetLife Example | Content |
+|---|---|---|
+| Ground Level (0) | Concourse | 6 zones (A–F), 17 POIs (gates, restrooms, first aid, concessions, security, elevators, stairs) |
+| Level 200 (1) | Upper Concourse | 3 zones, 9 POIs (restrooms, first aid, concessions, elevators, vomitories) |
+| Suite Level (2) | CLUB | 2 zones, 3 POIs (lounge, elevator, restroom) |
+
+Each floor is independent — zones and POIs don't cross floor boundaries.
+
+### POI Types (11)
+
+| Type | Icon | Use Case |
+|---|---|---|
+| `entry` | 🚪 | Gate / entrance |
+| `exit` | 🚪 | Exit |
+| `restroom` | 🚻 | Restroom |
+| `first_aid` | ✚ | First aid station (AED-equipped?) |
+| `concession` | 🍔 | Food / merchandise |
+| `security_post` | 🛡 | Security checkpoint |
+| `elevator` | 🛗 | Elevator |
+| `stairs` | 🪜 | Stairwell |
+| `parking` | 🅿 | Parking area |
+| `vomitory` | 🚷 | Tunnel from concourse to seating |
+| `custom` | 📍 | User-defined |
+
+### How to Modify the Layout
+
+**Via SQL:**
+```sql
+-- View the full layout
+SELECT jsonb_pretty(map_layout) FROM tenants WHERE id = 'tenant_metlife_ops';
+
+-- Add a new POI (e.g., an AED station)
+UPDATE tenants
+SET map_layout = jsonb_insert(
+  map_layout,
+  '{floors,0,pois,999}',
+  '{"id":"aed-1","name":"AED Station","type":"first_aid","x":400,"y":300,"notes":"Near Gate B"}'
+)
+WHERE id = 'tenant_metlife_ops';
+
+-- Rename a zone
+UPDATE tenants
+SET map_layout = jsonb_set(map_layout, '{floors,0,zones,0,name}', '"New Zone Name"')
+WHERE id = 'tenant_metlife_ops';
+```
+
+**Via TypeScript (in seed or migration):**
+```typescript
+import { METLIFE_MAP_LAYOUT, type MapLayout } from '@/lib/map-layout';
+
+// Edit the layout object
+METLIFE_MAP_LAYOUT.floors[0].zones.push({
+  id: 'zone-g',
+  name: 'ZONE-G (New Extension)',
+  polygon: [{ x: 950, y: 100 }, { x: 1000, y: 100 }, { x: 1000, y: 450 }, { x: 950, y: 450 }],
+  color: '#10b981',
+  anchor: { x: 975, y: 275 },
+});
+
+// Save to DB
+await db.update(tenantsTable)
+  .set({ mapLayout: METLIFE_MAP_LAYOUT as never })
+  .where(eq(tenantsTable.id, 'tenant_metlife_ops'));
+```
+
+**Via UI (planned):** A visual zone/POI editor in the Tenants tab with
+polygon drawing, POI drag-and-drop, and a live canvas preview.
+
+---
+
+## 16. Permission Reference
 
 The platform has 15 typed permissions:
 

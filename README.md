@@ -79,6 +79,7 @@ via `perms_version`** (ADR-0010 through ADR-0014). See all ADRs in
 | M9.5 — Admin UI | ✅ Done | Team, Roles, Tenants tabs + per-user grants (react-hook-form + zod) |
 | M9.6 — Hardening | ✅ Done | Error boundaries, optimistic updates, skeleton loaders |
 | M10 — Policy UI v1 | ✅ Done | CodeMirror Rego editor + OPA test runner + DB-stored policies |
+| M10+ — Hardening | ✅ Done | Guide tour, role-aware onboarding, seed expansion, multi-floor map layout |
 | M10 — Policy UI v2 | ⏳ Planned | Per-tenant overrides, rebuild-and-deploy, audit integration |
 
 ---
@@ -92,8 +93,10 @@ npm run simulate            # Stress test (250 staff, 50 incidents)
 npm run verify:deploy       # Pre-flight deploy check
 npm test                    # Run vitest suite (82 tests across 10 files)
 npm run test:watch          # Watch mode
+npm run test:policy         # OPA Rego policy unit tests (19 tests)
+npm run build:policies      # Compile Rego → WASM bundle
 npm run db:migrate          # Apply Drizzle migrations
-npm run db:seed             # Idempotent seed (tenants, users, roles, perms)
+npm run db:seed             # Idempotent seed (tenants, users, roles, perms, incidents, map layout)
 npm run db:seed-superadmin  # Upsert SUPERADMIN_PHONE user as superadmin
 npm run db:generate         # Generate migration from schema.ts changes
 npm run db:studio           # Drizzle Studio (DB browser)

@@ -106,6 +106,8 @@ If either process dies, the orchestrator kills the sibling and exits cleanly
 | `npm run verify:deploy` | Pre-flight deploy check (env vars, DB, migrations, endpoints, JWT keys) |
 | `npm test` | Run the test suite (82 tests across 10 files) |
 | `npm run test:watch` | Vitest watch mode |
+| `npm run test:policy` | Run OPA Rego policy unit tests (`bin/opa test policies/`) |
+| `npm run build:policies` | Compile Rego → WASM bundle (`policies/dist/policy.wasm`) |
 
 ### Stress Testing (`npm run simulate`)
 
@@ -226,8 +228,11 @@ the tab layer.
 8. To activate a DB policy, the build script must include it in the WASM bundle
    at deploy time (see `scripts/build-policies.ts` for the integration seam)
 
-> **Note:** The current UI is the auth gateway only (Milestone 1). The Control
-> Room dashboard and Field Client surfaces are built in Milestones 2–5.
+> **Note:** The Control Room has 5 tabs: Operations (live map), Team (staff
+> management), Roles (permission matrix), Tenants (stadium contexts), and
+> Policies (Rego editor). The Field Client (mobile) is for staff users.
+> An interactive guide tour auto-triggers on first login — click **? Help**
+> in the header to replay it.
 
 ---
 
@@ -282,17 +287,22 @@ If you want to test real SMS delivery locally:
 ## 6. Seeded Test Users
 
 The seed (run automatically by `npm run dev` and `npm run db:seed`) creates
-three tenants plus six users exercising every role, cross-tenant
-membership, and the per-user permission override mechanism. Roles and
-permissions are defined per ADR-0010 / ADR-0011.
+three tenants plus thirteen users exercising every role, cross-tenant
+membership, the per-user permission override mechanism, and realistic map
+positions. Roles and permissions are defined per ADR-0010 / ADR-0011.
 
 ### Tenants
 
-| Tenant ID | Name |
-|---|---|
-| `tenant_metlife_ops` | MetLife Stadium Ops Core |
-| `tenant_sofi_ops` | SoFi Stadium Command Center |
-| `tenant_hardrock_ops` | Hard Rock Tournament Hub |
+| Tenant ID | Name | Map Floors |
+|---|---|---|
+| `tenant_metlife_ops` | MetLife Stadium Ops Core | 3 (Ground, Level 200, Suite) |
+| `tenant_sofi_ops` | SoFi Stadium Command Center | _(no layout seeded)_ |
+| `tenant_hardrock_ops` | Hard Rock Tournament Hub | _(no layout seeded)_ |
+
+MetLife has a full multi-floor `mapLayout` JSONB configuration seeded per
+the TypeScript interface in `src/lib/map-layout.ts` — 11 zones, 29 POIs
+(gates, exits, restrooms, first aid, concessions, security posts,
+elevators, stairs, vomitories) across 3 floors.
 
 ### Users
 
@@ -301,9 +311,26 @@ permissions are defined per ADR-0010 / ADR-0011.
 | `$SUPERADMIN_PHONE` (default `+14155550000`) | Default Superadmin | `superadmin` | _(none)_ | Env-seeded via ADR-0010 §Superadmin Bootstrap |
 | `+14155552026` | Command Coordinator | `member` | `metlife: [admin]` | Control Room operator |
 | `+14155552027` | Maya the Manager | `member` | `metlife: [manager]` | Coordinator role |
-| `+14155552028` | Mixed Role Morgan | `member` | `metlife: [staff]`, `sofi: [manager]` | Demonstrates cross-tenant multi-membership |
-| `+14155550001` | Alpha Security Lead | `member` | `metlife: [staff]` | Field Client user |
-| `+14155550002` | Beta Medical Triage | `member` | `metlife: [staff]` + override `audit:view` | Demonstrates per-user grant (ADR-0011) |
+| `+14155552028` | Mixed Role Morgan | `member` | `metlife: [staff]`, `sofi: [manager]` | Cross-tenant multi-membership; DISPATCHED at (380,310) |
+| `+14155550001` | Alpha Security Lead | `member` | `metlife: [staff]` | ZONE-A security; AVAILABLE at (320,280) |
+| `+14155550002` | Beta Medical Triage | `member` | `metlife: [staff]` + override `audit:view` | ZONE-B medical; per-user grant demo |
+| `+14155550003` | Gamma Security | `member` | `metlife: [staff]` | ZONE-C; AVAILABLE at (750,180) |
+| `+14155550004` | Delta Medical | `member` | `metlife: [staff]` | ZONE-D; DISPATCHED at (540,640) |
+| `+14155550005` | Echo Cleaning | `member` | `metlife: [staff]` | ZONE-E; AVAILABLE at (720,350) |
+| `+14155550006` | Foxtrot Supervisor | `member` | `metlife: [staff]` | ZONE-F; AVAILABLE at (850,200) |
+| `+14155550007` | Golf Security | `member` | `metlife: [staff]` | ZONE-B; OFF_DUTY at (580,380) |
+| `+14155550008` | Hotel Medical | `member` | `metlife: [staff]` | ZONE-A; AVAILABLE at (280,540) |
+| `+14155550009` | India Cleaning | `member` | `metlife: [staff]` | ZONE-D; AVAILABLE at (500,700) |
+
+### Seed Incidents (5, one per tier)
+
+| ID | Tier | Category | Severity | Zone | Status | Description |
+|---|---|---|---|---|---|---|
+| `inc_seed_001` | 1 | CROWD | CRITICAL | B | OPEN | Crowd surge at Section 112 |
+| `inc_seed_002` | 2 | SECURITY | HIGH | D | ACKNOWLEDGED | Altercation in upper deck Sec 308 |
+| `inc_seed_003` | 3 | MEDICAL | HIGH | A | OPEN | Unresponsive male near Gate C |
+| `inc_seed_004` | 4 | FACILITIES | MEDIUM | E | ON_SCENE | Overflowing restroom fixture |
+| `inc_seed_005` | 5 | ADVISORY | LOW | C | OPEN | Long concession queues at Sec 200 |
 
 ### Roles (system roles, preseeded)
 
@@ -311,10 +338,51 @@ permissions are defined per ADR-0010 / ADR-0011.
 |---|---|
 | `superadmin` | All 15 permissions (via `global_role`, not `role_permissions`) |
 | `admin` | `audit:view`, `dispatch:*`, `incident:create/read/transition`, `staff:manage`, `staff:reassign`, `surface:control-room` |
-| `manager` | `dispatch:*`, `incident:create/read`, `staff:reassign`, `surface:control-room` |
+| `manager` | `dispatch:*`, `incident:create/read/transition` (T4-5 via ABAC), `staff:reassign`, `surface:control-room` |
 | `staff` | `dispatch:read/update`, `incident:create/read`, `surface:field-client` |
 
 Full matrix in ADR-0011 §System roles.
+
+### Map Layout (MetLife only)
+
+The `tenants.mapLayout` JSONB column stores a multi-floor zone + POI
+configuration. The TypeScript interface lives in `src/lib/map-layout.ts`:
+
+```typescript
+interface MapLayout {
+  floors: MapFloor[];       // each floor is independent
+  defaultFloorId?: string;  // which floor to show on load
+}
+
+interface MapFloor {
+  id: string;               // "ground", "level-200", "suite-level"
+  name: string;             // "Ground Level (Concourse)"
+  level: number;            // 0 = ground, 1 = second level, etc.
+  zones: MapZone[];         // polygon boundaries on the 0-1000 grid
+  pois: MapPOI[];           // gates, restrooms, first aid, etc.
+}
+
+interface MapPOI {
+  id: string;
+  name: string;
+  type: POIType;            // entry | exit | restroom | first_aid | ... (11 types)
+  x: number; y: number;     // 0-1000 grid coords
+  notes?: string;
+}
+```
+
+**Modifying zones/POIs:** Currently via SQL or by editing the seed. A UI
+editor in the Tenants tab is planned.
+
+```sql
+-- View the layout
+SELECT map_layout FROM tenants WHERE id = 'tenant_metlife_ops';
+
+-- Update a zone name
+UPDATE tenants
+SET map_layout = jsonb_set(map_layout, '{floors,0,zones,0,name}', '"New Name"')
+WHERE id = 'tenant_metlife_ops';
+```
 
 ### Superadmin env var
 
@@ -330,7 +398,7 @@ superadmin — to demote, update the `users` table directly.
 
 ### Via the UI
 
-1. Open `http://localhost:5173`.
+1. Open `https://localhost:5173` (or `https://stadops.local:5173`).
 2. Enter `+14155550001` (staff) or `+14155552026` (admin) — or
    `+14155550000` (superadmin, seeded from `SUPERADMIN_PHONE` env).
 3. Click **Send Code** → the dev code appears.
@@ -340,12 +408,13 @@ superadmin — to demote, update the `users` table directly.
 
 ### Via curl (API-level testing)
 
-You can hit either port: `5173` (via vite proxy) or `8888` (direct to
-netlify dev). Examples below use `5173` to match the browser flow.
+You can hit either port: `5173` (via vite proxy, HTTPS) or `8888` (direct
+to netlify dev, HTTP). Examples below use `5173` to match the browser flow.
+Add `-k` for HTTPS self-signed certs.
 
 ```bash
 # Step 1: Request an OTP (dev mode returns the code)
-curl -s http://localhost:5173/api/auth/request-otp \
+curl -sk https://localhost:5173/api/auth/request-otp \
   -H 'Content-Type: application/json' \
   -d '{"phoneNumber": "+14155550001"}' | jq
 
@@ -520,6 +589,16 @@ tenant.
 |---|---|---|
 | `list` | `tenant:switch` | _(none)_ |
 | `create` | `tenant:manage` | `{ tenantId, orgName, bbox? }` — tenantId must match `/^tenant_[a-z0-9_]+$/` |
+
+#### `POST /api/admin/policies` — Rego policy management (M10)
+
+| Action | Required Permission | Body |
+|---|---|---|
+| `list` | `tenant:manage` | _(none)_ — returns system policy (read-only) + DB policies |
+| `create` | `tenant:manage` | `{ name, description, source }` — name must match `/^[a-z][a-z0-9/_-]*$/i` |
+| `update` | `tenant:manage` | `{ name, source?, description? }` |
+| `delete` | `tenant:manage` | `{ name }` — system policies protected |
+| `test` | `tenant:manage` | `{ source, input }` — spawns `opa eval`, returns `{ ok, allowed, elapsedMs }` (5s timeout) |
 
 ### Example: Creating a staff member as admin
 
