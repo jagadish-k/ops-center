@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN "map_layout" jsonb;

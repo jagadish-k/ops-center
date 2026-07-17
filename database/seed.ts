@@ -27,9 +27,12 @@ import {
 	tenantMembershipsTable,
 	userPermissionsTable,
 	staffRosterTable,
+	incidentsTable,
 	configTable,
 } from './schema.ts';
 import { seedSuperadmin } from './seed-superadmin.ts';
+
+import { METLIFE_MAP_LAYOUT } from '../src/lib/map-layout.ts';
 
 const { Pool } = pg;
 
@@ -121,7 +124,7 @@ const TENANTS = [
 	},
 ];
 
-// ─── Users (per plan §A.16 dev seed) ──────────────────────────────────────────
+// ─── Users (per plan §A.16 dev seed + expanded roster for map testing) ───────
 
 const DEV_USERS = [
 	{ phone: '+14155552026', fullName: 'Command Coordinator' },
@@ -129,9 +132,17 @@ const DEV_USERS = [
 	{ phone: '+14155552028', fullName: 'Mixed Role Morgan' },
 	{ phone: '+14155550001', fullName: 'Alpha Security Lead' },
 	{ phone: '+14155550002', fullName: 'Beta Medical Triage' },
+	// Additional staff for realistic map density
+	{ phone: '+14155550003', fullName: 'Gamma Security' },
+	{ phone: '+14155550004', fullName: 'Delta Medical' },
+	{ phone: '+14155550005', fullName: 'Echo Cleaning' },
+	{ phone: '+14155550006', fullName: 'Foxtrot Supervisor' },
+	{ phone: '+14155550007', fullName: 'Golf Security' },
+	{ phone: '+14155550008', fullName: 'Hotel Medical' },
+	{ phone: '+14155550009', fullName: 'India Cleaning' },
 ];
 
-// ─── Memberships ──────────────────────────────────────────────────────────────
+// ─── Memberships (expanded) ──────────────────────────────────────────────────
 
 const DEV_MEMBERSHIPS = [
 	{ phone: '+14155552026', tenantId: 'tenant_metlife_ops', roles: ['admin'] },
@@ -140,20 +151,77 @@ const DEV_MEMBERSHIPS = [
 	{ phone: '+14155552028', tenantId: 'tenant_sofi_ops', roles: ['manager'] },
 	{ phone: '+14155550001', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
 	{ phone: '+14155550002', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550003', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550004', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550005', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550006', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550007', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550008', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	{ phone: '+14155550009', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
 ];
 
-// ─── Staff roster rows (only for users who actually roam) ─────────────────────
+// ─── Staff roster with positions (spread across the 0–1000 grid) ──────────────
+// coord_x/coord_y are on the 0–1000 grid. lat/lng are the raw GPS values
+// (within the tenant's bounding box). status varies for realistic map display.
 
 const DEV_ROSTER = [
-	{ phone: '+14155552028', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A' },
-	{ phone: '+14155550001', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A' },
-	{ phone: '+14155550002', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-B' },
+	// Existing 3 (kept for backwards compat with tests) + expanded to 9 active
+	{ phone: '+14155552028', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'DISPATCHED', coordX: 380, coordY: 310, lat: 40.8135, lng: -74.0740 },
+	{ phone: '+14155550001', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 320, coordY: 280, lat: 40.8130, lng: -74.0745 },
+	{ phone: '+14155550002', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 610, coordY: 420, lat: 40.8120, lng: -74.0735 },
+	{ phone: '+14155550003', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-C', status: 'AVAILABLE', coordX: 750, coordY: 180, lat: 40.8140, lng: -74.0730 },
+	{ phone: '+14155550004', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-D', status: 'DISPATCHED', coordX: 540, coordY: 640, lat: 40.8115, lng: -74.0750 },
+	{ phone: '+14155550005', tenantId: 'tenant_metlife_ops', specialty: 'cleaning', assignedZone: 'ZONE-E', status: 'AVAILABLE', coordX: 720, coordY: 350, lat: 40.8128, lng: -74.0732 },
+	{ phone: '+14155550006', tenantId: 'tenant_metlife_ops', specialty: 'supervisor', assignedZone: 'ZONE-F', status: 'AVAILABLE', coordX: 850, coordY: 200, lat: 40.8142, lng: -74.0728 },
+	{ phone: '+14155550007', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-B', status: 'OFF_DUTY', coordX: 580, coordY: 380, lat: 40.8122, lng: -74.0738 },
+	{ phone: '+14155550008', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 280, coordY: 540, lat: 40.8118, lng: -74.0748 },
+	{ phone: '+14155550009', tenantId: 'tenant_metlife_ops', specialty: 'cleaning', assignedZone: 'ZONE-D', status: 'AVAILABLE', coordX: 500, coordY: 700, lat: 40.8113, lng: -74.0755 },
 ];
 
 // ─── Per-user grants (demonstrates P1 override mechanism) ─────────────────────
 
 const DEV_GRANTS = [
 	{ phone: '+14155550002', permission: 'audit:view', grantedByPhone: '+14155552026' },
+];
+
+// ─── Seed incidents (various tiers + positions for map testing) ───────────────
+
+const DEV_INCIDENTS = [
+	{
+		id: 'inc_seed_001', tenantId: 'tenant_metlife_ops',
+		tier: 1, status: 'OPEN', source: 'field_staff',
+		rawText: 'Section 112 — crowd surge against the perimeter railing. Multiple patrons at risk of crush injury.',
+		category: 'CROWD', severity: 'CRITICAL', locationSector: 'ZONE-B',
+		coordX: 610, coordY: 410, actionRequired: 'Deploy riot line + triage team immediately.',
+	},
+	{
+		id: 'inc_seed_002', tenantId: 'tenant_metlife_ops',
+		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
+		rawText: 'Physical altercation in upper deck, Section 308. Two individuals, no weapons observed.',
+		category: 'SECURITY', severity: 'HIGH', locationSector: 'ZONE-D',
+		coordX: 540, coordY: 630, actionRequired: 'Security team to SEC-308 to de-escalate.',
+	},
+	{
+		id: 'inc_seed_003', tenantId: 'tenant_metlife_ops',
+		tier: 3, status: 'OPEN', source: 'field_staff',
+		rawText: 'Unresponsive male near Gate C, possible cardiac event. AED requested.',
+		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-A',
+		coordX: 330, coordY: 270, actionRequired: 'AED + paramedic to Gate C concourse.',
+	},
+	{
+		id: 'inc_seed_004', tenantId: 'tenant_metlife_ops',
+		tier: 4, status: 'ON_SCENE', source: 'field_staff',
+		rawText: 'Overflowing restroom fixture causing standing water in corridor. Slip hazard.',
+		category: 'FACILITIES', severity: 'MEDIUM', locationSector: 'ZONE-E',
+		coordX: 720, coordY: 350, actionRequired: 'Facilities crew + wet-floor signage.',
+	},
+	{
+		id: 'inc_seed_005', tenantId: 'tenant_metlife_ops',
+		tier: 5, status: 'OPEN', source: 'field_staff',
+		rawText: 'Long concession queues at Section 200 causing congestion. Advisory only.',
+		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-C',
+		coordX: 750, coordY: 180, actionRequired: 'Monitor; open auxiliary point if congestion worsens.',
+	},
 ];
 
 // ─── Seed runner ──────────────────────────────────────────────────────────────
@@ -226,7 +294,7 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 			.execute();
 	}
 
-	// 7. Staff roster
+	// 7. Staff roster (with positions for map visualization)
 	console.log('  → Staff roster...');
 	for (const r of DEV_ROSTER) {
 		const userId = phoneToId.get(r.phone);
@@ -239,6 +307,11 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 				specialty: r.specialty,
 				assignedZone: r.assignedZone,
 				phoneNumber: r.phone,
+				status: (r as { status?: string }).status ?? 'AVAILABLE',
+				coordX: (r as { coordX?: number }).coordX,
+				coordY: (r as { coordY?: number }).coordY,
+				latitude: (r as { lat?: number }).lat,
+				longitude: (r as { lng?: number }).lng,
 			})
 			.onConflictDoUpdate({
 				target: [staffRosterTable.userId, staffRosterTable.tenantId],
@@ -246,6 +319,11 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 					specialty: r.specialty,
 					assignedZone: r.assignedZone,
 					phoneNumber: r.phone,
+					status: (r as { status?: string }).status ?? 'AVAILABLE',
+					coordX: (r as { coordX?: number }).coordX,
+					coordY: (r as { coordY?: number }).coordY,
+					latitude: (r as { lat?: number }).lat,
+					longitude: (r as { lng?: number }).lng,
 				},
 			})
 			.execute();
@@ -264,7 +342,25 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 			.execute();
 	}
 
-	// 9. Operational config
+	// 9. Seed incidents (for map visualization)
+	console.log('  → Seed incidents...');
+	for (const inc of DEV_INCIDENTS) {
+		await db
+			.insert(incidentsTable)
+			.values(inc)
+			.onConflictDoNothing()
+			.execute();
+	}
+
+	// 10. Map layouts (multi-floor zone/POI config per tenant)
+	console.log('  → Map layouts...');
+	await db
+		.update(tenantsTable)
+		.set({ mapLayout: METLIFE_MAP_LAYOUT as never })
+		.where(eq(tenantsTable.id, 'tenant_metlife_ops'))
+		.execute();
+
+	// 11. Operational config
 	console.log('  → Operational config...');
 	await db
 		.insert(configTable)

@@ -42,6 +42,36 @@ export const tenantsTable = pgTable('tenants', {
 	bboxMaxLat: doublePrecision('bbox_max_lat'),
 	bboxMinLng: doublePrecision('bbox_min_lng'),
 	bboxMaxLng: doublePrecision('bbox_max_lng'),
+	/**
+	 * Map layout configuration (JSONB) — defines floors, zones, and points of
+	 * interest for the OptimizedStadiumMapCanvas. Superadmins edit this via
+	 * the Tenants tab's "Map Layout" section.
+	 *
+	 * Structure:
+	 *   {
+	 *     floors: [{
+	 *       id: "ground",
+	 *       name: "Ground Level",
+	 *       level: 0,
+	 *       zones: [{
+	 *         id: "zone-a",
+	 *         name: "Gate A Concourse",
+	 *         polygon: [[x1,y1],[x2,y2],...],  // 0-1000 grid coords
+	 *         color: "#3b82f6",
+	 *         anchor: { x: 250, y: 250 }
+	 *       }],
+	 *       pois: [{
+	 *         id: "gate-a",
+	 *         name: "Gate A",
+	 *         type: "entry" | "exit" | "restroom" | "first_aid" |
+	 *               "concession" | "security_post" | "elevator" |
+	 *               "stairs" | "parking",
+	 *         x: 150, y: 100
+	 *       }]
+	 *     }]
+	 *   }
+	 */
+	mapLayout: jsonb('map_layout'),
 });
 
 // ─── Users (global identity — ADR-0010) ───────────────────────────────────────
