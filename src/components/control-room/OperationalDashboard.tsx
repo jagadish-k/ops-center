@@ -26,6 +26,7 @@ import { RolesTab } from './RolesTab';
 import { TenantsTab } from './TenantsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { useAutoTour, startTour } from '@/components/shared/GuideTour';
 import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
@@ -43,6 +44,9 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [auditOpen, setAuditOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<TabId>('operations');
+
+	// Auto-trigger the guide tour on first visit.
+	useAutoTour(true);
 
 	// Derive the freshest selected incident from the polled list.
 	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
@@ -71,14 +75,17 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 
 				<div className="ml-auto flex items-center gap-2">
 					{can('tenant:switch') && (
-						<TenantSwitcher
-							tenants={mockTenants}
-							activeTenantId={activeTenantId}
-							onTenantChange={onTenantChange}
-						/>
+						<div data-tour="tenant-switcher">
+							<TenantSwitcher
+								tenants={mockTenants}
+								activeTenantId={activeTenantId}
+								onTenantChange={onTenantChange}
+							/>
+						</div>
 					)}
 					{can('audit:view') && (
 						<Button
+							data-tour="compliance-log"
 							size="sm"
 							variant="secondary"
 							onPress={() => setAuditOpen(true)}
@@ -86,6 +93,14 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 							Compliance Log
 						</Button>
 					)}
+					<Button
+						data-tour="help-button"
+						size="sm"
+						variant="ghost"
+						onPress={() => startTour()}
+						className="font-bold uppercase tracking-widest">
+						? Help
+					</Button>
 					<Button
 						size="sm"
 						variant="secondary"
@@ -107,7 +122,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			)}
 
 			{/* ── Tab nav (M9.5) ────────────────────────────────────────── */}
-			<nav className="border-b border-slate-800 bg-slate-900/30 px-4">
+			<nav data-tour="tab-nav" className="border-b border-slate-800 bg-slate-900/30 px-4">
 				<Tabs
 					selectedKey={activeTab}
 					onSelectionChange={(k) => setActiveTab(k as TabId)}
@@ -129,7 +144,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				{activeTab === 'operations' && (
 					<ErrorBoundary name="Operations tab">
 						<div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">
-							<section className="min-h-[320px] lg:col-span-2 lg:min-h-0">
+							<section data-tour="map-canvas" className="min-h-[320px] lg:col-span-2 lg:min-h-0">
 								<OptimizedStadiumMapCanvas
 									incidents={incidents}
 									staffMembers={staff}
@@ -137,14 +152,14 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 								/>
 							</section>
 							<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
-								<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+								<div data-tour="incident-queue" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
 									<IncidentQueue
 										incidents={incidents}
 										selectedId={selectedId}
 										onSelect={handleSelect}
 									/>
 								</div>
-								<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+								<div data-tour="incident-inspector" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
 									<IncidentInspector incident={selected} />
 								</div>
 							</aside>
