@@ -65,7 +65,7 @@ export function TeamTab() {
 				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
 					{users?.length ?? 0} member{(users?.length ?? 0) === 1 ? '' : 's'}
 				</span>
-				<div className="ml-auto">
+				<div className="ml-auto" data-tour="team-add">
 					<Button size="sm" variant="secondary" onPress={() => setCreateOpen(true)}>
 						+ Add Staff
 					</Button>
@@ -82,7 +82,7 @@ export function TeamTab() {
 			{loading && users === null ? (
 				<TableSkeleton rows={5} cols={5} />
 			) : (
-				<div className="overflow-auto rounded border border-slate-800 bg-slate-900/40">
+				<div data-tour="team-table" className="overflow-auto rounded border border-slate-800 bg-slate-900/40">
 					<table className="w-full text-left text-xs">
 						<thead className="border-b border-slate-800 bg-slate-900/60 font-mono uppercase tracking-widest text-slate-500">
 							<tr>

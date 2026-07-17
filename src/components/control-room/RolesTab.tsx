@@ -67,7 +67,7 @@ export function RolesTab() {
 			{loading && roles === null ? (
 				<CardGridSkeleton cards={4} />
 			) : (
-				<div className="grid gap-3 lg:grid-cols-2">
+				<div data-tour="roles-grid" className="grid gap-3 lg:grid-cols-2">
 					{roles?.map((role) => (
 						<RoleCard
 							key={role.name}
