@@ -78,7 +78,8 @@ via `perms_version`** (ADR-0010 through ADR-0014). See all ADRs in
 | M9.4 — ABAC v1 | ✅ Done | OPA/WASM policy engine + 5 attribute-aware policies |
 | M9.5 — Admin UI | ✅ Done | Team, Roles, Tenants tabs + per-user grants (react-hook-form + zod) |
 | M9.6 — Hardening | ✅ Done | Error boundaries, optimistic updates, skeleton loaders |
-| M10 — Policy UI | ⏳ Next | CodeMirror Rego editor + policy tester |
+| M10 — Policy UI v1 | ✅ Done | CodeMirror Rego editor + OPA test runner + DB-stored policies |
+| M10 — Policy UI v2 | ⏳ Planned | Per-tenant overrides, rebuild-and-deploy, audit integration |
 
 ---
 

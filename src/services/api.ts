@@ -360,3 +360,59 @@ export async function adminCreateTenant(input: CreateTenantInput): Promise<Admin
 		body: JSON.stringify({ action: 'create', ...input }),
 	});
 }
+
+// ── Policies ──
+
+export interface AdminPolicy {
+	name: string;
+	description: string;
+	source: string;
+	enabled: boolean;
+	updatedAt: string | null;
+	updatedBy: string | null;
+	isSystem: boolean;
+}
+
+export interface PolicyTestResult {
+	ok: boolean;
+	allowed?: boolean;
+	error?: string;
+	elapsedMs: number;
+}
+
+export async function adminListPolicies(): Promise<AdminPolicy[]> {
+	const r = await apiFetch<{ policies: AdminPolicy[] }>('/api/admin/policies', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'list' }),
+	});
+	return r.policies;
+}
+
+export async function adminCreatePolicy(input: { name: string; description: string; source: string }): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/policies', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'create', ...input }),
+	});
+}
+
+export async function adminUpdatePolicy(name: string, updates: { source?: string; description?: string }): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/policies', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'update', name, ...updates }),
+	});
+}
+
+export async function adminDeletePolicy(name: string): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/policies', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'delete', name }),
+	});
+}
+
+export async function adminTestPolicy(source: string, input: unknown): Promise<PolicyTestResult> {
+	const r = await apiFetch<{ result: PolicyTestResult }>('/api/admin/policies', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'test', source, input }),
+	});
+	return r.result;
+}

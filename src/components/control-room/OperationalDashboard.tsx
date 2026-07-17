@@ -24,11 +24,12 @@ import { AuditTimelineInspector } from './AuditTimelineInspector';
 import { TeamTab } from './TeamTab';
 import { RolesTab } from './RolesTab';
 import { TenantsTab } from './TenantsTab';
+import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
-type TabId = 'operations' | 'team' | 'roles' | 'tenants';
+type TabId = 'operations' | 'team' | 'roles' | 'tenants' | 'policies';
 
 interface OperationalDashboardProps {
 	onTenantChange: (tenantId: string) => void;
@@ -116,6 +117,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 					{can('staff:manage') && <Tab id="team" label="Team" />}
 					{can('tenant:manage') && <Tab id="roles" label="Roles" />}
 					{can('tenant:switch') && <Tab id="tenants" label="Tenants" />}
+					{can('tenant:manage') && <Tab id="policies" label="Policies" />}
 				</Tabs>
 			</nav>
 
@@ -159,6 +161,11 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				{activeTab === 'tenants' && can('tenant:switch') && (
 					<ErrorBoundary name="Tenants tab">
 						<TenantsTab />
+					</ErrorBoundary>
+				)}
+				{activeTab === 'policies' && can('tenant:manage') && (
+					<ErrorBoundary name="Policies tab">
+						<PoliciesTab />
 					</ErrorBoundary>
 				)}
 			</main>

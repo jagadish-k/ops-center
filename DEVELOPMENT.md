@@ -172,6 +172,7 @@ After authentication, you'll land in the **Control Room** with a tab bar:
 | **Team** | `staff:manage` (admin+) | Staff CRUD, role assignment, per-user grants |
 | **Roles** | `tenant:manage` (superadmin) | Role definitions, permission matrix, cascade-revoke |
 | **Tenants** | `tenant:switch` (superadmin) | Tenant list + create |
+| **Policies** | `tenant:manage` (superadmin) | Rego policy editor + test runner (M10) |
 
 Tabs are permission-gated: a user without `staff:manage` won't see the Team
 tab at all. Each tab is wrapped in its own ErrorBoundary so one broken tab
@@ -213,6 +214,17 @@ the tab layer.
    bumped and they'll refresh on next request
 4. If you removed a permission and some users had per-user grants of it, a
    cascade-revoke modal lets you bulk-revoke those grants (max 100/batch)
+
+**Author / test a Rego policy (superadmin):**
+1. **Policies** tab → **+ New Policy**
+2. Give it a namespaced name (e.g., `stadium/custom`), description, and Rego source
+3. Use the CodeMirror editor — Rego keywords + strings are highlighted
+4. Open the **Test runner** panel, paste input JSON, click **Run test**
+5. The server invokes `opa eval` with your source + input and returns the decision
+6. **Save** commits the source to the `policies` DB table (audit-logged)
+7. The system policy (`stadium/authz`) is shown as read-only — edit it via PR
+8. To activate a DB policy, the build script must include it in the WASM bundle
+   at deploy time (see `scripts/build-policies.ts` for the integration seam)
 
 > **Note:** The current UI is the auth gateway only (Milestone 1). The Control
 > Room dashboard and Field Client surfaces are built in Milestones 2–5.
