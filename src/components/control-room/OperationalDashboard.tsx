@@ -24,6 +24,7 @@ import { AuditTimelineInspector } from './AuditTimelineInspector';
 import { TeamTab } from './TeamTab';
 import { RolesTab } from './RolesTab';
 import { TenantsTab } from './TenantsTab';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
@@ -118,34 +119,48 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				</Tabs>
 			</nav>
 
-			{/* ── Tab content ───────────────────────────────────────────── */}
+			{/* ── Tab content (each wrapped in its own ErrorBoundary) ──── */}
 			<main className="min-h-0 flex-1 overflow-hidden">
 				{activeTab === 'operations' && (
-					<div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">
-						<section className="min-h-[320px] lg:col-span-2 lg:min-h-0">
-							<OptimizedStadiumMapCanvas
-								incidents={incidents}
-								staffMembers={staff}
-								onIncidentSelect={handleSelect}
-							/>
-						</section>
-						<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
-							<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
-								<IncidentQueue
+					<ErrorBoundary name="Operations tab">
+						<div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">
+							<section className="min-h-[320px] lg:col-span-2 lg:min-h-0">
+								<OptimizedStadiumMapCanvas
 									incidents={incidents}
-									selectedId={selectedId}
-									onSelect={handleSelect}
+									staffMembers={staff}
+									onIncidentSelect={handleSelect}
 								/>
-							</div>
-							<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
-								<IncidentInspector incident={selected} />
-							</div>
-						</aside>
-					</div>
+							</section>
+							<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
+								<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+									<IncidentQueue
+										incidents={incidents}
+										selectedId={selectedId}
+										onSelect={handleSelect}
+									/>
+								</div>
+								<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+									<IncidentInspector incident={selected} />
+								</div>
+							</aside>
+						</div>
+					</ErrorBoundary>
 				)}
-				{activeTab === 'team' && can('staff:manage') && <TeamTab />}
-				{activeTab === 'roles' && can('tenant:manage') && <RolesTab />}
-				{activeTab === 'tenants' && can('tenant:switch') && <TenantsTab />}
+				{activeTab === 'team' && can('staff:manage') && (
+					<ErrorBoundary name="Team tab">
+						<TeamTab />
+					</ErrorBoundary>
+				)}
+				{activeTab === 'roles' && can('tenant:manage') && (
+					<ErrorBoundary name="Roles tab">
+						<RolesTab />
+					</ErrorBoundary>
+				)}
+				{activeTab === 'tenants' && can('tenant:switch') && (
+					<ErrorBoundary name="Tenants tab">
+						<TenantsTab />
+					</ErrorBoundary>
+				)}
 			</main>
 
 			{/* ── Compliance slide-out ──────────────────────────────────── */}

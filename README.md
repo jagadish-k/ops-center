@@ -75,9 +75,10 @@ via `perms_version`** (ADR-0010 through ADR-0014). See all ADRs in
 | M9.1 — Drizzle | ✅ Done | Full Drizzle ORM adoption (replaces raw `pg`) |
 | M9.2 — Identity Split | ✅ Done | `users` + `tenant_memberships` + JWT-3 (`permissions[]` + `pv`) |
 | M9.3 — RBAC Admin API | ✅ Done | Users CRUD, role management, cascade-revoke, per-user grants |
-| M9.4 — ABAC v1 | ⏳ Next | OPA/WASM policy engine + 5 attribute-aware policies |
-| M9.5 — Admin UI | ⏳ Planned | Team, Roles, User Permissions, Tenants tabs |
-| M10 — Policy UI | ⏳ Planned | CodeMirror Rego editor + policy tester |
+| M9.4 — ABAC v1 | ✅ Done | OPA/WASM policy engine + 5 attribute-aware policies |
+| M9.5 — Admin UI | ✅ Done | Team, Roles, Tenants tabs + per-user grants (react-hook-form + zod) |
+| M9.6 — Hardening | ✅ Done | Error boundaries, optimistic updates, skeleton loaders |
+| M10 — Policy UI | ⏳ Next | CodeMirror Rego editor + policy tester |
 
 ---
 

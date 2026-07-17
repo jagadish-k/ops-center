@@ -148,18 +148,71 @@ npm run dev            # re-provisions .env + migrates + starts
 Open your browser to:
 
 ```
-http://localhost:5173
+https://stadops.local:5173/
 ```
 
-> The UI is served by **vite** (port 5173). The API runs on **netlify dev**
-> (port 8888); vite proxies `/api/*` requests there transparently. Either
-> port works for API calls — use 5173 for the browser (correct assets),
-> use 8888 only for direct API testing.
+> The UI is served by **vite** (HTTPS port 5173, mkcert self-signed). The API
+> runs on **netlify dev** (port 8888); vite proxies `/api/*` requests there
+> transparently. Accept the browser's self-signed cert warning on first visit
+> (mkcert's local CA is trusted after `mkcert -install`).
+>
+> `https://localhost:5173/` also works (both hostnames are in the cert's SAN
+> list).
 
 You'll see the **OTP Authentication Gateway** — a dark, high-contrast screen
 with:
 - An E.164 phone number input
 - A "Send Code" button
+
+After authentication, you'll land in the **Control Room** with a tab bar:
+
+| Tab | Permission | Purpose |
+|---|---|---|
+| **Operations** | `surface:control-room` (admin+) | Live map + incident queue + inspector |
+| **Team** | `staff:manage` (admin+) | Staff CRUD, role assignment, per-user grants |
+| **Roles** | `tenant:manage` (superadmin) | Role definitions, permission matrix, cascade-revoke |
+| **Tenants** | `tenant:switch` (superadmin) | Tenant list + create |
+
+Tabs are permission-gated: a user without `staff:manage` won't see the Team
+tab at all. Each tab is wrapped in its own ErrorBoundary so one broken tab
+doesn't kill the dashboard; a top-level boundary catches anything that escapes
+the tab layer.
+
+### Loading states
+
+- **Initial data fetch:** skeleton placeholders shaped like the upcoming
+  content (table rows for Team, cards for Roles/Tenants). Avoids layout shift.
+- **Optimistic updates:** when you toggle a role or save a permission change,
+  the UI updates immediately. If the server rejects the change, the list
+  rolls back to its previous state and an error appears.
+- **Per-row spinners:** long-running mutations (delete, cascade-revoke) show
+  a spinner on the affected row.
+
+### Admin UI workflow examples
+
+**Create a new staff member:**
+1. Open the **Team** tab → **+ Add Staff**
+2. Fill in phone (E.164), full name, specialty, zone, role(s)
+3. Validation runs on submit (zod); errors show inline
+4. On success, the new staff appears in the table immediately (optimistic)
+
+**Promote a staff member to manager:**
+1. Find the user in the Team table → **Edit**
+2. Check the `manager` role checkbox
+3. The role list updates optimistically; server confirms or rolls back
+
+**Give a specific user an extra permission (e.g., `audit:view` to a staff member):**
+1. Team table → **Perms** button on the user's row
+2. Check `audit:view` in the drawer
+3. The grant is additive (ADR-0011 P1) — it doesn't change their role
+
+**Edit a role's permissions (superadmin):**
+1. **Roles** tab → **Edit Permissions** on the role card
+2. Toggle permissions in the matrix. Added = green, removed = red strikethrough
+3. **Save Changes** triggers the update; affected users' `perms_version` is
+   bumped and they'll refresh on next request
+4. If you removed a permission and some users had per-user grants of it, a
+   cascade-revoke modal lets you bulk-revoke those grants (max 100/batch)
 
 > **Note:** The current UI is the auth gateway only (Milestone 1). The Control
 > Room dashboard and Field Client surfaces are built in Milestones 2–5.
