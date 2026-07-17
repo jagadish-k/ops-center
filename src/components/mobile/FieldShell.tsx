@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import type { DispatchDirective } from '@/types';
-import { updateDispatchStatus } from '@/services/api';
+import { useOfflineQueue } from '@/hooks/useOfflineQueue';
 import { useGeolocationTracking } from '@/hooks/useGeolocationTracking';
 import { VoiceIngest } from './VoiceIngest';
 import { ManualTriageDrawer } from './ManualTriageDrawer';
@@ -24,6 +24,7 @@ interface FieldShellProps {
 
 export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellProps) {
 	const { dispatches, connectionHealthy } = useActiveOps();
+	const { enqueueOrSend, pendingCount, isOnline } = useOfflineQueue();
 	const [triageOpen, setTriageOpen] = useState(false);
 
 	// Live GPS tracking — 3m debounce, 500ms throttle, POSTs to /api/staff-location.
@@ -40,7 +41,9 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 
 	const handleAck = async (dispatch: DispatchDirective): Promise<void> => {
 		try {
-			await updateDispatchStatus(dispatch.id, 'ACKNOWLEDGED');
+			await enqueueOrSend('Dispatch acknowledge', '/api/mutations', 'POST', {
+				action: 'update_dispatch', dispatchId: dispatch.id, nextStatus: 'ACKNOWLEDGED',
+			});
 		} catch (err) {
 			console.error('Failed to acknowledge dispatch:', err);
 		}
@@ -48,7 +51,9 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 
 	const handleOnScene = async (dispatch: DispatchDirective): Promise<void> => {
 		try {
-			await updateDispatchStatus(dispatch.id, 'ON_SCENE');
+			await enqueueOrSend('Dispatch on-scene', '/api/mutations', 'POST', {
+				action: 'update_dispatch', dispatchId: dispatch.id, nextStatus: 'ON_SCENE',
+			});
 		} catch (err) {
 			console.error('Failed to mark on-scene:', err);
 		}
@@ -56,7 +61,9 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 
 	const handleResolve = async (dispatch: DispatchDirective): Promise<void> => {
 		try {
-			await updateDispatchStatus(dispatch.id, 'RESOLVED');
+			await enqueueOrSend('Dispatch resolve', '/api/mutations', 'POST', {
+				action: 'update_dispatch', dispatchId: dispatch.id, nextStatus: 'RESOLVED',
+			});
 		} catch (err) {
 			console.error('Failed to resolve dispatch:', err);
 		}
@@ -70,9 +77,19 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 					Field Active Link
 				</h1>
 				<div className="ml-auto flex items-center gap-2">
+					{pendingCount > 0 && (
+						<span className="rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-400">
+							{pendingCount} pending
+						</span>
+					)}
+					{!isOnline && (
+						<span className="font-mono text-[10px] uppercase tracking-widest text-red-400">
+							Offline
+						</span>
+					)}
 					<span
 						className={`h-2 w-2 rounded-full ${
-							connectionHealthy ? 'bg-emerald-500' : 'bg-amber-500'
+							connectionHealthy && isOnline ? 'bg-emerald-500' : 'bg-amber-500'
 						}`}
 					/>
 					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">

@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Drawer, Button, Spinner } from '@heroui/react';
 import type { IncidentCategory, IncidentSeverity } from '@/types';
-import { apiFetch, ApiError } from '@/services/api';
+import { useOfflineQueue } from '@/hooks/useOfflineQueue';
 
 interface ManualTriageDrawerProps {
 	isOpen: boolean;
@@ -45,9 +45,8 @@ const STEP_LABELS: Record<Step, string> = {
 export function ManualTriageDrawer({
 	isOpen,
 	onClose,
-	staffPhone,
-	tenantId,
 }: ManualTriageDrawerProps) {
+	const { enqueueOrSend } = useOfflineQueue();
 	const [step, setStep] = useState<Step>(1);
 	const [category, setCategory] = useState<IncidentCategory | null>(null);
 	const [severity, setSeverity] = useState<IncidentSeverity | null>(null);
@@ -75,25 +74,28 @@ export function ManualTriageDrawer({
 		setSubmitting(true);
 		setFeedback(null);
 		try {
-			await apiFetch('/api/mutations', {
-				method: 'POST',
-				body: JSON.stringify({
-					action: 'create_incident',
-					category,
-					severity,
-					locationSector: zone,
-					rawText: `Manual triage — ${category} / ${severity} at ${zone}`,
-				}),
+			const body = {
+				action: 'create_incident',
+				category,
+				severity,
+				locationSector: zone,
+				rawText: `Manual triage — ${category} / ${severity} at ${zone}`,
+			};
+			const result = await enqueueOrSend(
+				'Manual triage report',
+				'/api/mutations',
+				'POST',
+				body,
+			);
+			setFeedback({
+				kind: 'ok',
+				text: result.queued ? 'Queued — will sync when online.' : 'Report filed.',
 			});
-			setFeedback({ kind: 'ok', text: 'Report filed.' });
 			window.setTimeout(() => handleClose(), 1200);
 		} catch (err) {
 			setFeedback({
 				kind: 'err',
-				text:
-					err instanceof ApiError || err instanceof Error
-						? `Offline — staged locally. (${err.message})`
-						: 'Unknown error.',
+				text: err instanceof Error ? `Failed: ${err.message}` : 'Unknown error.',
 			});
 		} finally {
 			setSubmitting(false);

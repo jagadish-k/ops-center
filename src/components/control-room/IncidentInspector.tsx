@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { Button, Spinner } from '@heroui/react';
 import type { IncidentReport, IncidentStatus } from '@/types';
-import { ApiError, transitionIncident, createDispatch } from '@/services/api';
+import { useOfflineQueue } from '@/hooks/useOfflineQueue';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import { tierBadge, severityBadge, statusBadge } from '@/lib/ui';
 
@@ -18,6 +18,7 @@ interface IncidentInspectorProps {
 
 export function IncidentInspector({ incident }: IncidentInspectorProps) {
 	const { staff } = useActiveOps();
+	const { enqueueOrSend } = useOfflineQueue();
 	const [localStatus, setLocalStatus] = useState<IncidentStatus | null>(null);
 	const [pending, setPending] = useState<string | null>(null);
 	const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -47,14 +48,18 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 		setPending(action);
 		setFeedback(null);
 		try {
-			const updated = await transitionIncident(incident.id, next);
-			setLocalStatus(updated.status);
-			setFeedback({ kind: 'ok', text: `${action.toUpperCase()} confirmed by server.` });
+			const result = await enqueueOrSend(action, '/api/mutations', 'POST', {
+				action: 'transition_incident',
+				incidentId: incident.id,
+				nextStatus: next,
+			});
+			setLocalStatus(next);
+			setFeedback({
+				kind: 'ok',
+				text: result.queued ? `${action.toUpperCase()} queued — will sync.` : `${action.toUpperCase()} confirmed by server.`,
+			});
 		} catch (err) {
-			const text =
-				err instanceof ApiError || err instanceof Error
-					? `${action} failed: ${err.message}`
-					: 'Unknown error.';
+			const text = err instanceof Error ? `${action} failed: ${err.message}` : 'Unknown error.';
 			setFeedback({ kind: 'err', text });
 		} finally {
 			setPending(null);
@@ -75,18 +80,19 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 		setPending('dispatch');
 		setFeedback(null);
 		try {
-			await createDispatch(
-				incident.id,
-				staffPhone,
-				`Respond to ${incident.extractedMetadata.locationSector}: ${incident.rawText.slice(0, 100)}`,
-			);
-			setFeedback({ kind: 'ok', text: 'Dispatch sent to staff member.' });
+			const result = await enqueueOrSend('Dispatch', '/api/mutations', 'POST', {
+				action: 'create_dispatch',
+				incidentId: incident.id,
+				targetStaffPhone: staffPhone,
+				directiveText: `Respond to ${incident.extractedMetadata.locationSector}: ${incident.rawText.slice(0, 100)}`,
+			});
+			setFeedback({
+				kind: 'ok',
+				text: result.queued ? 'Dispatch queued — will sync.' : 'Dispatch sent to staff member.',
+			});
 			setShowDispatchPicker(false);
 		} catch (err) {
-			const text =
-				err instanceof ApiError || err instanceof Error
-					? `Dispatch failed: ${err.message}`
-					: 'Unknown error.';
+			const text = err instanceof Error ? `Dispatch failed: ${err.message}` : 'Unknown error.';
 			setFeedback({ kind: 'err', text });
 		} finally {
 			setPending(null);
