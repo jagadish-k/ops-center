@@ -11,7 +11,7 @@
  * Live operational state is consumed from the ActiveOps context (diff-polling).
  */
 import { useMemo, useState } from 'react';
-import { Button, Tabs, Tab, TabList, TabPanel } from '@heroui/react';
+import { Button, Tabs } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
@@ -111,13 +111,16 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				<Tabs
 					selectedKey={activeTab}
 					onSelectionChange={(k) => setActiveTab(k as TabId)}
-					aria-label="Control Room sections"
 				>
-					<Tab id="operations" label="Operations" />
-					{can('staff:manage') && <Tab id="team" label="Team" />}
-					{can('tenant:manage') && <Tab id="roles" label="Roles" />}
-					{can('tenant:switch') && <Tab id="tenants" label="Tenants" />}
-					{can('tenant:manage') && <Tab id="policies" label="Policies" />}
+					<Tabs.ListContainer>
+						<Tabs.List aria-label="Control Room sections">
+							<Tabs.Tab id="operations">Operations<Tabs.Indicator /></Tabs.Tab>
+							{can('staff:manage') && <Tabs.Tab id="team">Team<Tabs.Indicator /></Tabs.Tab>}
+							{can('tenant:manage') && <Tabs.Tab id="roles">Roles<Tabs.Indicator /></Tabs.Tab>}
+							{can('tenant:switch') && <Tabs.Tab id="tenants">Tenants<Tabs.Indicator /></Tabs.Tab>}
+							{can('tenant:manage') && <Tabs.Tab id="policies">Policies<Tabs.Indicator /></Tabs.Tab>}
+						</Tabs.List>
+					</Tabs.ListContainer>
 				</Tabs>
 			</nav>
 
@@ -178,7 +181,3 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 		</div>
 	);
 }
-
-// Re-export for consumers that want HeroUI tab primitives directly.
-void TabList;
-void TabPanel;

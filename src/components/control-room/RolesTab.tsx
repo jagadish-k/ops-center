@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Spinner, Drawer, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
+import { Button, Input, Spinner, Drawer, Modal } from '@heroui/react';
 import {
 	adminListRoles,
 	adminCreateRole,
@@ -426,33 +426,40 @@ function CascadeRevokeModal({
 	};
 
 	return (
-		<Modal isOpen={true} onOpenChange={() => onClose()}>
-			<ModalContent>
-				<ModalHeader className="font-mono text-sm uppercase tracking-widest">
-					Cascade Revoke — {permission}
-				</ModalHeader>
-				<ModalBody>
-					<p className="text-xs text-slate-400">
-						Paste UUIDs of users who held <strong>{roleName}</strong> and had a per-user grant of{' '}
-						<code>{permission}</code>. Max 100 per batch.
-					</p>
-					<textarea
-						className="mt-2 h-32 w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-xs text-slate-200"
-						placeholder="paste UUIDs separated by newlines or commas"
-						value={userIds}
-						onChange={(e) => setUserIds(e.target.value)}
-					/>
-					{error && <p className="text-xs text-red-300">{error}</p>}
-					{result !== null && <p className="text-xs text-emerald-300">✓ Revoked from {result} user(s).</p>}
-				</ModalBody>
-				<ModalFooter>
-					<Button size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
-					<Button size="sm" variant="primary" onPress={submit} disabled={submitting || result !== null}>
-						{submitting ? <Spinner size="sm" /> : `Revoke from ${userIds.split(/[\s,]+/).filter(Boolean).length} user(s)`}
-					</Button>
-					{result !== null && <Button size="sm" variant="secondary" onPress={onClose}>Done</Button>}
-				</ModalFooter>
-			</ModalContent>
+		<Modal>
+			<Modal.Backdrop isOpen={true} onOpenChange={() => onClose()}>
+				<Modal.Container>
+					<Modal.Dialog className="sm:max-w-lg">
+						<Modal.CloseTrigger />
+						<Modal.Header>
+							<Modal.Heading className="font-mono text-sm uppercase tracking-widest">
+								Cascade Revoke — {permission}
+							</Modal.Heading>
+						</Modal.Header>
+						<Modal.Body>
+							<p className="text-xs text-slate-400">
+								Paste UUIDs of users who held <strong>{roleName}</strong> and had a per-user grant of{' '}
+								<code>{permission}</code>. Max 100 per batch.
+							</p>
+							<textarea
+								className="mt-2 h-32 w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-xs text-slate-200"
+								placeholder="paste UUIDs separated by newlines or commas"
+								value={userIds}
+								onChange={(e) => setUserIds(e.target.value)}
+							/>
+							{error && <p className="text-xs text-red-300">{error}</p>}
+							{result !== null && <p className="text-xs text-emerald-300">✓ Revoked from {result} user(s).</p>}
+						</Modal.Body>
+						<Modal.Footer>
+							<Button size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
+							<Button size="sm" variant="primary" onPress={submit} disabled={submitting || result !== null}>
+								{submitting ? <Spinner size="sm" /> : `Revoke from ${userIds.split(/[\s,]+/).filter(Boolean).length} user(s)`}
+							</Button>
+							{result !== null && <Button size="sm" variant="secondary" onPress={onClose}>Done</Button>}
+						</Modal.Footer>
+					</Modal.Dialog>
+				</Modal.Container>
+			</Modal.Backdrop>
 		</Modal>
 	);
 }
