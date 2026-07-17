@@ -1,0 +1,1 @@
+/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/protect-mcp__policy-enforcer.md

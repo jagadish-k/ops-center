@@ -1,0 +1,1 @@
+/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/hr-legal-compliance__legal-advisor.md

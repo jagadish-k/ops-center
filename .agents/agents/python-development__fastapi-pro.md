@@ -1,0 +1,1 @@
+/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/python-development__fastapi-pro.md

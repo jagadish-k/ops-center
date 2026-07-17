@@ -1,0 +1,1 @@
+/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/documentation-generation__docs-architect.md

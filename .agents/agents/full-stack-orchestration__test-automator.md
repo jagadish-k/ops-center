@@ -1,0 +1,1 @@
+/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/full-stack-orchestration__test-automator.md

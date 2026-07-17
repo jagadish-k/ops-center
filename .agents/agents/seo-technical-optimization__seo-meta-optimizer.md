@@ -1,0 +1,1 @@
+/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/seo-technical-optimization__seo-meta-optimizer.md
