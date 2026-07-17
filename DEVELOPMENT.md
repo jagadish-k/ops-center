@@ -183,16 +183,12 @@ If you want to test real SMS delivery locally:
 
 ## 6. Seeded Test Users
 
-The migration seeds three users into the `tenant_metlife_ops` tenant. Use these
-phone numbers for local testing:
+The seed (run automatically by `npm run dev` and `npm run db:seed`) creates
+three tenants plus six users exercising every role, cross-tenant
+membership, and the per-user permission override mechanism. Roles and
+permissions are defined per ADR-0010 / ADR-0011.
 
-| Phone Number | Name | Role | Specialty | Zone |
-|---|---|---|---|---|
-| `+14155552026` | Command Coordinator | **admin** | supervisor | ZONE-A |
-| `+14155550001` | Alpha Security Lead | **staff** | security | ZONE-A |
-| `+14155550002` | Beta Medical Triage | **staff** | medical | ZONE-B |
-
-Three tenants are also seeded:
+### Tenants
 
 | Tenant ID | Name |
 |---|---|
@@ -200,9 +196,35 @@ Three tenants are also seeded:
 | `tenant_sofi_ops` | SoFi Stadium Command Center |
 | `tenant_hardrock_ops` | Hard Rock Tournament Hub |
 
-> **Tip:** All three users share the same phone-as-ID pattern. The admin user
-> (`+14155552026`) will eventually route to the Control Room dashboard. Staff
-> users route to the Field Client.
+### Users
+
+| Phone | Name | global_role | Memberships | Notes |
+|---|---|---|---|---|
+| `$SUPERADMIN_PHONE` (default `+14155550000`) | Default Superadmin | `superadmin` | _(none)_ | Env-seeded via ADR-0010 §Superadmin Bootstrap |
+| `+14155552026` | Command Coordinator | `member` | `metlife: [admin]` | Control Room operator |
+| `+14155552027` | Maya the Manager | `member` | `metlife: [manager]` | Coordinator role |
+| `+14155552028` | Mixed Role Morgan | `member` | `metlife: [staff]`, `sofi: [manager]` | Demonstrates cross-tenant multi-membership |
+| `+14155550001` | Alpha Security Lead | `member` | `metlife: [staff]` | Field Client user |
+| `+14155550002` | Beta Medical Triage | `member` | `metlife: [staff]` + override `audit:view` | Demonstrates per-user grant (ADR-0011) |
+
+### Roles (system roles, preseeded)
+
+| Role | Permissions (summary) |
+|---|---|
+| `superadmin` | All 15 permissions (via `global_role`, not `role_permissions`) |
+| `admin` | `audit:view`, `dispatch:*`, `incident:create/read/transition`, `staff:manage`, `staff:reassign`, `surface:control-room` |
+| `manager` | `dispatch:*`, `incident:create/read`, `staff:reassign`, `surface:control-room` |
+| `staff` | `dispatch:read/update`, `incident:create/read`, `surface:field-client` |
+
+Full matrix in ADR-0011 §System roles.
+
+### Superadmin env var
+
+`SUPERADMIN_PHONE` in `.env` controls which phone number receives
+`global_role='superadmin'` on first migration run. The seeding is
+idempotent: re-running `npm run db:seed-superadmin` upserts and re-asserts
+the superadmin role. Removing the env var does **not** demote an existing
+superadmin — to demote, update the `users` table directly.
 
 ---
 
@@ -253,6 +275,48 @@ curl -s http://localhost:8888/api/state-poll \
 # Decode the payload (middle segment) — no signature verification
 echo "eyJhbGciOi..." | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 ```
+
+The post-ADR-0013 JWT payload contains:
+
+```json
+{
+  "sub": "<user uuid>",
+  "global_role": "member",
+  "tenant_id": "tenant_metlife_ops",
+  "permissions": ["incident:create", "incident:read", ...],
+  "pv": 7,
+  "auth_provider": "phone_otp",
+  "iat": 1234567890,
+  "exp": 1234571490,
+  "iss": "stadium-ops",
+  "aud": "stadium-ops-clients"
+}
+```
+
+### Token Refresh (ADR-0013)
+
+When a user's permissions change (role edit, per-user grant, bulk cascade
+revoke), the server bumps `users.perms_version`. Any in-flight JWT with a
+stale `pv` claim is rejected on the next protected request with:
+
+```
+HTTP/1.1 401 Unauthorized
+X-Reason: stale-perms
+```
+
+The client treats this as a silent refresh trigger:
+
+```bash
+# Exchange the stale (or recently expired) JWT for a fresh one.
+curl -s http://localhost:8888/api/auth/refresh \
+  -H "Authorization: Bearer $STALE_TOKEN" | jq
+```
+
+Rules:
+- JWT signature must verify (even if `exp` has passed).
+- Refresh grace period: **5 minutes** post-expiry.
+- Rate limit: **10 calls/min/user** (per warm function instance).
+- Returns the same `sub` with a fresh `permissions[]` array and current `pv`.
 
 ---
 

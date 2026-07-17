@@ -1,6 +1,7 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import type {
-	OperationalRole,
+	GlobalRole,
+	SystemScopedRole,
 	StaffSpecialty,
 	StaffStatus,
 	IncidentCategory,
@@ -17,8 +18,7 @@ import type {
 
 /**
  * Type-level and value-level sanity checks for the canonical domain types.
- * Ensures the unions hold the resolved values from ADR-0007 / STRUCTURAL-TYPES.md
- * and that no stale values (CLOSED, DISPATCHED-as-status, etc.) leak back in.
+ * Post-ADR-0010/0011/0013: identity split, DB-driven roles, new JWT shape.
  */
 
 describe('domain type unions', () => {
@@ -28,13 +28,13 @@ describe('domain type unions', () => {
 		expectTypeOf<InfoTier>().toEqualTypeOf<1 | 2 | 3 | 4 | 5>();
 	});
 
-	it('IncidentStatus does NOT contain CLOSED or DISPATCHED (resolved contradiction)', () => {
+	it('IncidentStatus does NOT contain CLOSED or DISPATCHED', () => {
 		const statuses: IncidentStatus[] = ['OPEN', 'ACKNOWLEDGED', 'ON_SCENE', 'RESOLVED'];
 		expect(statuses).not.toContain('CLOSED');
 		expect(statuses).not.toContain('DISPATCHED');
 	});
 
-	it('StaffStatus uses AVAILABLE/DISPATCHED/OFF_DUTY (not ACTIVE)', () => {
+	it('StaffStatus uses AVAILABLE/DISPATCHED/OFF_DUTY', () => {
 		const statuses: StaffStatus[] = ['AVAILABLE', 'DISPATCHED', 'OFF_DUTY'];
 		expect(statuses).not.toContain('ACTIVE');
 	});
@@ -45,8 +45,13 @@ describe('domain type unions', () => {
 		expect(specialties).not.toContain('command');
 	});
 
-	it('OperationalRole is the three-role hierarchy', () => {
-		const roles: OperationalRole[] = ['superadmin', 'admin', 'staff'];
+	it('GlobalRole is superadmin | member (ADR-0010)', () => {
+		const roles: GlobalRole[] = ['superadmin', 'member'];
+		expect(roles).toHaveLength(2);
+	});
+
+	it('SystemScopedRole covers the four preseeded roles (ADR-0011)', () => {
+		const roles: SystemScopedRole[] = ['admin', 'manager', 'staff'];
 		expect(roles).toHaveLength(3);
 	});
 
@@ -64,16 +69,22 @@ describe('domain type unions', () => {
 });
 
 describe('domain object shapes', () => {
-	it('JwtClaims carries role + tenantId + exp', () => {
+	it('JwtClaims (post-ADR-0013) carries sub + global_role + permissions[] + pv', () => {
 		const claims: JwtClaims = {
-			role: 'admin',
-			tenantId: 'tenant_metlife_ops',
-			phoneNumber: '+14155552026',
+			sub: 'user-uuid-1',
+			global_role: 'member',
+			tenant_id: 'tenant_metlife_ops',
+			permissions: ['incident:create', 'incident:read'],
+			pv: 1,
+			auth_provider: 'phone_otp',
 			exp: Math.floor(Date.now() / 1000) + 3600,
 			iat: Math.floor(Date.now() / 1000),
 		};
-		expect(claims.role).toBe('admin');
-		expect(claims.tenantId).toBe('tenant_metlife_ops');
+		expect(claims.sub).toBe('user-uuid-1');
+		expect(claims.global_role).toBe('member');
+		expect(claims.tenant_id).toBe('tenant_metlife_ops');
+		expect(claims.permissions).toContain('incident:create');
+		expect(claims.pv).toBe(1);
 	});
 
 	it('MapCoordinates are bounded 0–1000 grid values', () => {
@@ -82,12 +93,13 @@ describe('domain object shapes', () => {
 		expect(coord.x).toBeLessThanOrEqual(1000);
 	});
 
-	it('WhitelistUser uses fullName (not name)', () => {
+	it('WhitelistUser uses fullName + roles[] (post-ADR-0010)', () => {
 		const user: WhitelistUser = {
-			id: '+14155550001',
+			id: 'user-uuid-2',
+			userId: 'user-uuid-2',
 			tenantId: 'tenant_metlife_ops',
 			fullName: 'Alpha Security Lead',
-			role: 'staff',
+			roles: ['staff'],
 			specialty: 'security',
 			assignedZone: 'ZONE-A',
 			status: 'AVAILABLE',
@@ -96,6 +108,7 @@ describe('domain object shapes', () => {
 		};
 		expect(user).toHaveProperty('fullName');
 		expect(user).not.toHaveProperty('name');
+		expect(user.roles).toEqual(['staff']);
 	});
 
 	it('IncidentReport binds tier 1–5 and tenantId', () => {
@@ -143,3 +156,4 @@ describe('domain object shapes', () => {
 		expect(diff).toHaveProperty('serverTimestamp');
 	});
 });
+

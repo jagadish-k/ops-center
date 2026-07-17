@@ -4,7 +4,8 @@
  * Returns recent audit entries + chain integrity verification for the
  * authenticated tenant (ADR-0005, M6).
  *
- * Security: JWT-verified. Admin/superadmin only (audit:view permission).
+ * Security: JWT-verified + perms_version checked (ADR-0013). Requires the
+ * `audit:view` permission (admin + superadmin per ADR-0011).
  *
  * Response: {
  *   entries: AuditLogEntry[],
@@ -12,9 +13,10 @@
  * }
  */
 import { type Config } from '@netlify/functions';
-import { authenticateRequest } from '../lib/jwt';
-import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } from '../lib/http';
-import { getRecentAuditEntries, verifyLedgerChain } from '../lib/auditLogger';
+import { authorizeRequest, authResponse } from '../lib/auth.ts';
+import { jsonResponse, handlePreflight, serverError } from '../lib/http.ts';
+import { getRecentAuditEntries, verifyLedgerChain } from '../lib/auditLogger.ts';
+import type { Permission } from '../../src/types';
 
 export default async (request: Request): Promise<Response> => {
 	const preflight = handlePreflight(request);
@@ -24,20 +26,15 @@ export default async (request: Request): Promise<Response> => {
 		return jsonResponse({ error: 'Method Not Allowed' }, 405);
 	}
 
-	const claims = await authenticateRequest(request);
-	if (!claims) {
-		return unauthorized('Invalid or missing authentication token.');
-	}
-
-	// Only admins/superadmins can view the audit log.
-	if (claims.role !== 'admin' && claims.role !== 'superadmin') {
-		return unauthorized('Only admins can view the audit ledger.');
-	}
+	const auth = await authorizeRequest(request, 'audit:view' as Permission);
+	const notOk = authResponse(auth);
+	if (notOk) return notOk;
+	const claims = auth.claims;
 
 	try {
 		const [entries, verification] = await Promise.all([
-			getRecentAuditEntries(claims.tenantId, 50),
-			verifyLedgerChain(claims.tenantId),
+			getRecentAuditEntries(claims.tenant_id, 50),
+			verifyLedgerChain(claims.tenant_id),
 		]);
 
 		return jsonResponse({ entries, verification });

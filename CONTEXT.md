@@ -20,13 +20,63 @@ touch an area before working in it.
 ## People & Roles
 
 - **Superadmin** — Global controller; provisions tenants, appoints admins.
-  Claim `role: superadmin`.
-- **Event Admin** — Control Room operator scoped to one tenant. Claim
-  `role: admin`.
-- **Field Staff** — Ground operative using the Field Client. Claim
-  `role: staff`.
+  Lives in `users.global_role = 'superadmin'` (ADR-0010). Not "the admin
+  role"; the admin role is tenant-scoped. Not "owner" or "root".
+- **Event Admin** — Control Room operator scoped to one tenant. Claimed via
+  `'admin'` in `tenant_memberships.roles` (ADR-0010). Not "dashboard admin"
+  or "backoffice admin".
+- **Manager** — Tenant-scoped coordinator. Can reassign staff within a
+  tenant and create dispatches. Claimed via `'manager'` in
+  `tenant_memberships.roles`. Cannot create staff, transition incidents, or
+  promote other users. See ADR-0011 §System roles.
+- **Field Staff** — Ground operative using the Field Client. Claimed via
+  `'staff'` in `tenant_memberships.roles`. Not "mobile app user" or
+  "staff app user".
 - **Tenant** — An isolated stadium authority or tournament cluster. Identified
   by `tenantId`. All operational data is partitioned by this key.
+- **Membership** — A `(user_id, tenant_id, roles[])` binding in the
+  `tenant_memberships` table (ADR-0010). A user has one membership per
+  tenant. The `roles` array holds zero or more role names; effective
+  permissions are the union across roles. Not "tenant assignment" or "user
+  binding".
+- **Global Role** — A column on `users` with value `'superadmin'` or
+  `'member'` (ADR-0010). Distinct from tenant-scoped roles. A `'member'`
+  user has no inherent permissions — all authority flows through their
+  memberships. Not "user type" or "account level".
+
+## Permissions & Policy
+
+- **Permission** — A typed capability (e.g. `incident:transition`,
+  `tenant:switch`, `staff:reassign`) drawn from the closed `Permission`
+  union in `src/lib/permissions.ts`. 15 permissions exist. Checked
+  client-side via `usePermissions().can()` and re-enforced server-side via
+  `claims.permissions.includes(...)` or via `policy.decide(...)` (see
+  Policy). Not "privilege" or "entitlement".
+- **Role** — A named bundle of permissions stored in the `roles` table
+  (ADR-0011). System roles (`superadmin`, `admin`, `manager`, `staff`) are
+  preseeded and non-deletable; custom roles can be created by superadmins.
+  Roles are global templates — the same role definition applies in every
+  tenant. Not "user type" or "profile".
+- **Per-User Grant** — An additive permission override stored in
+  `user_permissions(user_id, permission_name)` (ADR-0011). Cannot deny;
+  only grant. Effective permissions are the union of role-derived perms and
+  per-user grants. Not "override" (too vague) or "exception".
+- **Cascade Revoke** — A manual, batched (100 users per transaction) bulk
+  removal of per-user grants offered by the UI when a superadmin edits a
+  role to remove a permission (ADR-0011 §Cascade Mechanics). Never
+  automatic. Not "auto-revoke" or "permission sync".
+- **Policy** — A Rego rule that evaluates `(action, subject, resource)`
+  tuples to a boolean decision, compiled to WASM and evaluated in-process
+  via OPA (ADR-0012). Coexists with RBAC: only 5 of 15 permissions are
+  policy-scoped in v1; the rest are flat booleans. Not "rule" or
+  "permission rule".
+- **Permission Version** — The integer `users.perms_version` column,
+  mirrored as the `pv` JWT claim (ADR-0013). Server checks for mismatch on
+  every protected request; mismatch → 401 `X-Reason: stale-perms` → client
+  calls `/api/auth/refresh`. Not "token version" or "perms revision".
+- **Stale Perms** — A 401 response with `X-Reason: stale-perms`, signaling
+  the caller's `pv` claim is behind the user's current `perms_version`.
+  The client treats this as a silent refresh trigger, not an error.
 
 ## Operational Data
 
@@ -49,14 +99,10 @@ touch an area before working in it.
 ## Security & Audit
 
 - **Edge JWT** — The RS256-signed JSON Web Token minted at the Netlify Edge,
-  carrying role + tenant claims. See ADR-0003. Not "session token" or "auth
-  token".
+  carrying `permissions[]` + `pv` + `global_role` + `tenant_id` claims (ADR-0003,
+  amended by ADR-0010/0011/0013). See ADR-0003 §JWT Claim Shape. Not "session
+  token" or "auth token".
 - **OTP** — One-time password delivered via Twilio for Field Staff login.
-- **Permission** — A typed capability (e.g. `incident:transition`,
-  `tenant:switch`) mapped to roles via `src/lib/permissions.ts`. 13 typed
-  permissions exist across 3 roles. Checked client-side via
-  `usePermissions().can()` and re-enforced server-side. Not "privilege" or
-  "entitlement".
 - **Operational Window** — A time-based guard ("the switch") that rejects
   writes outside configured match hours. Superadmins bypass. Enforced
   server-side in `netlify/lib/operational-window.ts`. Not "time lock" or

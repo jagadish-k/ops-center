@@ -14,10 +14,10 @@
  * Security: JWT-verified. tenantId resolved from claims (not form data).
  */
 import { type Config } from '@netlify/functions';
-import { authenticateRequest } from '../lib/jwt';
-import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } from '../lib/http';
-import { createIncident } from '../lib/incidents';
-import { checkOperationalWindow } from '../lib/operational-window';
+import { authorizeRequest, authResponse } from '../lib/auth.ts';
+import { jsonResponse, handlePreflight, badRequest, serverError } from '../lib/http.ts';
+import { createIncident } from '../lib/incidents.ts';
+import { checkOperationalWindow } from '../lib/operational-window.ts';
 import type { TriageResult, IncidentCategory, IncidentSeverity, InfoTier } from '../../src/types';
 
 // ─── AI helpers ───────────────────────────────────────────────────────────────
@@ -137,15 +137,11 @@ export default async (request: Request): Promise<Response> => {
 		return jsonResponse({ error: 'Method Not Allowed' }, 405);
 	}
 
-	const claims = await authenticateRequest(request);
-	if (!claims) {
-		return unauthorized('Invalid or missing authentication token.');
-	}
-
-	// Staff members can file reports; admins can too (for testing).
-	if (claims.role !== 'staff' && claims.role !== 'admin' && claims.role !== 'superadmin') {
-		return unauthorized('Only staff and admins can file reports.');
-	}
+	// Anyone with incident:create can file (staff + admin + superadmin per ADR-0011).
+	const auth = await authorizeRequest(request, 'incident:create');
+	const notOk = authResponse(auth);
+	if (notOk) return notOk;
+	const claims = auth.claims;
 
 	// Enforce the operational time window.
 	const windowCheck = await checkOperationalWindow(claims);
@@ -166,9 +162,6 @@ export default async (request: Request): Promise<Response> => {
 		const transcribedText = await transcribeAudio(audioFile);
 
 		// Stage 2: Extract structured triage data.
-		// Partial-failure fallback (ADR-0006): if Gemini extraction fails after
-		// successful transcription, still create the incident with defaults so
-		// the operator's report is not lost. Flag it for admin review.
 		let triage: {
 			tier: InfoTier;
 			category: IncidentCategory;
@@ -194,7 +187,7 @@ export default async (request: Request): Promise<Response> => {
 
 		// Stage 3: Create the incident in Postgres.
 		const incident = await createIncident({
-			tenantId: claims.tenantId,
+			tenantId: claims.tenant_id,
 			source: 'field_staff',
 			tier: triage.tier,
 			rawText: extractionFailed
@@ -206,7 +199,6 @@ export default async (request: Request): Promise<Response> => {
 			actionRequired: triage.actionRequired,
 		});
 
-		// Return both the triage result and the created incident.
 		const result: TriageResult & { incident: typeof incident } = {
 			rawTranscription: transcribedText,
 			structuredAnalysis: triage,

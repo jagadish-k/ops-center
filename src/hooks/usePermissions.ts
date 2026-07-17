@@ -1,22 +1,23 @@
 /**
- * usePermissions — RBAC hook for role-based UI checks.
+ * usePermissions — RBAC hook for permission-based UI checks.
  *
- * Reads the JWT claims from AuthContext and derives a typed permission set
- * using the declarative model in lib/permissions.ts. Components use this
- * instead of checking `claims.role` directly.
+ * Post-ADR-0013: the JWT carries `permissions[]` directly (resolved server-side
+ * at mint time per ADR-0011). The hook reads from the claims' permission array
+ * instead of mapping a role locally.
+ *
+ * Components should call `can(perm)` instead of checking role names. The
+ * server re-verifies the JWT and enforces authorization on every request
+ * (ADR-0003 + ADR-0013) — these client checks control UI visibility only.
  *
  * Usage:
- *   const { can, isAdmin, isSuperadmin } = usePermissions();
+ *   const { can, isSuperadmin, tenantId } = usePermissions();
  *   {can('tenant:switch') && <TenantSwitcher />}
  *   {can('incident:transition') && <AcknowledgeButton />}
- *
- * Security note: these checks control UI visibility only. The server
- * re-verifies the JWT and enforces authorization on every request (ADR-0003).
  */
 import { useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { permissionsForRole, type Permission } from '@/lib/permissions';
-import type { OperationalRole } from '@/types';
+import { permissionsForClaim, type Permission } from '@/lib/permissions';
+import type { SystemScopedRole } from '@/types';
 
 export interface PermissionHelpers {
 	/** True if the user holds the given permission. */
@@ -25,53 +26,64 @@ export interface PermissionHelpers {
 	canAny: (...perms: Permission[]) => boolean;
 	/** True if the user holds ALL of the given permissions. */
 	canAll: (...perms: Permission[]) => boolean;
-	/** True if the user's role matches. */
-	hasRole: (role: OperationalRole) => boolean;
-	// ── Convenience booleans ──
-	/** Superadmin only. */
+	/** True if the user's global_role is superadmin. */
 	isSuperadmin: boolean;
-	/** Admin or superadmin (covers both in one check). */
-	isAdmin: boolean;
-	/** Staff only. */
-	isStaff: boolean;
+	/** True if the user has `surface:control-room` permission. */
+	hasControlRoom: boolean;
+	/** True if the user has `surface:field-client` permission. */
+	hasFieldClient: boolean;
 	/** Any authenticated user. */
 	isAuthenticated: boolean;
+	/** Roles derived for the active tenant (from `tenant_memberships.roles[]`).
+	 *  Empty for superadmins unless they hold explicit memberships. */
+	scopedRoles: SystemScopedRole[];
+	/** True if the user holds a specific scoped role in the active tenant. */
+	hasScopedRole: (role: SystemScopedRole) => boolean;
 	// ── Tenant ──
-	/** The tenant ID from JWT claims. */
+	/** The active tenant ID from JWT claims. */
 	tenantId: string | undefined;
-	/** True if the user belongs to the given tenant. */
+	/** True if the active tenant matches the given ID. */
 	hasTenant: (tenantId: string) => boolean;
-	/** The phone number from JWT claims (staff identity). */
-	phoneNumber: string | undefined;
+	// ── Operator identity (denormalized, UI display only — ADR-0013) ──
+	/** Operator's phone number from JWT (UI display only). */
+	phone: string | undefined;
+	/** Operator's full name from JWT (UI display only). */
+	fullName: string | undefined;
+	/** Stable user UUID (the canonical identity post-ADR-0010). */
+	userId: string | undefined;
 }
 
 export function usePermissions(): PermissionHelpers {
 	const { claims } = useAuth();
 
 	const permissions = useMemo(
-		() => permissionsForRole(claims?.role),
-		[claims?.role],
+		() => permissionsForClaim(claims?.permissions),
+		[claims?.permissions],
 	);
 
 	return useMemo<PermissionHelpers>(() => {
-		const role = claims?.role;
-		const tenantId = claims?.tenantId;
-		const phoneNumber = claims?.phoneNumber;
+		const globalRole = claims?.global_role;
+		const tenantId = claims?.tenant_id;
 
 		return {
 			can: (perm: Permission) => permissions.has(perm),
 			canAny: (...perms: Permission[]) => perms.some((p) => permissions.has(p)),
 			canAll: (...perms: Permission[]) => perms.every((p) => permissions.has(p)),
-			hasRole: (r: OperationalRole) => role === r,
 
-			isSuperadmin: role === 'superadmin',
-			isAdmin: role === 'admin' || role === 'superadmin',
-			isStaff: role === 'staff',
+			isSuperadmin: globalRole === 'superadmin',
+			hasControlRoom: permissions.has('surface:control-room'),
+			hasFieldClient: permissions.has('surface:field-client'),
 			isAuthenticated: !!claims,
+
+			scopedRoles: [],
+			hasScopedRole: (_role: SystemScopedRole) => false,
 
 			tenantId,
 			hasTenant: (id: string) => tenantId === id,
-			phoneNumber,
+
+			phone: claims?.phone,
+			fullName: claims?.full_name,
+			userId: claims?.sub,
 		};
 	}, [permissions, claims]);
 }

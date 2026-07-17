@@ -12,18 +12,23 @@
  * Deterministic input payload (PRD §8.1):
  *   InputPayload_n = eventId ∥ tenantId ∥ timestamp ∥ actorId ∥ action ∥
  *                    targetResourceId ∥ deltaSHA ∥ chainedPriorHash
+ *
+ * Post-ADR-0010: AuditActor.role is now a free-form string (was OperationalRole).
+ * The actor's global_role and active tenant are recorded for forensic clarity.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { query } from './db';
-import type { AuditLogEntry, OperationalRole } from '../../src/types';
+import { db } from './db.ts';
+import { auditLedgerTable } from '../../database/schema.ts';
+import { eq, desc, asc } from 'drizzle-orm';
+import type { AuditLogEntry } from '../../src/types';
 
 /** Genesis hash for the first entry in each tenant's chain. */
 export const GENESIS_HASH = '0'.repeat(64);
 
 export interface AuditActor {
-	uid: string;
-	role: OperationalRole;
-	phoneOrEmail: string;
+	uid: string;            // users.id (UUID) post-ADR-0010
+	role: string;           // global_role ('superadmin' | 'member') or scoped role
+	phoneOrEmail: string;   // for human-readable audit
 }
 
 export interface CommitAuditParams {
@@ -44,37 +49,28 @@ function sha256(data: string): string {
  * Returns the genesis hash if no entries exist yet.
  */
 async function getLastHash(tenantId: string): Promise<string> {
-	const rows = await query<{ cryptographic_hash: string }>(
-		`SELECT cryptographic_hash FROM audit_ledger
-		 WHERE tenant_id = $1
-		 ORDER BY timestamp DESC, event_id DESC
-		 LIMIT 1`,
-		[tenantId],
-	);
-	return rows.length > 0 ? rows[0].cryptographic_hash : GENESIS_HASH;
+	const rows = await db
+		.select({ cryptographicHash: auditLedgerTable.cryptographicHash })
+		.from(auditLedgerTable)
+		.where(eq(auditLedgerTable.tenantId, tenantId))
+		.orderBy(desc(auditLedgerTable.timestamp), desc(auditLedgerTable.eventId))
+		.limit(1)
+		.execute();
+	return rows.length > 0 ? rows[0]!.cryptographicHash : GENESIS_HASH;
 }
 
 /**
  * Commits a forensic audit log entry to the chain.
- *
- * Computes:
- *   deltaSHA = SHA-256(JSON.stringify({before, after}))
- *   Hash_n   = SHA-256(InputPayload_n ∥ chainedPriorHash)
- *
- * Then INSERTs into audit_ledger (append-only). Returns the full entry.
  */
 export async function commitAuditLog(params: CommitAuditParams): Promise<AuditLogEntry> {
 	const eventId = `evt_${randomUUID().slice(0, 12)}`;
 	const timestamp = Date.now();
 
-	// Resolve the prior hash for chain linkage.
 	const chainedPriorHash = await getLastHash(params.tenantId);
 
-	// Compute delta SHA (hash of the before/after state diff).
 	const deltaJSON = JSON.stringify(params.stateDelta);
 	const deltaSHA = sha256(deltaJSON);
 
-	// Compute the chain hash using the deterministic payload sequence (PRD §8.1).
 	const payload = JSON.stringify({
 		eventId,
 		tenantId: params.tenantId,
@@ -93,7 +89,7 @@ export async function commitAuditLog(params: CommitAuditParams): Promise<AuditLo
 		timestamp,
 		actor: {
 			uid: params.actor.uid,
-			role: params.actor.role,
+			role: params.actor.role as never, // legacy OperationalRole cast — kept for type compat
 			phoneOrEmail: params.actor.phoneOrEmail,
 			deviceFingerprint: 'server',
 			ipAddress: '0.0.0.0',
@@ -104,28 +100,23 @@ export async function commitAuditLog(params: CommitAuditParams): Promise<AuditLo
 		cryptographicHash,
 	};
 
-	// INSERT (append-only — triggers reject UPDATE/DELETE).
-	await query(
-		`INSERT INTO audit_ledger
-		   (event_id, tenant_id, timestamp, actor_uid, actor_role, actor_phone_email,
-		    action, target_resource_id, state_delta, delta_sha, chained_prior_hash,
-		    cryptographic_hash)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-		[
+	await db
+		.insert(auditLedgerTable)
+		.values({
 			eventId,
-			params.tenantId,
+			tenantId: params.tenantId,
 			timestamp,
-			params.actor.uid,
-			params.actor.role,
-			params.actor.phoneOrEmail,
-			params.action,
-			params.targetResourceId,
-			deltaJSON,
-			deltaSHA,
+			actorUid: params.actor.uid,
+			actorRole: params.actor.role,
+			actorPhoneEmail: params.actor.phoneOrEmail,
+			action: params.action,
+			targetResourceId: params.targetResourceId,
+			stateDelta: JSON.parse(deltaJSON),
+			deltaSha: deltaSHA,
 			chainedPriorHash,
 			cryptographicHash,
-		],
-	);
+		})
+		.execute();
 
 	return entry;
 }
@@ -138,28 +129,23 @@ export interface VerificationReport {
 	tamperedEventIds: string[];
 }
 
-/**
- * Walks the entire audit chain for a tenant and verifies integrity.
- * Recomputes each hash using the prior hash and compares with the stored value.
- */
+/** Walks the entire audit chain for a tenant and verifies integrity. */
 export async function verifyLedgerChain(tenantId: string): Promise<VerificationReport> {
-	const rows = await query<{
-		event_id: string;
-		timestamp: number;
-		actor_uid: string;
-		action: string;
-		target_resource_id: string;
-		delta_sha: string;
-		chained_prior_hash: string;
-		cryptographic_hash: string;
-	}>(
-		`SELECT event_id, timestamp, actor_uid, action, target_resource_id,
-		        delta_sha, chained_prior_hash, cryptographic_hash
-		 FROM audit_ledger
-		 WHERE tenant_id = $1
-		 ORDER BY timestamp ASC, event_id ASC`,
-		[tenantId],
-	);
+	const rows = await db
+		.select({
+			eventId: auditLedgerTable.eventId,
+			timestamp: auditLedgerTable.timestamp,
+			actorUid: auditLedgerTable.actorUid,
+			action: auditLedgerTable.action,
+			targetResourceId: auditLedgerTable.targetResourceId,
+			deltaSha: auditLedgerTable.deltaSha,
+			chainedPriorHash: auditLedgerTable.chainedPriorHash,
+			cryptographicHash: auditLedgerTable.cryptographicHash,
+		})
+		.from(auditLedgerTable)
+		.where(eq(auditLedgerTable.tenantId, tenantId))
+		.orderBy(asc(auditLedgerTable.timestamp), asc(auditLedgerTable.eventId))
+		.execute();
 
 	const report: VerificationReport = {
 		isChainValid: true,
@@ -170,35 +156,31 @@ export async function verifyLedgerChain(tenantId: string): Promise<VerificationR
 	let expectedPriorHash = GENESIS_HASH;
 
 	for (const row of rows) {
-		// Verify the prior hash linkage.
-		if (row.chained_prior_hash !== expectedPriorHash) {
+		if (row.chainedPriorHash !== expectedPriorHash) {
 			report.isChainValid = false;
-			report.tamperedEventIds.push(row.event_id);
+			report.tamperedEventIds.push(row.eventId);
 		}
 
-		// Recompute the expected hash.
 		const payload = JSON.stringify({
-			eventId: row.event_id,
+			eventId: row.eventId,
 			tenantId,
 			timestamp: row.timestamp,
-			actorId: row.actor_uid,
+			actorId: row.actorUid,
 			action: row.action,
-			targetResourceId: row.target_resource_id,
-			deltaSHA: row.delta_sha,
-			chainedPriorHash: row.chained_prior_hash,
+			targetResourceId: row.targetResourceId,
+			deltaSHA: row.deltaSha,
+			chainedPriorHash: row.chainedPriorHash,
 		});
 		const expectedHash = sha256(payload);
 
-		if (expectedHash !== row.cryptographic_hash) {
+		if (expectedHash !== row.cryptographicHash) {
 			report.isChainValid = false;
-			if (!report.tamperedEventIds.includes(row.event_id)) {
-				report.tamperedEventIds.push(row.event_id);
+			if (!report.tamperedEventIds.includes(row.eventId)) {
+				report.tamperedEventIds.push(row.eventId);
 			}
 		}
 
-		// Roll the pointer forward using the STORED hash (not the recomputed one).
-		// If the stored hash is wrong, the next entry's prior-hash check will fail too.
-		expectedPriorHash = row.cryptographic_hash;
+		expectedPriorHash = row.cryptographicHash;
 	}
 
 	return report;
@@ -211,30 +193,39 @@ export async function getRecentAuditEntries(
 	tenantId: string,
 	limit = 50,
 ): Promise<AuditLogEntry[]> {
-	const rows = await query(
-		`SELECT event_id, tenant_id, timestamp, actor_uid, actor_role, actor_phone_email,
-		        action, target_resource_id, state_delta, cryptographic_hash
-		 FROM audit_ledger
-		 WHERE tenant_id = $1
-		 ORDER BY timestamp DESC
-		 LIMIT $2`,
-		[tenantId, limit],
-	);
+	const rows = await db
+		.select({
+			eventId: auditLedgerTable.eventId,
+			tenantId: auditLedgerTable.tenantId,
+			timestamp: auditLedgerTable.timestamp,
+			actorUid: auditLedgerTable.actorUid,
+			actorRole: auditLedgerTable.actorRole,
+			actorPhoneEmail: auditLedgerTable.actorPhoneEmail,
+			action: auditLedgerTable.action,
+			targetResourceId: auditLedgerTable.targetResourceId,
+			stateDelta: auditLedgerTable.stateDelta,
+			cryptographicHash: auditLedgerTable.cryptographicHash,
+		})
+		.from(auditLedgerTable)
+		.where(eq(auditLedgerTable.tenantId, tenantId))
+		.orderBy(desc(auditLedgerTable.timestamp))
+		.limit(limit)
+		.execute();
 
 	return rows.map((row) => ({
-		eventId: row.event_id,
-		tenantId: row.tenant_id,
+		eventId: row.eventId,
+		tenantId: row.tenantId,
 		timestamp: row.timestamp,
 		actor: {
-			uid: row.actor_uid,
-			role: row.actor_role,
-			phoneOrEmail: row.actor_phone_email ?? '',
+			uid: row.actorUid,
+			role: row.actorRole as never,
+			phoneOrEmail: row.actorPhoneEmail ?? '',
 			deviceFingerprint: 'server',
 			ipAddress: '0.0.0.0',
 		},
 		action: row.action,
-		targetResourceId: row.target_resource_id,
-		stateDelta: row.state_delta ?? { before: null, after: null },
-		cryptographicHash: row.cryptographic_hash,
+		targetResourceId: row.targetResourceId,
+		stateDelta: (row.stateDelta as { before: unknown; after: unknown } | null) ?? { before: null, after: null },
+		cryptographicHash: row.cryptographicHash,
 	})) as AuditLogEntry[];
 }

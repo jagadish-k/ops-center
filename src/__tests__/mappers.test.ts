@@ -72,26 +72,31 @@ describe('mapIncident', () => {
 });
 
 describe('mapStaff', () => {
+	// Post-ADR-0010: staff_roster.id is a UUID; user_id is the stable identity.
+	// The mapper joins through users + tenant_memberships.
 	const mockRow = {
-		id: '+14155550001',
+		id: 'roster-uuid-1',
+		user_id: 'user-uuid-1',
 		tenant_id: 'tenant_metlife_ops',
 		full_name: 'Alpha Security Lead',
-		role: 'staff',
+		phone_number: '+14155550001',
 		specialty: 'security',
 		assigned_zone: 'ZONE-A',
 		status: 'AVAILABLE',
-		phone_number: '+14155550001',
 		coord_x: 450,
 		coord_y: 320,
 		updated_at: new Date('2026-07-16T12:00:00Z'),
+		created_at: new Date('2026-07-16T11:00:00Z'),
+		roles: ['staff'],
 	};
 
 	it('maps all fields correctly', () => {
 		const result = mapStaff(mockRow);
-		expect(result.id).toBe('+14155550001');
+		expect(result.id).toBe('user-uuid-1'); // users.id, not phone
+		expect(result.userId).toBe('user-uuid-1');
 		expect(result.tenantId).toBe('tenant_metlife_ops');
 		expect(result.fullName).toBe('Alpha Security Lead');
-		expect(result.role).toBe('staff');
+		expect(result.roles).toEqual(['staff']);
 		expect(result.specialty).toBe('security');
 		expect(result.assignedZone).toBe('ZONE-A');
 		expect(result.status).toBe('AVAILABLE');
@@ -102,6 +107,11 @@ describe('mapStaff', () => {
 	it('sets currentCoords to undefined when coords are null', () => {
 		const result = mapStaff({ ...mockRow, coord_x: null, coord_y: null });
 		expect(result.currentCoords).toBeUndefined();
+	});
+
+	it('defaults roles to empty array when null', () => {
+		const result = mapStaff({ ...mockRow, roles: null });
+		expect(result.roles).toEqual([]);
 	});
 
 	it('produces a valid WhitelistUser', () => {

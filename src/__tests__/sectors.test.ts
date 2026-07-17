@@ -13,7 +13,7 @@ describe('SECTOR_MAP', () => {
 	});
 
 	it('all coordinates are within the 0–1000 grid', () => {
-		for (const [zone, coords] of Object.entries(SECTOR_MAP)) {
+		for (const coords of Object.values(SECTOR_MAP)) {
 			expect(coords.x).toBeGreaterThanOrEqual(0);
 			expect(coords.x).toBeLessThanOrEqual(1000);
 			expect(coords.y).toBeGreaterThanOrEqual(0);

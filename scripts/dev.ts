@@ -137,34 +137,141 @@ function runMigrations(): void {
 	}
 }
 
-// ─── Step 5: Start netlify dev ─────────────────────────────────────────────────
+// ─── Step 4b: Run seed (idempotent) ───────────────────────────────────────────
 
-function startDevServer(): void {
-	console.log();
-	log('🚀', 'Starting netlify dev...');
-	console.log();
+function runSeed(): void {
+	log('🌱', 'Running seed...');
 
-	const child = spawn('netlify', ['dev'], {
-		stdio: 'inherit',
-		cwd: process.cwd(),
-		env: process.env,
+	try {
+		execSync('npx tsx database/seed.ts', { stdio: 'inherit', cwd: process.cwd() });
+		ok('Seed applied');
+	} catch (err) {
+		console.error('\n');
+		fail('Seed failed. See output above.');
+	}
+}
+
+// ─── Step 4c: Clean stale Netlify build artifacts ────────────────────────────
+
+function cleanNetlifyArtifacts(): void {
+	log('🧹', 'Cleaning stale Netlify build artifacts...');
+
+	// The @netlify/vite-plugin-react-router generates a server-function stub at
+	// .netlify/v1/functions/react-router-server.mjs that imports
+	// `build/server/index.js`. In SPA mode (ssr: false), that bundle is never
+	// produced, so the stub fails to load and breaks netlify dev. Delete it
+	// before each dev start so netlify dev loads only our actual API functions.
+	try {
+		execSync('rm -rf .netlify/v1 .netlify/functions-serve .netlify/functions-internal build/server 2>/dev/null', { stdio: 'pipe', cwd: process.cwd() });
+		ok('Stale artifacts cleared');
+	} catch {
+		// Best-effort cleanup — don't fail the dev start if rm errors.
+		ok('No stale artifacts (clean slate)');
+	}
+}
+
+// ─── Step 5: Start dev servers (vite + netlify dev in parallel) ──────────────
+
+interface Child {
+	process: ReturnType<typeof spawn>;
+	label: string;
+	color: string;
+}
+
+function prefixStream(child: Child): void {
+	const { process: proc, label, color } = child;
+	const prefix = `${color}${C.dim}[${label}]${C.reset} `;
+	const prefixErr = `${color}${C.dim}[${label}]${C.reset} `;
+
+	proc.stdout?.on('data', (chunk: Buffer) => {
+		const text = chunk.toString('utf8');
+		// Skip noisy ECONNREFUSED proxy warnings (vite proxy when API not up yet).
+		if (text.includes('ECONNREFUSED')) return;
+		process.stdout.write(
+			text
+				.split('\n')
+				.map((line) => (line.length > 0 ? prefix + line + '\n' : ''))
+				.join(''),
+		);
 	});
 
-	// Forward Ctrl+C to the child, then exit.
+	proc.stderr?.on('data', (chunk: Buffer) => {
+		const text = chunk.toString('utf8');
+		if (text.includes('ECONNREFUSED')) return;
+		process.stderr.write(
+			text
+				.split('\n')
+				.map((line) => (line.length > 0 ? prefixErr + line + '\n' : ''))
+				.join(''),
+		);
+	});
+}
+
+function startDevServers(): void {
+	console.log();
+	log('🚀', 'Starting vite (UI) + netlify dev (API) in parallel...');
+	console.log(`  ${C.dim}UI:${C.reset}  http://localhost:5173/`);
+	console.log(`  ${C.dim}API:${C.reset} http://localhost:8888/api/*`);
+	console.log(`  ${C.dim}Vite proxies /api → netlify dev automatically.${C.reset}`);
+	console.log();
+
+	const children: Child[] = [];
+
+	// Vite — UI dev server on 5173.
+	const vite = spawn('npx', ['vite', '--port', '5173', '--host'], {
+		cwd: process.cwd(),
+		env: process.env,
+		stdio: ['ignore', 'pipe', 'pipe'],
+	});
+	const viteChild: Child = { process: vite, label: 'vite', color: C.cyan };
+	prefixStream(viteChild);
+	children.push(viteChild);
+
+	// Netlify dev — API functions on 8888. Started in parallel; takes longer.
+	const netlify = spawn('netlify', ['dev', '--port', '8888'], {
+		cwd: process.cwd(),
+		env: process.env,
+		stdio: ['ignore', 'pipe', 'pipe'],
+	});
+	const netlifyChild: Child = { process: netlify, label: 'api', color: C.green };
+	prefixStream(netlifyChild);
+	children.push(netlifyChild);
+
+	const killAll = (signal: NodeJS.Signals = 'SIGTERM'): void => {
+		for (const child of children) {
+			try {
+				child.process.kill(signal);
+			} catch {
+				// Already dead — ignore.
+			}
+		}
+	};
+
+	// Forward Ctrl+C to both children, then exit.
 	// Docker stays running for fast restart.
 	process.on('SIGINT', () => {
-		child.kill('SIGINT');
+		killAll('SIGINT');
 	});
 
 	process.on('SIGTERM', () => {
-		child.kill('SIGTERM');
+		killAll('SIGTERM');
 	});
 
-	child.on('exit', (code) => {
-		console.log(`\n${C.dim}  Dev server stopped. Docker container left running.${C.reset}`);
-		console.log(`${C.dim}  Run ${C.reset}npm run dev:db:stop${C.dim} to stop Postgres.${C.reset}\n`);
-		process.exit(code ?? 0);
-	});
+	// If either dies, kill the other and exit (don't leave half a stack running).
+	for (const child of children) {
+		child.process.on('exit', (code, signal) => {
+			console.log(
+				`\n${C.dim}  [${child.label}] exited (code=${code ?? 'null'} signal=${signal ?? 'null'}).${C.reset}`,
+			);
+			// Give the sibling a moment to flush, then kill it.
+			setTimeout(() => {
+				killAll('SIGTERM');
+				console.log(`\n${C.dim}  All dev servers stopped. Docker container left running.${C.reset}`);
+				console.log(`${C.dim}  Run ${C.reset}npm run dev:db:stop${C.dim} to stop Postgres.${C.reset}\n`);
+				process.exit(code ?? 0);
+			}, 300);
+		});
+	}
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────────
@@ -174,7 +281,9 @@ async function main(): Promise<void> {
 	await setupEnvironment();
 	await startDatabase();
 	runMigrations();
-	startDevServer();
+	runSeed();
+	cleanNetlifyArtifacts();
+	startDevServers();
 }
 
 main().catch((err) => {

@@ -34,11 +34,6 @@ export function gpsToGrid(
 	};
 }
 
-/** Clamps a value into the [0, max] range. */
-function clamp(val: number, max: number): number {
-	return Math.max(0, Math.min(max, val));
-}
-
 /**
  * Haversine distance between two GPS points in meters.
  * Used by the client-side 3-meter debounce (PRD §7.1).

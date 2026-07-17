@@ -1,9 +1,13 @@
 /**
  * Database row → TypeScript type mappers.
  *
- * Converts Postgres snake_case rows into the canonical camelCase domain types
- * defined in src/types/index.ts. Used by state-poll, mutations, and any future
- * function that reads from the database.
+ * Post-ADR-0010: staff_roster no longer carries role/tenant_id/full_name
+ * directly. The mappers JOIN through `users` + `tenant_memberships` and
+ * assemble the legacy `WhitelistUser` shape for client compatibility.
+ *
+ * The `WhitelistUser.id` field is now the stable UUID (users.id), not the
+ * phone number. Callers that previously looked up staff by phone must use
+ * `phoneNumber` instead of `id`.
  */
 import type {
 	IncidentReport,
@@ -15,11 +19,11 @@ import type {
 	InfoTier,
 	StaffSpecialty,
 	StaffStatus,
-	OperationalRole,
+	SystemScopedRole,
 	DispatchStatus,
 } from '../../src/types';
 
-// ─── Row interfaces (match column names from the SQL schema) ──────────────────
+// ─── Row interfaces (match column names from the Drizzle schema) ─────────────
 
 interface IncidentRow {
 	id: string;
@@ -38,18 +42,24 @@ interface IncidentRow {
 	updated_at: Date;
 }
 
-interface StaffRow {
-	id: string;
-	tenant_id: string;
-	full_name: string;
-	role: string;
-	specialty: string;
+/**
+ * StaffRow joined with users + tenant_memberships.
+ * Used by state-poll and any future function that reads staff.
+ */
+interface StaffJoinedRow {
+	id: string;                  // staff_roster.id (UUID)
+	user_id: string;             // users.id
+	tenant_id: string;           // from query context
+	full_name: string;           // users.full_name
+	phone_number: string;        // denormalized on roster
+	specialty: string | null;
 	assigned_zone: string;
 	status: string;
-	phone_number: string;
 	coord_x: number | null;
 	coord_y: number | null;
 	updated_at: Date;
+	created_at: Date;
+	roles: string[] | null;      // tenant_memberships.roles for the active tenant
 }
 
 interface DispatchRow {
@@ -88,13 +98,14 @@ export function mapIncident(row: IncidentRow): IncidentReport {
 	};
 }
 
-export function mapStaff(row: StaffRow): WhitelistUser {
+export function mapStaff(row: StaffJoinedRow): WhitelistUser {
 	return {
-		id: row.id,
+		id: row.user_id,                  // UUID — was phone pre-ADR-0010
+		userId: row.user_id,
 		tenantId: row.tenant_id,
 		fullName: row.full_name,
-		role: row.role as OperationalRole,
-		specialty: row.specialty as StaffSpecialty,
+		roles: (row.roles ?? []) as SystemScopedRole[],
+		specialty: (row.specialty ?? 'security') as StaffSpecialty,
 		assignedZone: row.assigned_zone,
 		status: row.status as StaffStatus,
 		phoneNumber: row.phone_number,
@@ -102,7 +113,7 @@ export function mapStaff(row: StaffRow): WhitelistUser {
 			row.coord_x != null && row.coord_y != null
 				? { x: row.coord_x, y: row.coord_y }
 				: undefined,
-		createdAt: 0, // staff_roster doesn't track creation time in the current schema
+		createdAt: new Date(row.created_at).getTime(),
 	};
 }
 

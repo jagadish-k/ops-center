@@ -1,30 +1,33 @@
 /**
  * POST /api/auth/verify-otp
  *
- * Verifies the submitted OTP code, looks up the user in staff_roster to
- * resolve role + tenantId, and mints an RS256 JWT (ADR-0003). Returns the
- * token + claims to the client.
+ * Verifies the submitted OTP code, looks up the user (ADR-0010: now in the
+ * `users` table, not `staff_roster`), resolves effective permissions
+ * (ADR-0011), and mints an RS256 JWT in the post-ADR-0013 shape:
+ * `{ sub, global_role, tenant_id, permissions[], pv, auth_provider }`.
  *
  * Request:  { "phoneNumber": "+14155552671", "code": "123456" }
- * Response: { "token": "<jwt>", "claims": { role, tenantId, phoneNumber, exp } }
+ * Response: { "token": "<jwt>", "claims": { ... } }
+ *
+ * If the caller is `SUPERADMIN_PHONE` (env) and has no user row yet, an
+ * identity row is lazily created with `global_role='superadmin'` as a
+ * safety net (ADR-0010 §Superadmin Bootstrap).
  *
  * Security: The JWT is verified server-side on every subsequent request.
  * Client-decoded claims are for UI rendering only.
  */
 import { type Config } from '@netlify/functions';
-import { verifyOtp, clearOtp } from '../lib/otp';
-import { signAuthJwt } from '../lib/jwt';
-import { query } from '../lib/db';
-import { jsonResponse, handlePreflight, badRequest, unauthorized, serverError } from '../lib/http';
-import type { OperationalRole } from '../../src/types';
+import { verifyOtp, clearOtp } from '../lib/otp.ts';
+import { signAuthJwt } from '../lib/jwt.ts';
+import { db } from '../lib/db.ts';
+import { usersTable, tenantMembershipsTable } from '../../database/schema.ts';
+import { eq } from 'drizzle-orm';
+import { resolveUserPermissions } from '../lib/rbac.ts';
+import { jsonResponse, handlePreflight, badRequest, unauthorized, serverError } from '../lib/http.ts';
 
-interface StaffRecord {
-	role: OperationalRole;
-	tenant_id: string;
-}
+const SUPERADMIN_DEFAULT_TENANT = 'tenant_metlife_ops';
 
 export default async (request: Request): Promise<Response> => {
-	// CORS preflight.
 	const preflight = handlePreflight(request);
 	if (preflight) return preflight;
 
@@ -54,29 +57,97 @@ export default async (request: Request): Promise<Response> => {
 			return jsonResponse({ error: messages[result.reason] ?? 'Verification failed.' }, 401);
 		}
 
-		// 2. Look up the user in the staff roster.
-		const staff = await query<StaffRecord>(
-			`SELECT role, tenant_id FROM staff_roster WHERE id = $1 AND status != 'OFF_DUTY'`,
-			[phoneNumber],
-		);
+	// 2. Look up the user by phone. Lazy-create superadmin if env matches.
+	let userRows = await db
+		.select({
+			id: usersTable.id,
+			fullName: usersTable.fullName,
+			globalRole: usersTable.globalRole,
+			status: usersTable.status,
+		})
+		.from(usersTable)
+		.where(eq(usersTable.phone, phoneNumber))
+		.execute();
 
-		if (staff.length === 0) {
+	if (userRows.length === 0 && phoneNumber === process.env.SUPERADMIN_PHONE) {
+		// Lazy-create the superadmin on first login (safety net per ADR-0010 §Superadmin Bootstrap).
+		const inserted = await db
+			.insert(usersTable)
+			.values({
+				phone: phoneNumber,
+				fullName: 'Default Superadmin',
+				globalRole: 'superadmin',
+				authProvider: 'phone_otp',
+			})
+			.onConflictDoUpdate({
+				target: usersTable.phone,
+				set: { globalRole: 'superadmin', updatedAt: new Date() },
+			})
+			.returning({
+				id: usersTable.id,
+				fullName: usersTable.fullName,
+				globalRole: usersTable.globalRole,
+				status: usersTable.status,
+			})
+			.execute();
+		userRows = inserted;
+	}
+
+		if (userRows.length === 0) {
 			// Do NOT reveal whether the phone exists vs. the code was wrong
 			// (information leakage). Clear the OTP either way.
 			await clearOtp(phoneNumber);
 			return jsonResponse({ error: 'Phone number is not on the active staff roster.' }, 403);
 		}
 
-		const user = staff[0];
+		const userRow = userRows[0]!;
 
-		// 3. Clear the used OTP session.
+		if (userRow.status === 'disabled') {
+			await clearOtp(phoneNumber);
+			return unauthorized('This account has been disabled.');
+		}
+
+		// 3. Resolve the active tenant for this user.
+		let activeTenant: string;
+		if (userRow.globalRole === 'superadmin') {
+			// Superadmins don't have a home tenant; default to metlife for the
+			// first session. They can switch via /api/auth/switch-tenant.
+			activeTenant = SUPERADMIN_DEFAULT_TENANT;
+		} else {
+			// Pick the user's first tenant membership as the active context.
+			const memberships = await db
+				.select({ tenantId: tenantMembershipsTable.tenantId })
+				.from(tenantMembershipsTable)
+				.where(eq(tenantMembershipsTable.userId, userRow.id))
+				.execute();
+
+			if (memberships.length === 0) {
+				await clearOtp(phoneNumber);
+				return jsonResponse({ error: 'User has no tenant memberships.' }, 403);
+			}
+			activeTenant = memberships[0]!.tenantId;
+		}
+
+		// 4. Resolve effective permissions for this user + tenant.
+		const resolved = await resolveUserPermissions(userRow.id, activeTenant);
+		if (!resolved) {
+			await clearOtp(phoneNumber);
+			return unauthorized('Unable to resolve user permissions.');
+		}
+
+		// 5. Clear the used OTP session.
 		await clearOtp(phoneNumber);
 
-		// 4. Mint the RS256 JWT with role + tenant claims.
+		// 6. Mint the JWT in the post-ADR-0013 shape.
 		const token = await signAuthJwt({
-			role: user.role,
-			tenantId: user.tenant_id,
-			phoneNumber,
+			sub: resolved.user.userId,
+			global_role: resolved.user.globalRole,
+			tenant_id: activeTenant,
+			permissions: resolved.permissions,
+			pv: resolved.user.permsVersion,
+			auth_provider: 'phone_otp',
+			phone: phoneNumber,
+			full_name: userRow.fullName,
 		});
 
 		// Decode claims for the response (client uses for UI only).
@@ -88,7 +159,7 @@ export default async (request: Request): Promise<Response> => {
 		return jsonResponse({ token, claims });
 	} catch (err) {
 		console.error('auth-verify-otp error:', err);
-		return json({ error: 'Internal server error.' }, 500);
+		return serverError('Internal server error.');
 	}
 };
 

@@ -47,6 +47,26 @@ export default defineConfig(({ mode }) => {
 		],
 		server: {
 			port: env.APP_PORT ? Number(env.APP_PORT) : 5173,
+			// Proxy /api/* to netlify dev (port 8888) so frontend requests hit the
+			// Netlify Functions during local development. If netlify dev isn't
+			// running, requests will fail with ECONNREFUSED and the client-side
+			// mock data fallback kicks in (see src/lib/mockData.ts).
+			proxy: {
+				'/api': {
+					target: env.API_PROXY_TARGET ?? 'http://localhost:8888',
+					changeOrigin: true,
+					// Don't fail the build if the API target is down — let the
+					// client's mock fallback handle it.
+					configure: (proxy) => {
+						proxy.on('error', (err) => {
+							// Suppress noisy ECONNREFUSED logs when running UI-only dev.
+							if ((err as NodeJS.ErrnoException).code !== 'ECONNREFUSED') {
+								console.error('[vite proxy]', err);
+							}
+						});
+					},
+				},
+			},
 		},
 	};
 });

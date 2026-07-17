@@ -21,6 +21,7 @@ const DOCKER_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/stadium
 /** Default values for keys that should be set if missing. */
 const DEFAULTS: Record<string, string> = {
 	DATABASE_URL: DOCKER_DATABASE_URL,
+	SUPERADMIN_PHONE: '+14155550000',
 	JWT_EXPIRES_IN: '3600',
 	OTP_EXPIRES_IN: '300',
 	OTP_MAX_ATTEMPTS: '5',

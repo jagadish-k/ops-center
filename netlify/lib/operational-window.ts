@@ -7,14 +7,10 @@
  *
  * Superadmins bypass the check — they can operate at any time.
  */
-import { query } from './db';
+import { db } from './db.ts';
+import { configTable } from '../../database/schema.ts';
+import { eq } from 'drizzle-orm';
 import type { JwtClaims } from '../../src/types';
-
-interface SwitchRow {
-	window_start: Date | null;
-	window_end: Date | null;
-	operational: boolean;
-}
 
 export type WindowCheckResult =
 	| { ok: true }
@@ -22,36 +18,38 @@ export type WindowCheckResult =
 
 /**
  * Returns ok if the caller may write, or a reason if the window is inactive.
- * Superadmins always pass.
+ * Superadmins always pass (ADR-0010).
  */
 export async function checkOperationalWindow(claims: JwtClaims): Promise<WindowCheckResult> {
-	// Superadmins bypass the operational window.
-	if (claims.role === 'superadmin') {
+	if (claims.global_role === 'superadmin') {
 		return { ok: true };
 	}
 
-	const rows = await query<SwitchRow>(
-		`SELECT window_start, window_end, operational FROM config WHERE id = 'switch'`,
-	);
+	const rows = await db
+		.select({
+			windowStart: configTable.windowStart,
+			windowEnd: configTable.windowEnd,
+			operational: configTable.operational,
+		})
+		.from(configTable)
+		.where(eq(configTable.id, 'switch'))
+		.execute();
 
 	if (rows.length === 0) {
-		// No switch configured — allow writes (dev/initial setup).
-		return { ok: true };
+		return { ok: true }; // No switch configured — allow (dev/initial setup).
 	}
 
-	const sw = rows[0];
+	const sw = rows[0]!;
 
-	// Explicit kill switch.
 	if (sw.operational === false) {
 		return { ok: false, reason: 'Operations are currently suspended.' };
 	}
 
-	// Time-window check.
 	const now = new Date();
-	if (sw.window_start && now < sw.window_start) {
+	if (sw.windowStart && now < sw.windowStart) {
 		return { ok: false, reason: 'Operational window has not opened yet.' };
 	}
-	if (sw.window_end && now > sw.window_end) {
+	if (sw.windowEnd && now > sw.windowEnd) {
 		return { ok: false, reason: 'Operational window has closed.' };
 	}
 

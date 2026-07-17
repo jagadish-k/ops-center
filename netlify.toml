@@ -7,13 +7,19 @@
 [functions]
   directory = "netlify/functions"
 
-# Local development server (netlify dev)
-# See DEVELOPMENT.md for full setup guide
+# Local development server (netlify dev).
+#
+# Note: `command` is set to `tail -f /dev/null` (a no-op that stays alive)
+# because we spawn vite ourselves in scripts/dev.ts and run it in parallel
+# with netlify dev. Netlify dev then proxies API requests to vite via
+# targetPort. The .netlify/v1 stale react-router-server stub is cleared by
+# scripts/dev.ts on each start to avoid the broken "build/server/index.js"
+# import in SPA mode.
 [dev]
-  command = "vite"
+  command = "tail -f /dev/null"
   targetPort = 5173
   port = 8888
-  autoLaunch = true
+  autoLaunch = false
   framework = "#custom"
 
 # Redirect all frontend traffic to index.html for React Router SPA handling.

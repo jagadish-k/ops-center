@@ -14,12 +14,13 @@ import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import type { IncidentReport } from '@/types';
-import { OptimizedStadiumMapCanvas } from '@/shared/OptimizedStadiumMapCanvas';
+
 import { IncidentQueue } from './IncidentQueue';
 import { IncidentInspector } from './IncidentInspector';
 import { TenantSwitcher } from './TenantSwitcher';
 import { AuditTimelineInspector } from './AuditTimelineInspector';
 import { mockTenants } from '@/lib/mockData';
+import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
 interface OperationalDashboardProps {
 	onTenantChange: (tenantId: string) => void;
@@ -27,20 +28,16 @@ interface OperationalDashboardProps {
 
 export function OperationalDashboard({ onTenantChange }: OperationalDashboardProps) {
 	const { signOut, claims } = useAuth();
-	const { can, phoneNumber } = usePermissions();
+	const { can, phone, fullName, isSuperadmin } = usePermissions();
 	const { incidents, staff, activeTenantId, connectionHealthy } = useActiveOps();
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [auditOpen, setAuditOpen] = useState(false);
 
 	// Derive the freshest selected incident from the polled list.
-	const selected = useMemo(
-		() => incidents.find((i) => i.id === selectedId) ?? null,
-		[incidents, selectedId],
-	);
+	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
 
-	const tenantName =
-		mockTenants.find((t) => t.tenantId === activeTenantId)?.orgName ?? activeTenantId;
+	const tenantName = mockTenants.find((t) => t.tenantId === activeTenantId)?.orgName ?? activeTenantId;
 
 	const handleSelect = (incident: IncidentReport): void => {
 		setSelectedId(incident.id);
@@ -51,25 +48,15 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			{/* ── Header bar ─────────────────────────────────────────────── */}
 			<header className="flex items-center gap-4 border-b border-slate-800 bg-slate-900/60 px-4 py-2.5">
 				<div className="flex items-baseline gap-2">
-					<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">
-						Stadium Ops
-					</h1>
-					<span className="font-mono text-[10px] uppercase tracking-widest text-blue-400">
-						// Command Room
-					</span>
+					<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">Stadium Ops</h1>
+					<span className="font-mono text-[10px] uppercase tracking-widest text-blue-400">// Command Room</span>
 				</div>
 
 				<div className="mx-2 hidden h-5 w-px bg-slate-800 sm:block" />
 
 				<div className="hidden items-center gap-2 sm:flex">
-					<span
-						className={`h-2 w-2 rounded-full ${
-							connectionHealthy ? 'bg-emerald-500' : 'bg-amber-500'
-						}`}
-					/>
-					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
-						{tenantName}
-					</span>
+					<span className={`h-2 w-2 rounded-full ${connectionHealthy ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">{tenantName}</span>
 				</div>
 
 				<div className="ml-auto flex items-center gap-2">
@@ -100,10 +87,11 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			</header>
 
 			{/* ── Operator identity (footprint) ─────────────────────────── */}
-			{phoneNumber && (
+			{(phone || fullName) && (
 				<div className="border-b border-slate-800/60 bg-slate-950 px-4 py-1">
 					<p className="font-mono text-[9px] uppercase tracking-widest text-slate-600">
-						Operator {phoneNumber} · {claims?.role}
+						Operator {fullName ?? phone} · {isSuperadmin ? 'superadmin' : 'member'}
+						{claims?.tenant_id ? ` · ${claims.tenant_id}` : ''}
 					</p>
 				</div>
 			)}
@@ -135,7 +123,10 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			</main>
 
 			{/* ── Compliance slide-out ──────────────────────────────────── */}
-			<AuditTimelineInspector isOpen={auditOpen} onClose={() => setAuditOpen(false)} />
+			<AuditTimelineInspector
+				isOpen={auditOpen}
+				onClose={() => setAuditOpen(false)}
+			/>
 		</div>
 	);
 }

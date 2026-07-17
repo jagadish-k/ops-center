@@ -3,6 +3,9 @@
  *
  * Guards on role (staff). Mounts the ActiveOpsProvider and renders the FieldShell.
  * Disconnect signs the operator out and returns to the auth gate.
+ *
+ * Post-ADR-0013: tenant_id and phone come from JWT claims directly (no
+ * separate usePermissions() call needed for these display fields).
  */
 import { Navigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +15,7 @@ import { FieldShell } from '@/components/mobile/FieldShell';
 
 export default function FieldClient() {
 	const { claims, loading, signOut } = useAuth();
-	const { can, phoneNumber, tenantId } = usePermissions();
+	const { can } = usePermissions();
 
 	if (loading) {
 		return (
@@ -26,13 +29,14 @@ export default function FieldClient() {
 		return <Navigate to="/" replace />;
 	}
 
-	const staffPhone = phoneNumber ?? claims.tenantId;
+	const staffPhone = claims.phone ?? 'unknown';
+	const tenantId = claims.tenant_id;
 
 	return (
-		<ActiveOpsProvider tenantId={tenantId ?? claims.tenantId}>
+		<ActiveOpsProvider tenantId={tenantId}>
 			<FieldShell
 				staffPhone={staffPhone}
-				tenantId={tenantId ?? claims.tenantId}
+				tenantId={tenantId}
 				onDisconnect={signOut}
 			/>
 		</ActiveOpsProvider>

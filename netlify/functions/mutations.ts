@@ -3,38 +3,52 @@
  *
  * Unified mutation endpoint for incident lifecycle transitions, incident
  * creation (manual triage), dispatch creation, and dispatch status updates.
- * All actions are JWT-verified and tenant-guarded (ADR-0003).
+ *
+ * Post-ADR-0011/0013: authorization is via `claims.permissions.includes(...)`,
+ * not role-name checks. The perms_version staleness check is enforced by
+ * `authorizeRequest()` (ADR-0013).
  *
  * Action-based routing via request body:
  *   { action: 'create_incident', category, severity, locationSector, rawText }
  *   { action: 'transition_incident', incidentId, nextStatus }
  *   { action: 'create_dispatch', incidentId, targetStaffPhone, directiveText }
  *   { action: 'update_dispatch', dispatchId, nextStatus }
- *
- * Authorization:
- *   - transition_incident: admin or superadmin
- *   - create_dispatch: admin or superadmin
- *   - update_dispatch: admin/superadmin, OR the target staff member
- *     (JWT phoneNumber must match the dispatch's target_staff_phone)
  */
 import { type Config } from '@netlify/functions';
-import { authenticateRequest } from '../lib/jwt';
-import type { JwtClaims, IncidentSeverity, InfoTier } from '../../src/types';
-import { query } from '../lib/db';
-import { jsonResponse, handlePreflight, unauthorized, badRequest, serverError } from '../lib/http';
-import { mapIncident, mapDispatch } from '../lib/mappers';
-import { createIncident } from '../lib/incidents';
-import { checkOperationalWindow } from '../lib/operational-window';
-import { commitAuditLog, type AuditActor } from '../lib/auditLogger';
+import { authorizeRequest, authResponse } from '../lib/auth.ts';
+import { db } from '../lib/db.ts';
+import {
+	incidentsTable,
+	dispatchesTable,
+	staffRosterTable,
+	usersTable,
+} from '../../database/schema.ts';
+import { eq, and, ne, sql } from 'drizzle-orm';
+import { jsonResponse, handlePreflight, badRequest, serverError } from '../lib/http.ts';
+import { mapIncident, mapDispatch } from '../lib/mappers.ts';
+import { createIncident } from '../lib/incidents.ts';
+import { checkOperationalWindow } from '../lib/operational-window.ts';
+import { commitAuditLog, type AuditActor } from '../lib/auditLogger.ts';
 import { randomUUID } from 'node:crypto';
+import type { JwtClaims, IncidentSeverity, InfoTier } from '../../src/types';
 
-/** Helper: builds an AuditActor from JWT claims. */
-function actorFromClaims(claims: JwtClaims): AuditActor {
+/** Builds an AuditActor from JWT claims (post-ADR-0013 shape). */
+function actorFromClaims(claims: JwtClaims, phoneOrEmail = 'unknown'): AuditActor {
 	return {
-		uid: claims.phoneNumber ?? claims.email ?? 'unknown',
-		role: claims.role,
-		phoneOrEmail: claims.phoneNumber ?? claims.email ?? 'unknown',
+		uid: claims.sub,
+		role: claims.global_role, // 'superadmin' | 'member' — recorded as a string
+		phoneOrEmail,
 	};
+}
+
+/** Helper: fetch the caller's phone for audit logging. */
+async function fetchUserPhone(userId: string): Promise<string> {
+	const rows = await db
+		.select({ phone: usersTable.phone })
+		.from(usersTable)
+		.where(eq(usersTable.id, userId))
+		.execute();
+	return rows[0]?.phone ?? 'unknown';
 }
 
 // ─── Status flow validation ───────────────────────────────────────────────────
@@ -42,20 +56,12 @@ function actorFromClaims(claims: JwtClaims): AuditActor {
 const INCIDENT_FLOW = ['OPEN', 'ACKNOWLEDGED', 'ON_SCENE', 'RESOLVED'];
 const DISPATCH_FLOW = ['SENT', 'ACKNOWLEDGED', 'ON_SCENE', 'RESOLVED'];
 
-/** Forward-only transition check (allows skipping steps, e.g. OPEN → RESOLVED). */
 function isValidForwardTransition(current: string, next: string, flow: string[]): boolean {
 	const currentIdx = flow.indexOf(current);
 	const nextIdx = flow.indexOf(next);
 	return currentIdx !== -1 && nextIdx !== -1 && nextIdx > currentIdx;
 }
 
-function isAdmin(claims: JwtClaims): boolean {
-	return claims.role === 'admin' || claims.role === 'superadmin';
-}
-
-// ─── Action handlers ──────────────────────────────────────────────────────────
-
-/** Infers an InfoTier from severity for manual triage submissions. */
 function inferTier(severity: IncidentSeverity): InfoTier {
 	const map: Record<IncidentSeverity, InfoTier> = {
 		CRITICAL: 1,
@@ -66,13 +72,14 @@ function inferTier(severity: IncidentSeverity): InfoTier {
 	return map[severity] ?? 3;
 }
 
+// ─── Action handlers ──────────────────────────────────────────────────────────
+
 async function createIncidentAction(
 	claims: JwtClaims,
 	body: { category: string; severity: string; locationSector: string; rawText: string },
 ): Promise<Response> {
-	// Staff, admins, and superadmins can create incidents.
-	if (claims.role !== 'staff' && !isAdmin(claims)) {
-		return unauthorized('Only staff and admins can file incidents.');
+	if (!claims.permissions.includes('incident:create')) {
+		return jsonResponse({ error: 'Only staff and admins can file incidents.' }, 403);
 	}
 
 	if (!body.category || !body.severity || !body.locationSector) {
@@ -80,7 +87,7 @@ async function createIncidentAction(
 	}
 
 	const incident = await createIncident({
-		tenantId: claims.tenantId,
+		tenantId: claims.tenant_id,
 		source: 'field_staff',
 		tier: inferTier(body.severity as IncidentSeverity),
 		rawText: body.rawText || `Manual triage — ${body.category} / ${body.severity} at ${body.locationSector}`,
@@ -89,10 +96,10 @@ async function createIncidentAction(
 		locationSector: body.locationSector,
 	});
 
-	// Audit log the creation.
+	const actorPhone = await fetchUserPhone(claims.sub);
 	await commitAuditLog({
-		tenantId: claims.tenantId,
-		actor: actorFromClaims(claims),
+		tenantId: claims.tenant_id,
+		actor: actorFromClaims(claims, actorPhone),
 		action: 'INCIDENT_CREATE',
 		targetResourceId: incident.id,
 		stateDelta: { before: null, after: { status: incident.status, tier: incident.tier, category: incident.extractedMetadata.category } },
@@ -105,8 +112,8 @@ async function transitionIncident(
 	claims: JwtClaims,
 	body: { incidentId: string; nextStatus: string },
 ): Promise<Response> {
-	if (!isAdmin(claims)) {
-		return unauthorized('Only admins can transition incident status.');
+	if (!claims.permissions.includes('incident:transition')) {
+		return jsonResponse({ error: 'Only admins can transition incident status.' }, 403);
 	}
 
 	const { incidentId, nextStatus } = body;
@@ -114,34 +121,47 @@ async function transitionIncident(
 		return badRequest(`Invalid status: ${nextStatus}.`);
 	}
 
-	// Fetch current incident — verify it belongs to this tenant.
-	const rows = await query(
-		`SELECT * FROM incidents WHERE id = $1 AND tenant_id = $2`,
-		[incidentId, claims.tenantId],
-	);
+	const rows = await db
+		.select()
+		.from(incidentsTable)
+		.where(
+			and(
+				eq(incidentsTable.id, incidentId),
+				eq(incidentsTable.tenantId, claims.tenant_id),
+			),
+		)
+		.execute();
 	if (rows.length === 0) {
 		return badRequest('Incident not found in your tenant.');
 	}
 
-	const current = rows[0].status as string;
+	const current = rows[0]!.status;
 	if (!isValidForwardTransition(current, nextStatus, INCIDENT_FLOW)) {
 		return badRequest(`Cannot transition from ${current} to ${nextStatus}.`);
 	}
 
-	// Apply the update.
-	await query(
-		`UPDATE incidents SET status = $1 WHERE id = $2 AND tenant_id = $3`,
-		[nextStatus, incidentId, claims.tenantId],
-	);
+	await db
+		.update(incidentsTable)
+		.set({ status: nextStatus })
+		.where(
+			and(
+				eq(incidentsTable.id, incidentId),
+				eq(incidentsTable.tenantId, claims.tenant_id),
+			),
+		)
+		.execute();
 
-	// Fetch the updated record.
-	const updated = await query(`SELECT * FROM incidents WHERE id = $1`, [incidentId]);
+	const updated = await db
+		.select()
+		.from(incidentsTable)
+		.where(eq(incidentsTable.id, incidentId))
+		.execute();
 	const updatedIncident = mapIncident(updated[0] as never);
 
-	// Audit log the transition.
+	const actorPhone = await fetchUserPhone(claims.sub);
 	await commitAuditLog({
-		tenantId: claims.tenantId,
-		actor: actorFromClaims(claims),
+		tenantId: claims.tenant_id,
+		actor: actorFromClaims(claims, actorPhone),
 		action: 'INCIDENT_STATUS_MUTATION',
 		targetResourceId: incidentId,
 		stateDelta: { before: { status: current }, after: { status: nextStatus } },
@@ -154,8 +174,8 @@ async function createDispatch(
 	claims: JwtClaims,
 	body: { incidentId: string; targetStaffPhone: string; directiveText: string },
 ): Promise<Response> {
-	if (!isAdmin(claims)) {
-		return unauthorized('Only admins can create dispatches.');
+	if (!claims.permissions.includes('dispatch:create')) {
+		return jsonResponse({ error: 'Only admins/managers can create dispatches.' }, 403);
 	}
 
 	const { incidentId, targetStaffPhone, directiveText } = body;
@@ -163,46 +183,72 @@ async function createDispatch(
 		return badRequest('incidentId, targetStaffPhone, and directiveText are required.');
 	}
 
-	// Verify the incident exists in this tenant.
-	const incidentRows = await query(
-		`SELECT id FROM incidents WHERE id = $1 AND tenant_id = $2`,
-		[incidentId, claims.tenantId],
-	);
+	const incidentRows = await db
+		.select({ id: incidentsTable.id })
+		.from(incidentsTable)
+		.where(
+			and(
+				eq(incidentsTable.id, incidentId),
+				eq(incidentsTable.tenantId, claims.tenant_id),
+			),
+		)
+		.execute();
 	if (incidentRows.length === 0) {
 		return badRequest('Incident not found in your tenant.');
 	}
 
-	// Verify the target staff exists in this tenant.
-	const staffRows = await query(
-		`SELECT id FROM staff_roster WHERE id = $1 AND tenant_id = $2 AND status != 'OFF_DUTY'`,
-		[targetStaffPhone, claims.tenantId],
-	);
+	// Lookup staff by phone_number (was by id pre-ADR-0010).
+	const staffRows = await db
+		.select({ id: staffRosterTable.id })
+		.from(staffRosterTable)
+		.where(
+			and(
+				eq(staffRosterTable.phoneNumber, targetStaffPhone),
+				eq(staffRosterTable.tenantId, claims.tenant_id),
+				ne(staffRosterTable.status, 'OFF_DUTY'),
+			),
+		)
+		.execute();
 	if (staffRows.length === 0) {
 		return badRequest('Target staff member not found or off-duty.');
 	}
 
-	// Create the dispatch.
 	const dispatchId = `disp_${randomUUID().slice(0, 12)}`;
-	await query(
-		`INSERT INTO dispatches (id, tenant_id, incident_id, target_staff_phone, directive_text, status)
-		 VALUES ($1, $2, $3, $4, $5, 'SENT')`,
-		[dispatchId, claims.tenantId, incidentId, targetStaffPhone, directiveText],
-	);
+	await db
+		.insert(dispatchesTable)
+		.values({
+			id: dispatchId,
+			tenantId: claims.tenant_id,
+			incidentId,
+			targetStaffPhone,
+			directiveText,
+			status: 'SENT',
+		})
+		.execute();
 
-	// Mark the target staff as DISPATCHED.
-	await query(
-		`UPDATE staff_roster SET status = 'DISPATCHED' WHERE id = $1 AND tenant_id = $2`,
-		[targetStaffPhone, claims.tenantId],
-	);
+	// Mark target staff as DISPATCHED (by phone, which is unique per tenant).
+	await db
+		.update(staffRosterTable)
+		.set({ status: 'DISPATCHED' })
+		.where(
+			and(
+				eq(staffRosterTable.phoneNumber, targetStaffPhone),
+				eq(staffRosterTable.tenantId, claims.tenant_id),
+			),
+		)
+		.execute();
 
-	// Fetch + return the created dispatch.
-	const created = await query(`SELECT * FROM dispatches WHERE id = $1`, [dispatchId]);
+	const created = await db
+		.select()
+		.from(dispatchesTable)
+		.where(eq(dispatchesTable.id, dispatchId))
+		.execute();
 	const createdDispatch = mapDispatch(created[0] as never);
 
-	// Audit log the dispatch creation.
+	const actorPhone = await fetchUserPhone(claims.sub);
 	await commitAuditLog({
-		tenantId: claims.tenantId,
-		actor: actorFromClaims(claims),
+		tenantId: claims.tenant_id,
+		actor: actorFromClaims(claims, actorPhone),
 		action: 'DISPATCH_CREATE',
 		targetResourceId: dispatchId,
 		stateDelta: { before: null, after: { status: 'SENT', target: targetStaffPhone, incidentId } },
@@ -220,56 +266,68 @@ async function updateDispatch(
 		return badRequest(`Invalid dispatch status: ${nextStatus}.`);
 	}
 
-	// Fetch the dispatch — verify tenant.
-	const rows = await query(
-		`SELECT * FROM dispatches WHERE id = $1 AND tenant_id = $2`,
-		[dispatchId, claims.tenantId],
-	);
+	const rows = await db
+		.select()
+		.from(dispatchesTable)
+		.where(
+			and(
+				eq(dispatchesTable.id, dispatchId),
+				eq(dispatchesTable.tenantId, claims.tenant_id),
+			),
+		)
+		.execute();
 	if (rows.length === 0) {
 		return badRequest('Dispatch not found in your tenant.');
 	}
 
-	const dispatch = rows[0];
-	const current = dispatch.status as string;
+	const dispatch = rows[0]!;
+	const current = dispatch.status;
 
 	if (!isValidForwardTransition(current, nextStatus, DISPATCH_FLOW)) {
 		return badRequest(`Cannot transition dispatch from ${current} to ${nextStatus}.`);
 	}
 
-	// Authorization: admin/superadmin OR the target staff member.
-	if (!isAdmin(claims) && claims.phoneNumber !== dispatch.target_staff_phone) {
-		return unauthorized('You can only update dispatches assigned to you.');
+	// Authorization: dispatch:update OR self (caller is target staff).
+	const actorPhone = await fetchUserPhone(claims.sub);
+	const canUpdateAny = claims.permissions.includes('dispatch:update');
+	const isTarget = actorPhone === dispatch.targetStaffPhone;
+	if (!canUpdateAny && !isTarget) {
+		return jsonResponse({ error: 'You can only update dispatches assigned to you.' }, 403);
 	}
 
-	// Apply the update + set timestamps.
-	const timestampCol =
-		nextStatus === 'ACKNOWLEDGED' ? 'ack_at' : nextStatus === 'RESOLVED' ? 'resolved_at' : null;
+	const updateValues: Record<string, unknown> = { status: nextStatus };
+	if (nextStatus === 'ACKNOWLEDGED') updateValues.ackAt = new Date();
+	if (nextStatus === 'RESOLVED') updateValues.resolvedAt = new Date();
 
-	if (timestampCol) {
-		await query(
-			`UPDATE dispatches SET status = $1, ${timestampCol} = now() WHERE id = $2`,
-			[nextStatus, dispatchId],
-		);
-	} else {
-		await query(`UPDATE dispatches SET status = $1 WHERE id = $2`, [nextStatus, dispatchId]);
-	}
+	await db
+		.update(dispatchesTable)
+		.set(updateValues)
+		.where(eq(dispatchesTable.id, dispatchId))
+		.execute();
 
-	// If resolved, mark the target staff as AVAILABLE again.
 	if (nextStatus === 'RESOLVED') {
-		await query(
-			`UPDATE staff_roster SET status = 'AVAILABLE' WHERE id = $1 AND tenant_id = $2`,
-			[dispatch.target_staff_phone, claims.tenantId],
-		);
+		await db
+			.update(staffRosterTable)
+			.set({ status: 'AVAILABLE' })
+			.where(
+				and(
+					eq(staffRosterTable.phoneNumber, dispatch.targetStaffPhone),
+					eq(staffRosterTable.tenantId, claims.tenant_id),
+				),
+			)
+			.execute();
 	}
 
-	// Fetch + return the updated dispatch.
-	const updated = await query(`SELECT * FROM dispatches WHERE id = $1`, [dispatchId]);
+	const updated = await db
+		.select()
+		.from(dispatchesTable)
+		.where(eq(dispatchesTable.id, dispatchId))
+		.execute();
 	const updatedDispatch = mapDispatch(updated[0] as never);
 
-	// Audit log the dispatch status change.
 	await commitAuditLog({
-		tenantId: claims.tenantId,
-		actor: actorFromClaims(claims),
+		tenantId: claims.tenant_id,
+		actor: actorFromClaims(claims, actorPhone),
 		action: 'DISPATCH_STATUS_MUTATION',
 		targetResourceId: dispatchId,
 		stateDelta: { before: { status: current }, after: { status: nextStatus } },
@@ -288,10 +346,12 @@ export default async (request: Request): Promise<Response> => {
 		return jsonResponse({ error: 'Method Not Allowed' }, 405);
 	}
 
-	const claims = await authenticateRequest(request);
-	if (!claims) {
-		return unauthorized('Invalid or missing authentication token.');
-	}
+	// Authenticate + staleness check. No specific permission here — each
+	// action handler applies its own gate.
+	const auth = await authorizeRequest(request);
+	const notOk = authResponse(auth);
+	if (notOk) return notOk;
+	const claims = auth.claims;
 
 	// Enforce the operational time window for write actions.
 	const windowCheck = await checkOperationalWindow(claims);
@@ -307,6 +367,10 @@ export default async (request: Request): Promise<Response> => {
 			targetStaffPhone?: string;
 			directiveText?: string;
 			dispatchId?: string;
+			category?: string;
+			severity?: string;
+			locationSector?: string;
+			rawText?: string;
 		};
 
 		switch (body.action) {
@@ -355,3 +419,6 @@ export default async (request: Request): Promise<Response> => {
 export const config: Config = {
 	path: '/api/mutations',
 };
+
+// `sql` import kept for future use; suppress unused warning.
+void sql;

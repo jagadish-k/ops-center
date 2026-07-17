@@ -32,7 +32,7 @@ export default function ControlRoom() {
 	}
 
 	return (
-		<ActiveOpsProvider tenantId={jwtTenantId ?? claims.tenantId} overrideTenantId={overrideTenantId}>
+		<ActiveOpsProvider tenantId={jwtTenantId ?? claims.tenant_id} overrideTenantId={overrideTenantId}>
 			<OperationalDashboard onTenantChange={setOverrideTenantId} />
 		</ActiveOpsProvider>
 	);

@@ -1,89 +1,72 @@
 import { describe, it, expect } from 'vitest';
-import { ROLE_PERMISSIONS, permissionsForRole, type Permission } from '@/lib/permissions';
-import type { OperationalRole } from '@/types';
+import { ALL_PERMISSIONS, ABAC_SCOPED_PERMISSIONS, permissionsForClaim, type Permission } from '@/lib/permissions';
 
 /**
- * Tests for the declarative RBAC permission model (src/lib/permissions.ts).
- * Validates the role-to-permission mapping against the ARCHITECTURE.md §4
- * RBAC Rules Matrix.
+ * Tests for the post-ADR-0011 permission model.
+ *
+ * The role → permission mapping is now DB-driven and preseeded by
+ * `database/seed.ts`. The closed `Permission` union + `ALL_PERMISSIONS` +
+ * `ABAC_SCOPED_PERMISSIONS` are tested here. The DB-seeded role matrix is
+ * tested end-to-end via `database/seed.ts` integration tests (future).
  */
 
-const ALL_PERMS: Permission[] = [
-	'incident:create',
-	'incident:transition',
-	'incident:read',
-	'dispatch:create',
-	'dispatch:update',
-	'dispatch:read',
-	'tenant:switch',
-	'tenant:manage',
-	'staff:manage',
-	'audit:view',
-	'surface:control-room',
-	'surface:field-client',
-	'config:manage',
-];
-
-describe('ROLE_PERMISSIONS', () => {
-	it('superadmin has every permission', () => {
-		const perms = ROLE_PERMISSIONS.superadmin;
-		for (const p of ALL_PERMS) {
-			expect(perms.has(p)).toBe(true);
-		}
+describe('ALL_PERMISSIONS', () => {
+	it('contains the 15 typed permissions', () => {
+		expect(ALL_PERMISSIONS).toHaveLength(15);
 	});
 
-	it('admin has operational permissions but not tenant/system management', () => {
-		const perms = ROLE_PERMISSIONS.admin;
-		// Can do operational tasks
-		expect(perms.has('incident:create')).toBe(true);
-		expect(perms.has('incident:transition')).toBe(true);
-		expect(perms.has('dispatch:create')).toBe(true);
-		expect(perms.has('dispatch:update')).toBe(true);
-		expect(perms.has('staff:manage')).toBe(true);
-		expect(perms.has('audit:view')).toBe(true);
-		expect(perms.has('surface:control-room')).toBe(true);
-		// Cannot manage tenants or system config
-		expect(perms.has('tenant:switch')).toBe(false);
-		expect(perms.has('tenant:manage')).toBe(false);
-		expect(perms.has('config:manage')).toBe(false);
+	it('includes the two M9 additions', () => {
+		expect(ALL_PERMISSIONS).toContain('staff:reassign');
+		expect(ALL_PERMISSIONS).toContain('role:assign-admin');
 	});
 
-	it('staff can file reports and manage own dispatches but cannot transition incidents', () => {
-		const perms = ROLE_PERMISSIONS.staff;
-		// Can file + read
-		expect(perms.has('incident:create')).toBe(true);
-		expect(perms.has('incident:read')).toBe(true);
-		// Can update own dispatch
-		expect(perms.has('dispatch:update')).toBe(true);
-		expect(perms.has('dispatch:read')).toBe(true);
-		// Cannot transition incidents or create dispatches
-		expect(perms.has('incident:transition')).toBe(false);
-		expect(perms.has('dispatch:create')).toBe(false);
-		// Cannot access control room
-		expect(perms.has('surface:control-room')).toBe(false);
-		// Can access field client
-		expect(perms.has('surface:field-client')).toBe(true);
-		// Cannot manage tenants/staff/config
-		expect(perms.has('tenant:switch')).toBe(false);
-		expect(perms.has('staff:manage')).toBe(false);
-		expect(perms.has('config:manage')).toBe(false);
-	});
-
-	it('staff cannot view audit log', () => {
-		expect(ROLE_PERMISSIONS.staff.has('audit:view')).toBe(false);
+	it('has no duplicates', () => {
+		const set = new Set(ALL_PERMISSIONS);
+		expect(set.size).toBe(ALL_PERMISSIONS.length);
 	});
 });
 
-describe('permissionsForRole', () => {
-	it('returns the correct set for each role', () => {
-		for (const role of ['superadmin', 'admin', 'staff'] as OperationalRole[]) {
-			const perms = permissionsForRole(role);
-			expect(perms).toBe(ROLE_PERMISSIONS[role]);
-		}
+describe('ABAC_SCOPED_PERMISSIONS', () => {
+	it('contains exactly the 5 attribute-aware actions (ADR-0012)', () => {
+		expect(ABAC_SCOPED_PERMISSIONS.size).toBe(5);
+	});
+
+	it('includes incident:transition (tier-gated)', () => {
+		expect(ABAC_SCOPED_PERMISSIONS.has('incident:transition')).toBe(true);
+	});
+
+	it('includes dispatch:create (zone-gated)', () => {
+		expect(ABAC_SCOPED_PERMISSIONS.has('dispatch:create')).toBe(true);
+	});
+
+	it('includes staff:reassign (zone-gated)', () => {
+		expect(ABAC_SCOPED_PERMISSIONS.has('staff:reassign')).toBe(true);
+	});
+
+	it('does NOT include flat permissions like audit:view', () => {
+		expect(ABAC_SCOPED_PERMISSIONS.has('audit:view')).toBe(false);
+		expect(ABAC_SCOPED_PERMISSIONS.has('tenant:switch')).toBe(false);
+	});
+});
+
+describe('permissionsForClaim', () => {
+	it('returns a set from the claim array', () => {
+		const perms: Permission[] = ['incident:create', 'audit:view'];
+		const set = permissionsForClaim(perms);
+		expect(set.has('incident:create')).toBe(true);
+		expect(set.has('audit:view')).toBe(true);
+		expect(set.has('incident:transition')).toBe(false);
 	});
 
 	it('returns empty set for null/undefined', () => {
-		expect(permissionsForRole(null).size).toBe(0);
-		expect(permissionsForRole(undefined).size).toBe(0);
+		expect(permissionsForClaim(null).size).toBe(0);
+		expect(permissionsForClaim(undefined).size).toBe(0);
+		expect(permissionsForClaim([]).size).toBe(0);
+	});
+
+	it('handles readonly arrays', () => {
+		const perms = ['incident:create'] as const;
+		const set = permissionsForClaim(perms);
+		expect(set.has('incident:create')).toBe(true);
 	});
 });

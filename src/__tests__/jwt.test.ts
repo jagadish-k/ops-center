@@ -4,10 +4,8 @@ import { generateKeyPairSync } from 'node:crypto';
 /**
  * Tests for the RS256 JWT sign/verify pipeline (netlify/lib/jwt.ts).
  *
- * Generates a throwaway RSA keypair in-memory for each test run — no real
- * keys are needed. Validates the full roundtrip: sign claims → verify token →
- * recover claims. This is the crypto path that the reference docs got wrong
- * (RSASHA264 bug — see ADR-0003).
+ * Post-ADR-0013: the JWT carries `{ sub, global_role, tenant_id, permissions[],
+ * pv, auth_provider }` — see ADR-0003 §JWT Claim Shape (post-ADR-0013).
  */
 
 // Generate a test keypair once for this test file.
@@ -31,18 +29,27 @@ describe('JWT sign + verify roundtrip (RS256 via jose)', () => {
 		const { signAuthJwt, verifyAuthJwt } = await import('../../netlify/lib/jwt');
 
 		const token = await signAuthJwt({
-			role: 'admin',
-			tenantId: 'tenant_metlife_ops',
-			phoneNumber: '+14155552026',
+			sub: 'user-uuid-1',
+			global_role: 'member',
+			tenant_id: 'tenant_metlife_ops',
+			permissions: ['incident:create', 'incident:read', 'surface:control-room'],
+			pv: 1,
+			auth_provider: 'phone_otp',
+			phone: '+14155552026',
+			full_name: 'Test Admin',
 		});
 
 		expect(token).toBeTruthy();
 		expect(token.split('.')).toHaveLength(3); // header.payload.signature
 
 		const claims = await verifyAuthJwt(token);
-		expect(claims.role).toBe('admin');
-		expect(claims.tenantId).toBe('tenant_metlife_ops');
-		expect(claims.phoneNumber).toBe('+14155552026');
+		expect(claims.sub).toBe('user-uuid-1');
+		expect(claims.global_role).toBe('member');
+		expect(claims.tenant_id).toBe('tenant_metlife_ops');
+		expect(claims.permissions).toContain('incident:create');
+		expect(claims.pv).toBe(1);
+		expect(claims.auth_provider).toBe('phone_otp');
+		expect(claims.phone).toBe('+14155552026');
 		expect(claims.iss).toBe('stadium-ops');
 		expect(claims.aud).toBe('stadium-ops-clients');
 		expect(claims.exp).toBeGreaterThan(claims.iat);
@@ -52,9 +59,12 @@ describe('JWT sign + verify roundtrip (RS256 via jose)', () => {
 		const { signAuthJwt, verifyAuthJwt } = await import('../../netlify/lib/jwt');
 
 		const token = await signAuthJwt({
-			role: 'staff',
-			tenantId: 'tenant_sofi_ops',
-			phoneNumber: '+14155550001',
+			sub: 'user-uuid-2',
+			global_role: 'member',
+			tenant_id: 'tenant_sofi_ops',
+			permissions: ['incident:create'],
+			pv: 1,
+			auth_provider: 'phone_otp',
 		});
 
 		const claims = await verifyAuthJwt(token);
@@ -66,14 +76,15 @@ describe('JWT sign + verify roundtrip (RS256 via jose)', () => {
 		const { signAuthJwt, verifyAuthJwt } = await import('../../netlify/lib/jwt');
 
 		const token = await signAuthJwt({
-			role: 'admin',
-			tenantId: 'tenant_metlife_ops',
-			phoneNumber: '+14155552026',
+			sub: 'user-uuid-3',
+			global_role: 'superadmin',
+			tenant_id: 'tenant_metlife_ops',
+			permissions: ['tenant:switch'],
+			pv: 1,
+			auth_provider: 'phone_otp',
 		});
 
-		// Tamper: flip a character in the MIDDLE of the signature segment
-		// (flipping the last char is unreliable — base64url padding may not
-		// affect the decoded signature bytes).
+		// Tamper: flip a character in the MIDDLE of the signature segment.
 		const parts = token.split('.');
 		const sigChars = parts[2].split('');
 		const midIdx = Math.floor(sigChars.length / 2);
@@ -83,41 +94,29 @@ describe('JWT sign + verify roundtrip (RS256 via jose)', () => {
 		await expect(verifyAuthJwt(tamperedToken)).rejects.toThrow();
 	});
 
-	it('rejects a token signed by a different key', async () => {
-		const { signAuthJwt } = await import('../../netlify/lib/jwt');
-		const { verifyAuthJwt: verifyWithOriginalKey } = await import('../../netlify/lib/jwt');
+	it('superadmin tokens carry all permissions', async () => {
+		const { signAuthJwt, verifyAuthJwt } = await import('../../netlify/lib/jwt');
 
-		// Sign with the test key (env vars set in beforeAll).
 		const token = await signAuthJwt({
-			role: 'staff',
-			tenantId: 'tenant_x',
-			phoneNumber: '+10000000000',
+			sub: 'super-uuid',
+			global_role: 'superadmin',
+			tenant_id: 'tenant_metlife_ops',
+			permissions: [
+				'incident:create', 'incident:transition', 'incident:read',
+				'dispatch:create', 'dispatch:update', 'dispatch:read',
+				'tenant:switch', 'tenant:manage',
+				'staff:manage', 'staff:reassign', 'role:assign-admin',
+				'audit:view',
+				'surface:control-room', 'surface:field-client',
+				'config:manage',
+			],
+			pv: 1,
+			auth_provider: 'phone_otp',
 		});
 
-		// Now swap to a DIFFERENT key and try to verify.
-		const attacker = generateKeyPairSync('rsa', { modulusLength: 2048 });
-		process.env.JWT_PUBLIC_KEY = attacker.publicKey.export({ type: 'spki', format: 'pem' }) as string;
-
-		// The cached public key is still the original — force re-evaluation
-		// by checking that a DIFFERENT key's token fails with the original.
-		const attackerToken = await (async () => {
-			process.env.JWT_PRIVATE_KEY = attacker.privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
-			// Reset module cache to pick up new key.
-			const fresh = await import('../../netlify/lib/jwt?t=' + Date.now());
-			return fresh.signAuthJwt({ role: 'staff', tenantId: 'tenant_x', phoneNumber: '+10000000000' });
-		})();
-
-		// Restore original key for verification.
-		process.env.JWT_PRIVATE_KEY = privatePem;
-		process.env.JWT_PUBLIC_KEY = publicPem;
-
-		// The original key should NOT verify the attacker's token.
-		// (We verify the original token still works instead.)
-		const claims = await verifyWithOriginalKey(token);
-		expect(claims.role).toBe('staff');
-		// attackerToken would fail — but module caching makes this flaky in test.
-		// The important assertion is that our legitimate token verifies.
-		expect(attackerToken).toBeTruthy();
+		const claims = await verifyAuthJwt(token);
+		expect(claims.global_role).toBe('superadmin');
+		expect(claims.permissions).toHaveLength(15);
 	});
 });
 
