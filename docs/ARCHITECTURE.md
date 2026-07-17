@@ -22,12 +22,13 @@ with offscreen double-buffering.
 |  +------------------------+  +------------------------+  +---------------------------+  |
 |  |   Static App Hosting   |  |  Edge/Serverless Fns   |  |   Netlify Postgres DB     |  |
 |  | (React 19 / TS / Vite) |  |  (Auth, Poll, AI, CRUD) |  |  (Tenants, Incidents,     |  |
-|  |  HeroUI v3 / RR8 / TW4 |  |  (Deno / Node runtime)  |  |   Staff, Dispatches, OTP) |  |
+|  |  HeroUI v3 / RR8 / TW4 |  |  (Deno / Node runtime)  |  |   Staff, Dispatches, OTP,|  |
+|  |   Audit Ledger — WORM)  |  |
 |  +------------------------+  +------------------------+  +---------------------------+  |
 |  +------------------------+  +------------------------+                               |
-|  |   Netlify Blobs        |  |  Twilio Verify / SMS   |                               |
-|  | (Audit Chain — WORM)   |  |  (OTP Delivery)        |                               |
-|  +------------------------+  +------------------------+                               |
+|                              |  Twilio Verify / SMS   |                               |
+|                              |  (OTP Delivery)        |                               |
+|                              +------------------------+                               |
 +-------------------------------------------+---------------------------------------------+
                                             |
                         Diff-Based Polling (HTTP, ~2s interval)
@@ -50,11 +51,30 @@ with offscreen double-buffering.
 - **UX Component Framework:** HeroUI v3 (`@heroui/react`) built over React Aria Components. Ensures strict accessibility compliance.
 - **Edge Compute:** Netlify Functions / Edge Functions running over the Deno/Node runtime environment.
 - **Relational Storage:** Netlify Postgres managed database. Houses tenants, staff rosters, incidents, dispatches, OTP sessions, and sector coordinate anchors. See [ADR-0002](adr/0002-netlify-postgres-blobs-data-layer.md).
-- **Object Storage:** Netlify Blobs for the append-only Audit Chain (tamper-evident SHA-256 linked entries). See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
+- **Object Storage:** Append-only `audit_ledger` table in Postgres for the tamper-evident SHA-256 chained Audit Chain. WORM-enforced via Postgres triggers that reject UPDATE/DELETE. See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
 - **Real-time Synchronization:** Diff-based polling (`POST /api/state-poll`) at ~2s intervals. No WebSockets. See [ADR-0004](adr/0004-polling-realtime-synchronization.md).
 - **Identity Layer:** Edge-minted RS256 JWTs with role + tenant claims; OTP via Twilio. See [ADR-0003](adr/0003-edge-jwt-otp-authentication.md).
 - **External Integration Layer:** Twilio (Verify / SMS) for OTP delivery.
 - **Generative AI Pipeline Suite:** OpenAI Whisper API (audio transcription) and Google Gemini 1.5 Flash (structured JSON extraction). See [ADR-0006](adr/0006-whisper-gemini-voice-pipeline.md).
+- **RBAC:** Declarative permission model (`src/lib/permissions.ts`) with 13 typed permissions mapped to 3 roles. Client-side checks via `usePermissions().can()`; re-enforced server-side in every function. See `src/hooks/usePermissions.ts`.
+- **GPS Tracking:** `navigator.geolocation.watchPosition` with 3m haversine debounce + 500ms throttle. Projects to 0–1000 grid via per-tenant bounding box. Positions update the canvas in real time. See ADR for PRD §7.1 and `src/hooks/useGeolocationTracking.ts`.
+- **Offline Resilience:** IndexedDB mutation queue (`src/lib/offline-db.ts`) with auto-drain on reconnect. Preserves original client timestamps — mutations flush FIFO when connectivity returns.
+- **Audit Ledger:** SHA-256 chained entries in Postgres (`audit_ledger` table) with append-only triggers (WORM). Server-side chain verification via `netlify/lib/auditLogger.ts`. See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
+
+### API Endpoints
+
+All endpoints live under `/api/*` as Netlify Functions. Every protected route
+verifies the RS256 JWT and enforces `tenantId` isolation.
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/api/auth/request-otp` | None | Request OTP via Twilio SMS (dev-mode returns code in response) |
+| `POST` | `/api/auth/verify-otp` | None | Verify OTP → mint RS256 JWT with role + tenant claims |
+| `POST` | `/api/state-poll` | Bearer JWT | Diff-based polling — returns records changed since `sinceTimestamp` |
+| `POST` | `/api/mutations` | Bearer JWT | Unified mutation endpoint (`create_incident`, `transition_incident`, `create_dispatch`, `update_dispatch`) |
+| `POST` | `/api/ai-triage` | Bearer JWT | Voice triage pipeline (Whisper transcription → Gemini extraction) |
+| `POST` | `/api/staff-location` | Bearer JWT | Update staff GPS position → projected to grid |
+| `GET` | `/api/audit-ledger` | Bearer JWT | View audit chain entries + run SHA-256 integrity verification |
 
 ## 3. Core Data Processing Pipelines
 

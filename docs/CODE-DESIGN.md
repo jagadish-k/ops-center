@@ -12,42 +12,85 @@ The codebase enforces a decoupled folder structure ensuring that logic, componen
 
 ```text
 /
-├── .env.example
+├── database/
+│   ├── migrate.ts                  # Idempotent migration runner
+│   └── migrations/
+│       ├── 0001_init.sql           # Schema: tenants, staff_roster, incidents, dispatches, otp_sessions, config, sectors
+│       ├── 0002_gps_tracking.sql   # Staff GPS position tracking columns + indexes
+│       └── 0003_audit_ledger.sql   # WORM audit_chain table + append-only trigger
+├── scripts/
+│   ├── dev.ts                      # Full-stack dev orchestrator (Docker → migrate → netlify dev)
+│   ├── setup-env.ts                # .env bootstrapper (auto-generates RSA keypair)
+│   ├── matchday-simulator.ts       # Stress test: 250 staff, 50 incidents, latency metrics
+│   └── verify-deploy.ts            # Pre-flight deploy check (env, DB, endpoints, JWT keys)
 ├── netlify/
-│   ├── edge-functions/
-│   │   └── auth-bootstrap.ts       # RS256 JWT mint + OTP verify (ADR-0003)
-│   └── functions/
-│       ├── state-poll.ts           # Diff-based polling endpoint (ADR-0004)
-│       ├── ai-triage.ts            # Whisper + Gemini pipeline (ADR-0006)
-│       ├── mutations.ts            # Incident/dispatch CRUD + audit hook
-│       └── verify-ledger.ts        # Chain integrity scan (ADR-0005)
+│   ├── functions/
+│   │   ├── auth-request-otp.ts     # OTP request (Twilio SMS or dev-mode console)
+│   │   ├── auth-verify-otp.ts      # OTP verify → RS256 JWT mint (ADR-0003)
+│   │   ├── state-poll.ts           # Diff-based polling endpoint (ADR-0004)
+│   │   ├── mutations.ts            # Unified mutation endpoint (incident/dispatch CRUD + audit hook)
+│   │   ├── ai-triage.ts            # Whisper + Gemini voice triage pipeline (ADR-0006)
+│   │   ├── staff-location.ts       # GPS position update (field staff tracking)
+│   │   ├── audit-ledger.ts         # Audit chain viewer + SHA-256 verifier (ADR-0005)
+│   │   └── hello.ts                # Health-check smoke test
+│   └── lib/
+│       ├── db.ts                   # Postgres connection pool (pg)
+│       ├── jwt.ts                  # RS256 sign/verify (jose)
+│       ├── otp.ts                  # OTP generation, hashing, expiry, rate-limit
+│       ├── twilio.ts               # SMS delivery (real or dev-mode stub)
+│       ├── http.ts                 # Shared response helpers, JWT extraction
+│       ├── mappers.ts              # Postgres row → domain type mapping
+│       ├── incidents.ts            # Incident query/mutation helpers
+│       ├── sectors.ts              # Sector anchor coordinate lookup
+│       ├── geo.ts                  # GPS lat/lng → 0–1000 grid projection (haversine)
+│       ├── auditLogger.ts          # SHA-256 chained entry computation (ADR-0005)
+│       └── operational-window.ts   # Time-window guard ("the switch") for write rejection
 ├── src/
-│   ├── assets/
 │   ├── components/
-│   │   ├── ui/                     # HeroUI v3 wrappers (NOT shadcn/ui)
-│   │   ├── mobile/                 # Mobile Field interface components
-│   │   ├── control-room/           # Desktop dashboard widgets
-│   │   └── shared/                 # Cross-surface utilities
-│   │       └── OptimizedStadiumMapCanvas.tsx  # Offscreen-buffered Canvas
+│   │   ├── auth/
+│   │   │   └── OtpGateway.tsx       # Phone + OTP entry (HeroUI v3, NOT shadcn/ui)
+│   │   ├── control-room/            # Desktop dashboard widgets
+│   │   │   ├── OperationalDashboard.tsx
+│   │   │   ├── IncidentQueue.tsx
+│   │   │   ├── IncidentInspector.tsx
+│   │   │   ├── TenantSwitcher.tsx
+│   │   │   └── AuditTimelineInspector.tsx
+│   │   ├── mobile/                  # Mobile Field interface components
+│   │   │   ├── FieldShell.tsx
+│   │   │   ├── VoiceIngest.tsx
+│   │   │   ├── ManualTriageDrawer.tsx
+│   │   │   └── DispatchModal.tsx
+│   │   └── shared/
+│   │       └── OptimizedStadiumMapCanvas.tsx  # Offscreen-double-buffered Canvas
 │   ├── context/
-│   │   ├── AuthContext.tsx         # JWT verify, claims, tenant scope
-│   │   └── ActiveOpsContext.tsx    # Polling hook, diff-merge into refs
+│   │   ├── AuthContext.tsx          # JWT verify, claims, tenant scope
+│   │   └── ActiveOpsContext.tsx     # Polling hook, diff-merge into refs
 │   ├── hooks/
-│   │   ├── usePollingState.ts      # 2s diff-poll engine
-│   │   ├── useVoiceRecorder.ts     # MediaRecorder → webm
-│   │   ├── useTenantMutations.ts   # Write + audit-log intercept
-│   │   └── useOfflineQueue.ts      # IndexedDB queue + drain
+│   │   ├── usePollingState.ts       # 2s diff-poll engine
+│   │   ├── usePermissions.ts        # RBAC permission check hook (can/hasPermission)
+│   │   ├── useGeolocationTracking.ts # GPS watchPosition + haversine debounce + throttle
+│   │   └── useOfflineQueue.ts       # IndexedDB queue + FIFO drain on reconnect
+│   ├── lib/
+│   │   ├── permissions.ts           # Declarative permission model (13 permissions → 3 roles)
+│   │   ├── geo-client.ts            # Client-side grid math (clientToGrid, gridToClient)
+│   │   ├── offline-db.ts            # IndexedDB store wrapper (idb)
+│   │   ├── mockData.ts              # Seed fixtures for local dev / testing
+│   │   └── ui.ts                    # Shared UI constants, class helpers
 │   ├── services/
-│   │   ├── api.ts                  # Fetch wrapper, JWT injection
-│   │   └── crypto.ts               # Client-side SHA-256 (audit verify)
+│   │   └── api.ts                   # Fetch wrapper, JWT injection
+│   ├── pages/
+│   │   ├── auth-gate.tsx            # RR8 route: OTP gateway
+│   │   ├── control-room.tsx         # RR8 route: admin dashboard
+│   │   ├── field-client.tsx         # RR8 route: mobile field surface
+│   │   └── home.tsx                 # RR8 route: role-based redirect
 │   ├── types/
-│   │   └── index.ts
-│   ├── pages/                      # RR8 routes: auth, control, field
-│   ├── routes.ts                   # RR8 route config
-│   ├── root.tsx                    # RR8 root layout
+│   │   └── index.ts                 # Canonical domain types (single source of truth)
+│   ├── __tests__/                   # Vitest suite (75+ tests)
+│   ├── routes.ts                    # RR8 route config
+│   ├── root.tsx                     # RR8 root layout
 │   └── main.tsx
-├── vite.config.ts                  # Tailwind v4 via @tailwindcss/vite
-└── docs/adr/                       # Architecture Decision Records
+├── vite.config.ts                   # Tailwind v4 via @tailwindcss/vite + vite-plugin-pwa
+└── docs/adr/                        # Architecture Decision Records (ADR-0001 through ADR-0008)
 ```
 
 ## 2. Strong Type Architecture (TypeScript Contract)

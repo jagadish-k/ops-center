@@ -111,6 +111,96 @@ export interface AuditLogEntry {
 }
 ```
 
+### Additional Types (Milestones 1–8)
+
+The following types were added to `src/types/index.ts` as the platform grew.
+They are part of the same canonical file — documented separately here for
+clarity.
+
+```typescript
+// JWT claims minted at the edge (ADR-0003). Client reads for UI; server
+// re-verifies signature — never trusts client-decoded values for authz.
+export interface JwtClaims {
+	role: OperationalRole;
+	tenantId: string;
+	phoneNumber?: string;
+	email?: string;
+	iss?: string; // standard JWT registered claim (issuer)
+	aud?: string; // standard JWT registered claim (audience)
+	exp: number; // Unix seconds
+	iat: number; // Unix seconds
+}
+
+// Extracted actor identity for an audit entry (factored out of AuditLogEntry).
+export interface AuditActor {
+	uid: string;
+	role: OperationalRole;
+	phoneOrEmail: string;
+	deviceFingerprint: string;
+	ipAddress: string;
+}
+
+// Structured metadata extracted from voice/text triage (factored out of IncidentReport).
+export interface IncidentExtractedMetadata {
+	category: IncidentCategory;
+	severity: IncidentSeverity;
+	locationSector: string;
+	actionRequired?: string;
+}
+
+// AI Triage pipeline output (Whisper + Gemini, ADR-0006).
+export interface TriageResult {
+	rawTranscription: string;
+	structuredAnalysis: {
+		tier: InfoTier;
+		category: IncidentCategory;
+		severity: IncidentSeverity;
+		locationSector: string;
+		actionRequired: string;
+	};
+	processedTimestamp: number;
+}
+
+// Diff-based polling request/response (ADR-0004).
+export interface StatePollRequest {
+	tenantId: string;
+	sinceTimestamp: number;
+}
+
+export interface StatePollDiff {
+	incidents: IncidentReport[];
+	staff: WhitelistUser[];
+	dispatches: DispatchDirective[];
+	serverTimestamp: number;
+}
+```
+
+#### Permission Model (RBAC)
+
+The typed permission union lives in `src/lib/permissions.ts` (not in the types
+file), mapped to the three `OperationalRole` values. There are **13 typed
+permissions** covering incident mutation, dispatch, tenant switching, audit
+viewing, and staff management. Client-side checks use the
+`usePermissions().can()` hook:
+
+```typescript
+// src/lib/permissions.ts (excerpt — see file for full list)
+export type Permission =
+	| 'incident:create'
+	| 'incident:transition'
+	| 'incident:delete'
+	| 'dispatch:create'
+	| 'dispatch:update'
+	| 'tenant:switch'
+	| 'audit:view'
+	| 'staff:read'
+	| 'staff:manage'
+	| /* …13 total */ string;
+
+// Role → permission map; checked client-side via usePermissions().can('incident:transition')
+// and re-enforced server-side in every Netlify Function.
+```
+
 ### Resolution Notes
 
 The following contradictions in earlier docs are resolved here:

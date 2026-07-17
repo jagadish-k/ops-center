@@ -52,8 +52,17 @@ touch an area before working in it.
   carrying role + tenant claims. See ADR-0003. Not "session token" or "auth
   token".
 - **OTP** — One-time password delivered via Twilio for Field Staff login.
+- **Permission** — A typed capability (e.g. `incident:transition`,
+  `tenant:switch`) mapped to roles via `src/lib/permissions.ts`. 13 typed
+  permissions exist across 3 roles. Checked client-side via
+  `usePermissions().can()` and re-enforced server-side. Not "privilege" or
+  "entitlement".
+- **Operational Window** — A time-based guard ("the switch") that rejects
+  writes outside configured match hours. Superadmins bypass. Enforced
+  server-side in `netlify/lib/operational-window.ts`. Not "time lock" or
+  "schedule gate".
 - **Audit Chain** — The tamper-evident SHA-256 chained log of every state
-  mutation. Stored in Netlify Blobs. See ADR-0005. Not "audit log" (that implies
+  mutation. Stored in Postgres (`audit_ledger` table, ADR-0005). Not "audit log" (that implies
   a mutable append table); "chain" emphasises the cryptographic linkage.
 - **WORM** — Write-Once-Read-Many. In this platform, enforced as
   _tamper-evident_ (detectable) not _tamper-proof_ (prevented). See ADR-0005.
@@ -72,6 +81,16 @@ touch an area before working in it.
   client calls every ~2 seconds. See ADR-0004. Not "sync" or "refresh".
 - **Diff Response** — The server response containing only records changed since
   a client-supplied `sinceTimestamp`.
+- **Offline Queue** — IndexedDB-backed buffer for mutations when network is
+  unavailable. Drained FIFO on reconnect, preserving original client
+  timestamps. Implemented in `src/lib/offline-db.ts`. Not "outbox" or
+  "mutation cache".
+
+## Tooling
+
+- **Matchday Simulator** — Stress test script (`npm run simulate`) that seeds
+  250 staff + 50 incidents and measures query latency + mutation throughput.
+  Run before every deploy alongside `npm run verify:deploy`.
 
 ## Out of Scope
 

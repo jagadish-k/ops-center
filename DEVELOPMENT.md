@@ -75,7 +75,36 @@ preserved.
 | `npm run dev:db:stop` | Stop the Postgres container (data is preserved in volume) |
 | `npm run dev:db:reset` | **Wipe all data** and recreate a fresh Postgres container |
 | `npm run db:migrate` | Apply pending migrations manually |
-| `npm test` | Run the test suite (37 tests) |
+| `npm run simulate` | Stress test (250 staff, 50 incidents) — reports latency metrics |
+| `npm run verify:deploy` | Pre-flight deploy check (env vars, DB, migrations, endpoints, JWT keys) |
+| `npm test` | Run the test suite (75+ tests) |
+
+### Stress Testing (`npm run simulate`)
+
+The matchday simulator seeds a full-tenant dataset (250 staff + 50 incidents)
+and fires diff-poll + mutation requests to measure end-to-end latency. Run it
+against a running `netlify dev` instance:
+
+```bash
+npm run dev          # terminal 1 — start the stack
+npm run simulate     # terminal 2 — stress test against localhost:8888
+```
+
+Output includes median/p95 query latency and mutation throughput.
+
+### Deploy Verification (`npm run verify:deploy`)
+
+A pre-flight checklist that validates your environment before pushing to
+production:
+
+- All required env vars present (`DATABASE_URL`, JWT keys, Twilio, AI keys)
+- Postgres reachable + all migrations applied
+- Each function endpoint returns 200 (smoke test)
+- RSA keypair is valid (private signs, public verifies)
+
+```bash
+npm run verify:deploy   # run before every deploy
+```
 
 **Full reset (clean slate):**
 
@@ -278,7 +307,7 @@ npm run test:watch
 npx vitest run --coverage
 ```
 
-Current test coverage (37 tests, 5 files):
+Current test coverage (75+ tests, 11 files):
 
 | File | Tests | What it covers |
 |---|---|---|
@@ -287,6 +316,12 @@ Current test coverage (37 tests, 5 files):
 | `jwt.test.ts` | 6 | RS256 sign/verify roundtrip, tamper rejection, bearer extraction |
 | `otp.test.ts` | 5 | Code generation format/range, SMS formatting |
 | `api.test.ts` | 4 | Client-side claims decoding, malformed token handling |
+| `mappers.test.ts` | — | Postgres row → domain type mapping |
+| `sectors.test.ts` | — | Sector anchor coordinate lookup |
+| `geo.test.ts` | — | GPS-to-grid haversine projection |
+| `permissions.test.ts` | — | RBAC permission matrix (role → permission) |
+| `audit-chain.test.ts` | — | SHA-256 chain computation + tamper detection |
+| `integration.test.ts` | — | End-to-end auth → poll → mutate → audit flow |
 
 ---
 
@@ -392,5 +427,5 @@ npm run dev:db:stop
 npm run dev:db:reset && npm run dev
 
 # Run tests
-npm test                       # → 37 tests
+npm test                       # → 75+ tests
 ```

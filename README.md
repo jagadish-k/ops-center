@@ -42,8 +42,8 @@ emulation, seeded test users, API reference, troubleshooting).
 
 ```
 Client (React 19 / HeroUI v3) ──HTTPS──► Netlify Functions (Deno/Node)
-                                              ├── Postgres (tenants, incidents, staff)
-                                              ├── Blobs (audit chain — SHA-256 WORM)
+                                              ├── Postgres (tenants, incidents, staff,
+                                              │              audit ledger — SHA-256 WORM)
                                               ├── Twilio (OTP SMS)
                                               ├── Whisper API (audio transcription)
                                               └── Gemini 1.5 Flash (structured extraction)
@@ -74,12 +74,17 @@ through [ADR-0008](docs/adr/0008-defer-social-listening.md).
 ## Scripts
 
 ```bash
-npm run dev          # Vite dev server (frontend only, no functions)
-npm run build        # TypeScript check + Vite production build
-npm test             # Run vitest suite (37 tests)
-npm run test:watch   # Watch mode
-npm run db:migrate   # Apply Postgres schema migrations
-npm run lint         # ESLint
+npm run dev            # Full stack: Docker Postgres + netlify dev + functions
+npm run build          # TypeScript check + Vite production build
+npm run simulate       # Stress test (250 staff, 50 incidents)
+npm run verify:deploy  # Pre-flight deploy check
+npm test               # Run vitest suite (75+ tests)
+npm run test:watch     # Watch mode
+npm run db:migrate     # Apply Postgres schema migrations
+npm run dev:db         # Start Postgres Docker container
+npm run dev:db:stop    # Stop Postgres container
+npm run dev:db:reset   # Wipe and recreate Postgres container
+npm run lint           # ESLint
 ```
 
 ---

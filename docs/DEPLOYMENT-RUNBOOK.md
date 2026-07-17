@@ -44,8 +44,9 @@ npx tsx scripts/matchday-simulator.ts
 1. Provision a **Netlify Postgres** database via the Netlify dashboard.
 2. Run the schema migration against it (`npm run db:migrate`).
 3. Seed at least one tenant, one admin, and test staff in `staff_roster`.
-4. Provision **Netlify Blobs** for the audit chain store (no schema needed —
-   keys are `audit/{tenantId}/{eventId}`).
+4. The `audit_ledger` table (migration 0003) is provisioned automatically —
+   it is append-only (WORM) with Postgres triggers rejecting UPDATE/DELETE.
+   No separate blob store is required.
 
 > **Note:** There are no declarative `firestore.rules`. Authorization is
 > enforced imperatively inside each Netlify Function — every query filters by
@@ -76,15 +77,32 @@ Once deployment finishes, verify system readiness using this network handshake t
 
 ```text
 [FIELD OPERATIVE COMMS HANDSHAKE DIAGNOSTIC TRACE]
-1. Operative enters phone number → OTP sent via Twilio → JWT minted at edge.
-2. Operative presses the Radio Ingestion button on the Field Client.
-3. Captured audio POSTs to /api/ai-triage with a verified Bearer JWT.
-4. Whisper transcribes → Gemini extracts structured 5-tier metadata.
-5. Incident is written to Postgres (mutations.ts) + audit entry to Netlify Blobs.
-6. The Control Room's next state-poll (~2s) picks up the new incident.
-7. The map canvas renders the incident beacon at the correct grid coordinates.
-8. The AuditTimelineInspector verifies the SHA-256 chain — green badge.
+ 1. Operative enters phone number → OTP sent via Twilio → JWT minted at edge.
+ 2. Operative presses the Radio Ingestion button on the Field Client.
+ 3. Captured audio POSTs to /api/ai-triage with a verified Bearer JWT.
+ 4. Whisper transcribes → Gemini extracts structured 5-tier metadata.
+ 5. Incident is written to Postgres (mutations.ts) + SHA-256 audit entry chained.
+ 6. The Control Room's next state-poll (~2s) picks up the new incident.
+ 7. The map canvas renders the incident beacon at the correct grid coordinates.
+ 8. Field Staff GPS positions stream via /api/staff-location → canvas plots live dots.
+ 9. Every mutation (transition, dispatch) appends a chained SHA-256 audit entry.
+10. The AuditTimelineInspector verifies the SHA-256 chain — green badge.
 ```
+
+### Pre-Deploy Verification
+
+Before pushing to production, run the automated checks:
+
+```bash
+# 1. Pre-flight: env vars, DB connectivity, migrations applied, endpoints, JWT keys
+npm run verify:deploy
+
+# 2. Stress test: 250 staff, 50 incidents — measure query latency + throughput
+npm run simulate
+```
+
+Both must pass before promoting the deploy. The simulator reports median/p95
+latency; the verifier exits non-zero on any missing requirement.
 
 ```
 
