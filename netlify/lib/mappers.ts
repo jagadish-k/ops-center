@@ -38,6 +38,7 @@ interface IncidentRow {
 	action_required: string | null;
 	coord_x: number | null;
 	coord_y: number | null;
+	floor_id: string | null;
 	reported_by: string | null;
 	created_at: Date;
 	updated_at: Date;
@@ -58,6 +59,7 @@ interface StaffJoinedRow {
 	status: string;
 	coord_x: number | null;
 	coord_y: number | null;
+	floor_id: string | null;
 	updated_at: Date;
 	created_at: Date;
 	roles: string[] | null;      // tenant_memberships.roles for the active tenant
@@ -97,6 +99,7 @@ export function mapIncident(row: IncidentRow): IncidentReport {
 			actionRequired: row.action_required ?? undefined,
 		},
 		reportedBy: row.reported_by ?? undefined,
+		floorId: row.floor_id ?? undefined,
 	};
 }
 
@@ -115,6 +118,7 @@ export function mapStaff(row: StaffJoinedRow): WhitelistUser {
 			row.coord_x != null && row.coord_y != null
 				? { x: row.coord_x, y: row.coord_y }
 				: undefined,
+		floorId: row.floor_id ?? undefined,
 		createdAt: new Date(row.created_at).getTime(),
 	};
 }

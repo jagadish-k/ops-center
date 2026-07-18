@@ -62,6 +62,7 @@ export default async (request: Request): Promise<Response> => {
 				coord_x: incidentsTable.coordX,
 				coord_y: incidentsTable.coordY,
 				reported_by: incidentsTable.reportedBy,
+				floor_id: incidentsTable.floorId,
 				created_at: incidentsTable.createdAt,
 				updated_at: incidentsTable.updatedAt,
 			})
@@ -90,6 +91,7 @@ export default async (request: Request): Promise<Response> => {
 				status: staffRosterTable.status,
 				coord_x: staffRosterTable.coordX,
 				coord_y: staffRosterTable.coordY,
+				floor_id: staffRosterTable.floorId,
 				updated_at: staffRosterTable.updatedAt,
 				created_at: staffRosterTable.createdAt,
 				roles: tenantMembershipsTable.roles,

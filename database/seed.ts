@@ -188,24 +188,27 @@ const DEV_MEMBERSHIPS = [
 // (within the tenant's bounding box). status varies for realistic map display.
 
 const DEV_ROSTER = [
-	// ── MetLife (10 staff, spread across 6 zones) ──
-	{ phone: '+14155552028', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'DISPATCHED', coordX: 380, coordY: 310, lat: 40.8135, lng: -74.0740 },
-	{ phone: '+14155550001', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 320, coordY: 280, lat: 40.8130, lng: -74.0745 },
-	{ phone: '+14155550002', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 610, coordY: 420, lat: 40.8120, lng: -74.0735 },
-	{ phone: '+14155550003', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-C', status: 'AVAILABLE', coordX: 750, coordY: 180, lat: 40.8140, lng: -74.0730 },
-	{ phone: '+14155550004', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-D', status: 'DISPATCHED', coordX: 540, coordY: 640, lat: 40.8115, lng: -74.0750 },
-	{ phone: '+14155550005', tenantId: 'tenant_metlife_ops', specialty: 'cleaning', assignedZone: 'ZONE-E', status: 'AVAILABLE', coordX: 720, coordY: 350, lat: 40.8128, lng: -74.0732 },
-	{ phone: '+14155550006', tenantId: 'tenant_metlife_ops', specialty: 'supervisor', assignedZone: 'ZONE-F', status: 'AVAILABLE', coordX: 850, coordY: 200, lat: 40.8142, lng: -74.0728 },
-	{ phone: '+14155550007', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-B', status: 'OFF_DUTY', coordX: 580, coordY: 380, lat: 40.8122, lng: -74.0738 },
-	{ phone: '+14155550008', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 280, coordY: 540, lat: 40.8118, lng: -74.0748 },
-	{ phone: '+14155550009', tenantId: 'tenant_metlife_ops', specialty: 'cleaning', assignedZone: 'ZONE-D', status: 'AVAILABLE', coordX: 500, coordY: 700, lat: 40.8113, lng: -74.0755 },
-	// ── SoFi Stadium (5 staff, different layout) ──
+	// ── MetLife (10 staff, spread across 3 floors) ──
+	// Ground floor
+	{ phone: '+14155552028', tenantId: 'tenant_metlife_ops', floorId: 'ground', specialty: 'security', assignedZone: 'ZONE-A', status: 'DISPATCHED', coordX: 380, coordY: 310, lat: 40.8135, lng: -74.0740 },
+	{ phone: '+14155550001', tenantId: 'tenant_metlife_ops', floorId: 'ground', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 320, coordY: 280, lat: 40.8130, lng: -74.0745 },
+	{ phone: '+14155550002', tenantId: 'tenant_metlife_ops', floorId: 'ground', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 610, coordY: 420, lat: 40.8120, lng: -74.0735 },
+	{ phone: '+14155550005', tenantId: 'tenant_metlife_ops', floorId: 'ground', specialty: 'cleaning', assignedZone: 'ZONE-E', status: 'AVAILABLE', coordX: 720, coordY: 350, lat: 40.8128, lng: -74.0732 },
+	{ phone: '+14155550007', tenantId: 'tenant_metlife_ops', floorId: 'ground', specialty: 'security', assignedZone: 'ZONE-B', status: 'OFF_DUTY', coordX: 580, coordY: 380, lat: 40.8122, lng: -74.0738 },
+	// Level 200 (upper concourse)
+	{ phone: '+14155550003', tenantId: 'tenant_metlife_ops', floorId: 'level-200', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 300, coordY: 300, lat: 40.8140, lng: -74.0730 },
+	{ phone: '+14155550004', tenantId: 'tenant_metlife_ops', floorId: 'level-200', specialty: 'medical', assignedZone: 'ZONE-B', status: 'DISPATCHED', coordX: 700, coordY: 400, lat: 40.8115, lng: -74.0750 },
+	{ phone: '+14155550009', tenantId: 'tenant_metlife_ops', floorId: 'level-200', specialty: 'cleaning', assignedZone: 'ZONE-C', status: 'AVAILABLE', coordX: 800, coordY: 600, lat: 40.8113, lng: -74.0755 },
+	// Suite level
+	{ phone: '+14155550006', tenantId: 'tenant_metlife_ops', floorId: 'suite-level', specialty: 'supervisor', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 500, coordY: 300, lat: 40.8142, lng: -74.0728 },
+	{ phone: '+14155550008', tenantId: 'tenant_metlife_ops', floorId: 'suite-level', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 400, coordY: 650, lat: 40.8118, lng: -74.0748 },
+	// ── SoFi Stadium (5 staff, single floor — no mapLayout) ──
 	{ phone: '+14155560001', tenantId: 'tenant_sofi_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 200, coordY: 300, lat: 33.9530, lng: -118.3390 },
 	{ phone: '+14155560002', tenantId: 'tenant_sofi_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'DISPATCHED', coordX: 650, coordY: 500, lat: 33.9545, lng: -118.3385 },
 	{ phone: '+14155560003', tenantId: 'tenant_sofi_ops', specialty: 'cleaning', assignedZone: 'ZONE-C', status: 'AVAILABLE', coordX: 800, coordY: 200, lat: 33.9550, lng: -118.3380 },
 	{ phone: '+14155560004', tenantId: 'tenant_sofi_ops', specialty: 'supervisor', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 400, coordY: 600, lat: 33.9535, lng: -118.3395 },
 	{ phone: '+14155560005', tenantId: 'tenant_sofi_ops', specialty: 'security', assignedZone: 'ZONE-B', status: 'OFF_DUTY', coordX: 550, coordY: 350, lat: 33.9540, lng: -118.3388 },
-	// ── Hard Rock Stadium (4 staff) ──
+	// ── Hard Rock Stadium (4 staff, single floor) ──
 	{ phone: '+14155570001', tenantId: 'tenant_hardrock_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 300, coordY: 400, lat: 25.9580, lng: -80.2380 },
 	{ phone: '+14155570002', tenantId: 'tenant_hardrock_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 700, coordY: 300, lat: 25.9590, lng: -80.2375 },
 	{ phone: '+14155570003', tenantId: 'tenant_hardrock_ops', specialty: 'cleaning', assignedZone: 'ZONE-C', status: 'DISPATCHED', coordX: 500, coordY: 700, lat: 25.9595, lng: -80.2370 },
@@ -224,92 +227,94 @@ const DEV_GRANTS = [
 // from the phone number.
 
 const DEV_INCIDENTS = [
+	// ── MetLife — Ground floor incidents ──
 	{
-		id: 'inc_seed_001', tenantId: 'tenant_metlife_ops',
+		id: 'inc_seed_001', tenantId: 'tenant_metlife_ops', floorId: 'ground',
 		tier: 1, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155550001', // Alpha Security Lead
+		reportedByPhone: '+14155550001',
 		rawText: 'Section 112 — crowd surge against the perimeter railing. Multiple patrons at risk of crush injury.',
 		category: 'CROWD', severity: 'CRITICAL', locationSector: 'ZONE-B',
 		coordX: 610, coordY: 410, actionRequired: 'Deploy riot line + triage team immediately.',
 	},
 	{
-		id: 'inc_seed_002', tenantId: 'tenant_metlife_ops',
-		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
-		reportedByPhone: '+14155550003', // Gamma Security
-		rawText: 'Physical altercation in upper deck, Section 308. Two individuals, no weapons observed.',
-		category: 'SECURITY', severity: 'HIGH', locationSector: 'ZONE-D',
-		coordX: 540, coordY: 630, actionRequired: 'Security team to SEC-308 to de-escalate.',
-	},
-	{
-		id: 'inc_seed_003', tenantId: 'tenant_metlife_ops',
+		id: 'inc_seed_003', tenantId: 'tenant_metlife_ops', floorId: 'ground',
 		tier: 3, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155550002', // Beta Medical Triage
+		reportedByPhone: '+14155550002',
 		rawText: 'Unresponsive male near Gate C, possible cardiac event. AED requested.',
 		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-A',
 		coordX: 330, coordY: 270, actionRequired: 'AED + paramedic to Gate C concourse.',
 	},
 	{
-		id: 'inc_seed_004', tenantId: 'tenant_metlife_ops',
+		id: 'inc_seed_004', tenantId: 'tenant_metlife_ops', floorId: 'ground',
 		tier: 4, status: 'ON_SCENE', source: 'field_staff',
-		reportedByPhone: '+14155550005', // Echo Cleaning
+		reportedByPhone: '+14155550005',
 		rawText: 'Overflowing restroom fixture causing standing water in corridor. Slip hazard.',
 		category: 'FACILITIES', severity: 'MEDIUM', locationSector: 'ZONE-E',
 		coordX: 720, coordY: 350, actionRequired: 'Facilities crew + wet-floor signage.',
 	},
 	{
-		id: 'inc_seed_005', tenantId: 'tenant_metlife_ops',
-		tier: 5, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155550008', // Hotel Medical
-		rawText: 'Long concession queues at Section 200 causing congestion. Advisory only.',
-		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-C',
-		coordX: 750, coordY: 180, actionRequired: 'Monitor; open auxiliary point if congestion worsens.',
-	},
-	// Additional incidents for richer staff→report linkage
-	{
-		id: 'inc_seed_006', tenantId: 'tenant_metlife_ops',
+		id: 'inc_seed_006', tenantId: 'tenant_metlife_ops', floorId: 'ground',
 		tier: 3, status: 'RESOLVED', source: 'field_staff',
-		reportedByPhone: '+14155550001', // Alpha Security Lead
+		reportedByPhone: '+14155550001',
 		rawText: 'Intoxicated patron escorted from Section 105. No injuries.',
 		category: 'SECURITY', severity: 'MEDIUM', locationSector: 'ZONE-A',
 		coordX: 280, coordY: 540, actionRequired: 'Resolved — patron handed to PD.',
 	},
 	{
-		id: 'inc_seed_007', tenantId: 'tenant_metlife_ops',
-		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
-		reportedByPhone: '+14155550004', // Delta Medical (DISPATCHED)
-		rawText: 'Patron collapsed in vomitory Section 312. Delta Medical en route.',
-		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-D',
-		coordX: 500, coordY: 700, actionRequired: 'Delta Medical dispatched. AED on standby.',
-	},
-	{
-		id: 'inc_seed_008', tenantId: 'tenant_metlife_ops',
-		tier: 4, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155550009', // India Cleaning
-		rawText: 'Spilled beverages in concourse near Section 300. Multiple spill points.',
-		category: 'FACILITIES', severity: 'LOW', locationSector: 'ZONE-D',
-		coordX: 450, coordY: 680, actionRequired: 'Cleaning crew dispatched.',
-	},
-	{
-		id: 'inc_seed_009', tenantId: 'tenant_metlife_ops',
-		tier: 5, status: 'RESOLVED', source: 'field_staff',
-		reportedByPhone: '+14155550006', // Foxtrot Supervisor
-		rawText: 'Lost child reunited with family at Guest Services. No further action needed.',
-		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-F',
-		coordX: 850, coordY: 200, actionRequired: 'Resolved.',
-	},
-	{
-		id: 'inc_seed_010', tenantId: 'tenant_metlife_ops',
+		id: 'inc_seed_010', tenantId: 'tenant_metlife_ops', floorId: 'ground',
 		tier: 1, status: 'ACKNOWLEDGED', source: 'field_staff',
-		reportedByPhone: '+14155552028', // Mixed Role Morgan (DISPATCHED)
+		reportedByPhone: '+14155552028',
 		rawText: 'Structural crack observed in railing at Section 112 upper level. Immediate evacuation risk.',
 		category: 'FACILITIES', severity: 'CRITICAL', locationSector: 'ZONE-A',
 		coordX: 380, coordY: 310, actionRequired: 'Evacuate Section 112 upper. Engineering assessment.',
 	},
-	// ── SoFi Stadium incidents ──
+	// ── MetLife — Level 200 incidents ──
+	{
+		id: 'inc_seed_002', tenantId: 'tenant_metlife_ops', floorId: 'level-200',
+		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155550003',
+		rawText: 'Physical altercation in upper deck, Section 308. Two individuals, no weapons observed.',
+		category: 'SECURITY', severity: 'HIGH', locationSector: 'ZONE-A',
+		coordX: 300, coordY: 300, actionRequired: 'Security team to SEC-308 to de-escalate.',
+	},
+	{
+		id: 'inc_seed_007', tenantId: 'tenant_metlife_ops', floorId: 'level-200',
+		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155550004',
+		rawText: 'Patron collapsed in vomitory Section 312. Delta Medical en route.',
+		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-B',
+		coordX: 700, coordY: 400, actionRequired: 'Delta Medical dispatched. AED on standby.',
+	},
+	{
+		id: 'inc_seed_008', tenantId: 'tenant_metlife_ops', floorId: 'level-200',
+		tier: 4, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155550009',
+		rawText: 'Spilled beverages in concourse near Section 300. Multiple spill points.',
+		category: 'FACILITIES', severity: 'LOW', locationSector: 'ZONE-C',
+		coordX: 800, coordY: 600, actionRequired: 'Cleaning crew dispatched.',
+	},
+	// ── MetLife — Suite level incidents ──
+	{
+		id: 'inc_seed_005', tenantId: 'tenant_metlife_ops', floorId: 'suite-level',
+		tier: 5, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155550008',
+		rawText: 'Long concession queues at Suite Lounge causing congestion. Advisory only.',
+		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-A',
+		coordX: 500, coordY: 300, actionRequired: 'Monitor; open auxiliary point if congestion worsens.',
+	},
+	{
+		id: 'inc_seed_009', tenantId: 'tenant_metlife_ops', floorId: 'suite-level',
+		tier: 5, status: 'RESOLVED', source: 'field_staff',
+		reportedByPhone: '+14155550006',
+		rawText: 'Lost child reunited with family at Guest Services. No further action needed.',
+		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-A',
+		coordX: 400, coordY: 650, actionRequired: 'Resolved.',
+	},
+	// ── SoFi Stadium incidents (no floor_id) ──
 	{
 		id: 'inc_sofi_001', tenantId: 'tenant_sofi_ops',
 		tier: 2, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155560001', // Sierra Security
+		reportedByPhone: '+14155560001',
 		rawText: 'Unauthorized access attempt at VIP entrance. Individual detained.',
 		category: 'SECURITY', severity: 'HIGH', locationSector: 'ZONE-A',
 		coordX: 200, coordY: 300, actionRequired: 'Security backup to VIP entrance.',
@@ -317,7 +322,7 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_sofi_002', tenantId: 'tenant_sofi_ops',
 		tier: 3, status: 'ACKNOWLEDGED', source: 'field_staff',
-		reportedByPhone: '+14155560002', // Tango Medical (DISPATCHED)
+		reportedByPhone: '+14155560002',
 		rawText: 'Patron experiencing heat exhaustion in Section 215. requesting medical.',
 		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-B',
 		coordX: 650, coordY: 500, actionRequired: 'Tango Medical dispatched with water + cooling.',
@@ -325,16 +330,16 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_sofi_003', tenantId: 'tenant_sofi_ops',
 		tier: 4, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155560003', // Uniform Cleaning
+		reportedByPhone: '+14155560003',
 		rawText: 'Restroom out of paper towels near Section 200.',
 		category: 'FACILITIES', severity: 'LOW', locationSector: 'ZONE-C',
 		coordX: 800, coordY: 200, actionRequired: 'Restock paper towels.',
 	},
-	// ── Hard Rock Stadium incidents ──
+	// ── Hard Rock Stadium incidents (no floor_id) ──
 	{
 		id: 'inc_hr_001', tenantId: 'tenant_hardrock_ops',
 		tier: 1, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155570001', // Zulu Security
+		reportedByPhone: '+14155570001',
 		rawText: 'Fight in parking lot Section D. Multiple individuals. PD requested.',
 		category: 'SECURITY', severity: 'CRITICAL', locationSector: 'ZONE-A',
 		coordX: 300, coordY: 400, actionRequired: 'Police dispatched. Secure perimeter.',
@@ -342,7 +347,7 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_hr_002', tenantId: 'tenant_hardrock_ops',
 		tier: 3, status: 'ACKNOWLEDGED', source: 'field_staff',
-		reportedByPhone: '+14155570002', // Avocado Medical
+		reportedByPhone: '+14155570002',
 		rawText: 'Allergic reaction at concession stand. EpiPen administered.',
 		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-B',
 		coordX: 700, coordY: 300, actionRequired: 'Monitor patron. Transport if needed.',
@@ -350,7 +355,7 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_hr_003', tenantId: 'tenant_hardrock_ops',
 		tier: 5, status: 'OPEN', source: 'field_staff',
-		reportedByPhone: '+14155570004', // Charlie Supervisor
+		reportedByPhone: '+14155570004',
 		rawText: 'Light rain starting. Slippery surfaces advisory.',
 		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-A',
 		coordX: 600, coordY: 500, actionRequired: 'Deploy wet-floor signage at entrances.',
@@ -437,6 +442,7 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 			.values({
 				userId,
 				tenantId: r.tenantId,
+				floorId: (r as { floorId?: string }).floorId ?? null,
 				specialty: r.specialty,
 				assignedZone: r.assignedZone,
 				phoneNumber: r.phone,
@@ -449,6 +455,7 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 			.onConflictDoUpdate({
 				target: [staffRosterTable.userId, staffRosterTable.tenantId],
 				set: {
+					floorId: (r as { floorId?: string }).floorId ?? null,
 					specialty: r.specialty,
 					assignedZone: r.assignedZone,
 					phoneNumber: r.phone,
@@ -479,7 +486,6 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 	console.log('  → Seed incidents...');
 	for (const inc of DEV_INCIDENTS) {
 		const reportedBy = inc.reportedByPhone ? (phoneToId.get(inc.reportedByPhone) ?? null) : null;
-		// Strip the helper field before insert.
 		const { reportedByPhone, ...incData } = inc;
 		void reportedByPhone;
 		await db
@@ -487,6 +493,7 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 			.values({
 				...incData,
 				reportedBy,
+				floorId: (inc as { floorId?: string }).floorId ?? null,
 			})
 			.onConflictDoNothing()
 			.execute();

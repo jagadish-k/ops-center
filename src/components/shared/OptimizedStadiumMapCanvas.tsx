@@ -419,12 +419,16 @@ export function OptimizedStadiumMapCanvas({
 			const { incidents: inc, staffMembers: staff } = propsRef.current;
 			const pulse = (Math.sin(Date.now() / 150) + 1) / 2; // 0..1
 
-			// Staff nodes (filtered by legend toggles).
+			// Staff nodes (filtered by legend toggles + selected floor).
 			const f = filtersRef.current;
+			const activeFloorId = selectedFloorRef.current;
 			for (const member of staff) {
 				// Skip if this specialty or status is toggled off in the legend.
 				if (!f.specialties.has(member.specialty)) continue;
 				if (!f.statuses.has(member.status)) continue;
+				// Skip if this staff member is on a different floor.
+				// Staff with no floorId appear on all floors (backward compat).
+				if (activeFloorId && member.floorId && member.floorId !== activeFloorId) continue;
 
 				const pos = gridToScreen(member.currentCoords ?? { x: 500, y: 500 });
 				const color = specialtyColor(member.specialty);
@@ -441,8 +445,10 @@ export function OptimizedStadiumMapCanvas({
 				}
 			}
 
-			// Incident beacons (pulsing, tier-colored).
+			// Incident beacons (pulsing, tier-colored, filtered by floor).
 			for (const incident of inc) {
+				// Skip if this incident is on a different floor.
+				if (activeFloorId && incident.floorId && incident.floorId !== activeFloorId) continue;
 				const pos = gridToScreen(incident.coordinates);
 				const color = tierColor(incident.tier);
 				const baseRadius = incident.tier <= 2 ? 9 : incident.tier === 3 ? 7 : 6;

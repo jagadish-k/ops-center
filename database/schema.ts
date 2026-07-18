@@ -157,6 +157,9 @@ export const staffRosterTable = pgTable(
 		id: uuid('id').primaryKey().defaultRandom(),
 		userId: uuid('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
 		tenantId: text('tenant_id').notNull().references(() => tenantsTable.id),
+		/** Which floor this staff member is assigned to. References a floor ID
+		 * in the tenant's mapLayout JSONB (e.g. "ground", "level-200"). */
+		floorId: text('floor_id'),
 		specialty: text('specialty'),
 		assignedZone: text('assigned_zone').notNull(),
 		status: text('status').notNull().default('AVAILABLE'),
@@ -189,6 +192,9 @@ export const incidentsTable = pgTable('incidents', {
 	actionRequired: text('action_required'),
 	coordX: integer('coord_x'),
 	coordY: integer('coord_y'),
+	/** Which floor this incident occurred on. References a floor ID in the
+	 * tenant's mapLayout JSONB (e.g. "ground", "level-200"). */
+	floorId: text('floor_id'),
 	/** UUID of the staff member who reported this incident (FK to users.id). */
 	reportedBy: uuid('reported_by'),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

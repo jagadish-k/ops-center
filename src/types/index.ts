@@ -147,6 +147,8 @@ export interface WhitelistUser {
 	status: StaffStatus;
 	phoneNumber: string; // From users.phone (kept on roster for query speed)
 	currentCoords?: MapCoordinates;
+	/** Floor assignment (references a floor ID from the tenant's mapLayout). */
+	floorId?: string;
 	createdAt: number;
 }
 
@@ -188,6 +190,8 @@ export interface IncidentReport {
 	extractedMetadata: IncidentExtractedMetadata;
 	/** UUID of the staff member who reported this incident (null for social_media source). */
 	reportedBy?: string;
+	/** Floor this incident occurred on (references floor ID from mapLayout). */
+	floorId?: string;
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
