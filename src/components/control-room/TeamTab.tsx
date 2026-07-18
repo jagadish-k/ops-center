@@ -20,6 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
 	Button,
 	Input,
+	TextField,
 	Drawer,
 	Spinner,
 	Checkbox,
@@ -274,10 +275,11 @@ function CreateStaffDrawer({
 									<Label htmlFor="phone" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
 										Phone (E.164)
 									</Label>
-									<Input
+									<TextField
 										id="phone"
-										placeholder="+14155550000"
-
+										isInvalid={!!form.formState.errors.phone}
+										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
+										errorMessage={form.formState.errors.phone?.message}
 										className="neu-pressed"
 										{...form.register('phone')}
 									/>
@@ -287,10 +289,11 @@ function CreateStaffDrawer({
 									<Label htmlFor="fullName" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
 										Full Name
 									</Label>
-									<Input
+									<TextField
 										id="fullName"
-										placeholder="Jane Doe"
-
+										isInvalid={!!form.formState.errors.fullName}
+										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
+										errorMessage={form.formState.errors.fullName?.message}
 										className="neu-pressed"
 										{...form.register('fullName')}
 									/>

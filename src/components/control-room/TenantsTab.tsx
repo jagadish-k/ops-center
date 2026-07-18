@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Spinner, Modal, Table, Label } from '@heroui/react';
+import { Button, Input, TextField, Spinner, Modal, Table, Label } from '@heroui/react';
 import {
 	adminListTenants,
 	adminCreateTenant,
@@ -234,11 +234,11 @@ function CreateTenantModal({
 									>
 										Tenant ID
 									</Label>
-									<Input
+									<TextField
 										id="tenantId"
-										placeholder="tenant_metlife_ops"
-
-
+										isInvalid={!!form.formState.errors.tenantId}
+										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
+										errorMessage={form.formState.errors.tenantId?.message}
 										className="neu-pressed"
 										{...form.register('tenantId')}
 									/>
@@ -251,11 +251,11 @@ function CreateTenantModal({
 									>
 										Organization Name
 									</Label>
-									<Input
+									<TextField
 										id="orgName"
-										placeholder="MetLife Stadium Ops Core"
-
-
+										isInvalid={!!form.formState.errors.orgName}
+										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
+										errorMessage={form.formState.errors.orgName?.message}
 										className="neu-pressed"
 										{...form.register('orgName')}
 									/>

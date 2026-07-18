@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Spinner, Drawer, Modal, Label, Checkbox, TextArea } from '@heroui/react';
+import { Button, TextField, Spinner, Drawer, Modal, Label, Checkbox, TextArea } from '@heroui/react';
 import {
 	adminListRoles,
 	adminCreateRole,
@@ -264,10 +264,11 @@ function CreateRoleDrawer({
 									<Label htmlFor="role-name" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
 										Name
 									</Label>
-									<Input
+									<TextField
 										id="role-name"
-										placeholder="auditor"
-
+										isInvalid={!!form.formState.errors.name}
+										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
+										errorMessage={form.formState.errors.name?.message}
 										className="neu-pressed"
 										{...form.register('name')}
 									/>
@@ -277,10 +278,11 @@ function CreateRoleDrawer({
 									<Label htmlFor="role-desc" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
 										Description
 									</Label>
-									<Input
+									<TextField
 										id="role-desc"
-										placeholder="Read-only compliance auditor"
-
+										isInvalid={!!form.formState.errors.description}
+										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
+										errorMessage={form.formState.errors.description?.message}
 										className="neu-pressed"
 										{...form.register('description')}
 									/>
