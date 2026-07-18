@@ -20,6 +20,7 @@
  */
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Checkbox } from '@heroui/react';
+import { useTheme } from '@/context/theme-constants';
 import type {
 	IncidentReport,
 	WhitelistUser,
@@ -87,6 +88,7 @@ export function OptimizedStadiumMapCanvas({
 	mapLayout,
 	onIncidentSelect,
 }: OptimizedStadiumMapCanvasProps): React.JSX.Element {
+	const { isDark } = useTheme();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -96,6 +98,7 @@ export function OptimizedStadiumMapCanvas({
 	const dimsRef = useRef<Dimensions>({ cssWidth: 0, cssHeight: 0, dpr: 1 });
 	const bgDirtyRef = useRef(true); // forces a background re-render
 	const selectedIdRef = useRef<string | null>(null);
+	const isDarkRef = useRef(isDark);
 
 	// Filter state: which specialties + statuses are visible on the map.
 	const [filters, setFilters] = useState<{
@@ -106,6 +109,12 @@ export function OptimizedStadiumMapCanvas({
 		statuses: new Set(['AVAILABLE', 'DISPATCHED', 'OFF_DUTY']),
 	});
 	const filtersRef = useRef(filters);
+
+	// Sync isDark changes to ref and force background re-render
+	useEffect(() => {
+		isDarkRef.current = isDark;
+		bgDirtyRef.current = true;
+	}, [isDark]);
 
 	// Tooltip state (DOM element, positioned via style).
 	const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -211,9 +220,10 @@ export function OptimizedStadiumMapCanvas({
 		if (!ctx) return;
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+		const isDark = isDarkRef.current;
+
 		// Backdrop.
-		ctx.fillStyle = '#020617'; // slate-950
-		ctx.fillRect(0, 0, cssWidth, cssHeight);
+		ctx.clearRect(0, 0, cssWidth, cssHeight);
 
 		const vp = viewportRef.current;
 		const s = baseScale(Math.min(cssWidth, cssHeight)) * vp.zoom;
@@ -227,7 +237,7 @@ export function OptimizedStadiumMapCanvas({
 
 		// Grid lines (every 100 grid units).
 		ctx.lineWidth = 1;
-		ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)'; // slate-700
+		ctx.strokeStyle = isDark ? 'rgba(51, 65, 85, 0.35)' : 'rgba(203, 213, 225, 0.6)';
 		ctx.beginPath();
 		for (let g = 0; g <= 1000; g += 100) {
 			const top = gridToBg({ x: g, y: 0 });
@@ -248,7 +258,9 @@ export function OptimizedStadiumMapCanvas({
 			const r = ringBase * (1 - i * 0.18);
 			ctx.beginPath();
 			ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-			ctx.strokeStyle = i === 0 ? 'rgba(71, 85, 105, 0.55)' : 'rgba(71, 85, 105, 0.28)';
+			ctx.strokeStyle = i === 0 
+				? (isDark ? 'rgba(71, 85, 105, 0.55)' : 'rgba(148, 163, 184, 0.6)') 
+				: (isDark ? 'rgba(71, 85, 105, 0.28)' : 'rgba(148, 163, 184, 0.3)');
 			ctx.lineWidth = i === 0 ? 2 : 1;
 			ctx.stroke();
 		}
@@ -256,7 +268,7 @@ export function OptimizedStadiumMapCanvas({
 		// Pitch boundary (the field of play).
 		const pitchTL = gridToBg({ x: 360, y: 360 });
 		const pitchBR = gridToBg({ x: 640, y: 640 });
-		ctx.strokeStyle = 'rgba(34, 197, 94, 0.55)'; // emerald
+		ctx.strokeStyle = isDark ? 'rgba(34, 197, 94, 0.55)' : 'rgba(34, 197, 94, 0.4)';
 		ctx.lineWidth = 2;
 		ctx.strokeRect(pitchTL.x, pitchTL.y, pitchBR.x - pitchTL.x, pitchBR.y - pitchTL.y);
 		// Center circle + halfway line.
@@ -269,7 +281,7 @@ export function OptimizedStadiumMapCanvas({
 		ctx.stroke();
 
 		// Sector labels around the bowl.
-		ctx.fillStyle = 'rgba(148, 163, 184, 0.55)'; // slate-400
+		ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.55)' : 'rgba(100, 116, 139, 0.8)';
 		ctx.font = '600 10px ui-monospace, SFMono-Regular, Menlo, monospace';
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
@@ -423,6 +435,7 @@ export function OptimizedStadiumMapCanvas({
 			// Staff nodes (filtered by legend toggles + selected floor).
 			const f = filtersRef.current;
 			const activeFloorId = selectedFloorRef.current;
+			const isDark = isDarkRef.current;
 			for (const member of staff) {
 				// Skip if this specialty or status is toggled off in the legend.
 				if (!f.specialties.has(member.specialty)) continue;
@@ -440,7 +453,7 @@ export function OptimizedStadiumMapCanvas({
 				if (member.status === 'DISPATCHED') {
 					ctx.beginPath();
 					ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
-					ctx.strokeStyle = '#f8fafc';
+					ctx.strokeStyle = isDark ? '#f8fafc' : '#0f172a';
 					ctx.lineWidth = 2;
 					ctx.stroke();
 				}
@@ -465,7 +478,7 @@ export function OptimizedStadiumMapCanvas({
 				ctx.arc(pos.x, pos.y, baseRadius, 0, Math.PI * 2);
 				ctx.fillStyle = color;
 				ctx.fill();
-				ctx.strokeStyle = 'rgba(2, 6, 23, 0.85)';
+				ctx.strokeStyle = isDark ? 'rgba(2, 6, 23, 0.85)' : 'rgba(255, 255, 255, 0.85)';
 				ctx.lineWidth = 1.5;
 				ctx.stroke();
 
@@ -473,7 +486,7 @@ export function OptimizedStadiumMapCanvas({
 				if (selectedIdRef.current === incident.id) {
 					ctx.beginPath();
 					ctx.arc(pos.x, pos.y, baseRadius + 6, 0, Math.PI * 2);
-					ctx.strokeStyle = '#f8fafc';
+					ctx.strokeStyle = isDark ? '#f8fafc' : '#0f172a';
 					ctx.lineWidth = 2;
 					ctx.setLineDash([4, 3]);
 					ctx.stroke();
