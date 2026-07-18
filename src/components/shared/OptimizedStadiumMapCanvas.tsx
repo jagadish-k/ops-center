@@ -18,7 +18,7 @@
  *   5. The HUD text is written directly to DOM text nodes (not React state) to
  *      avoid a re-render storm at 60fps.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import type {
 	IncidentReport,
 	WhitelistUser,
@@ -26,8 +26,8 @@ import type {
 	StaffSpecialty,
 	MapCoordinates,
 } from '@/types';
-import type { MapLayout, MapZone, MapPOI, POIType } from '@/lib/map-layout';
-import { POI_ICONS, POI_COLORS } from '@/lib/map-layout';
+import type { MapLayout } from '@/lib/map-layout';
+import { POI_COLORS } from '@/lib/map-layout';
 
 interface OptimizedStadiumMapCanvasProps {
 	incidents: IncidentReport[];
@@ -105,7 +105,6 @@ export function OptimizedStadiumMapCanvas({
 		statuses: new Set(['AVAILABLE', 'DISPATCHED', 'OFF_DUTY']),
 	});
 	const filtersRef = useRef(filters);
-	filtersRef.current = filters;
 
 	// Tooltip state (DOM element, positioned via style).
 	const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -151,14 +150,38 @@ export function OptimizedStadiumMapCanvas({
 	// Track the selected incident id so the beacon ring renders (kept in state
 	// only so parent-driven selection re-renders the component — not the loop).
 	const [selectedId, setSelectedId] = useState<string | null>(null);
-	selectedIdRef.current = selectedId;
+
+	// Floor selector — which floor's zones + POIs to render on the background.
+	const layoutData = mapLayout as MapLayout | null | undefined;
+	const floors = useMemo(() => layoutData?.floors ?? [], [layoutData]);
+	const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
+
+	// Derive effective floor: user selection wins if it exists in current layout,
+	// otherwise fall back to the layout's default or first floor.
+	const effectiveFloorId = useMemo(() => {
+		if (selectedFloorId && floors.find((f) => f.id === selectedFloorId)) {
+			return selectedFloorId;
+		}
+		return layoutData?.defaultFloorId ?? floors[0]?.id ?? null;
+	}, [selectedFloorId, floors, layoutData]);
+
+	const selectedFloorRef = useRef<string | null>(effectiveFloorId);
+
+	// Trigger background re-render when floor changes.
+	useEffect(() => {
+		bgDirtyRef.current = true;
+	}, [effectiveFloorId]);
 
 	// ── Sync props into the ref WITHOUT touching the rAF loop deps ──────────────
 	useEffect(() => {
 		propsRef.current = { incidents, staffMembers, onIncidentSelect, mapLayout };
 		// Re-render the background when mapLayout changes (new zones/POIs).
 		bgDirtyRef.current = true;
-	}, [incidents, staffMembers, onIncidentSelect, mapLayout]);
+		// Sync refs that the rAF loop reads.
+		filtersRef.current = filters;
+		selectedIdRef.current = selectedId;
+		selectedFloorRef.current = effectiveFloorId;
+	}, [incidents, staffMembers, onIncidentSelect, mapLayout, filters, selectedId, effectiveFloorId]);
 
 	// ── Forward / inverse transforms (grid ↔ CSS pixel) ─────────────────────────
 	const baseScale = (cssMin: number): number => (cssMin * 0.92) / 1000;
@@ -265,8 +288,9 @@ export function OptimizedStadiumMapCanvas({
 		// These replace the hardcoded rings/sectors above when a layout exists.
 		const layoutData = propsRef.current.mapLayout as MapLayout | null | undefined;
 		if (layoutData?.floors?.length) {
-			// Use the default floor (or first floor).
-			const floor = layoutData.floors.find((f) => f.id === layoutData.defaultFloorId) ?? layoutData.floors[0];
+			// Use the selected floor (or default, or first).
+			const floorId = selectedFloorRef.current ?? layoutData.defaultFloorId;
+			const floor = layoutData.floors.find((f) => f.id === floorId) ?? layoutData.floors[0];
 			if (floor) {
 				// Draw zones.
 				for (const zone of floor.zones) {
@@ -815,6 +839,25 @@ export function OptimizedStadiumMapCanvas({
 				</div>
 				);
 			})()}
+
+			{/* Floor selector — switch between multi-floor layouts */}
+			{floors.length > 1 && (
+				<div className="absolute left-3 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-800 bg-slate-950/90 p-1.5 backdrop-blur">
+					{floors.map((floor) => (
+						<button
+							key={floor.id}
+							onClick={() => setSelectedFloorId(floor.id)}
+							className={`rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+								effectiveFloorId === floor.id
+									? 'bg-blue-600 text-white'
+									: 'text-slate-400 hover:bg-slate-800'
+							}`}
+						>
+							{floor.name}
+						</button>
+					))}
+				</div>
+			)}
 
 			{/* Legend with toggles */}
 			<div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-800 bg-slate-950/90 p-3 backdrop-blur">
