@@ -18,9 +18,12 @@ import {
 import { createTenantSchema, type CreateTenantForm } from '@/lib/admin-schemas';
 import { useOptimisticList } from '@/hooks/useOptimisticList';
 import { CardGridSkeleton } from '@/components/shared/Skeletons';
+import { MapLayoutEditor } from './MapLayoutEditor';
+import { METLIFE_MAP_LAYOUT, type MapLayout } from '@/lib/map-layout';
 
 export function TenantsTab() {
 	const [createOpen, setCreateOpen] = useState(false);
+	const [editingMap, setEditingMap] = useState<{ tenantId: string; orgName: string; layout: MapLayout | null } | null>(null);
 
 	const { items: tenants, loading, error, reload, mutate } = useOptimisticList<AdminTenant[]>({
 		loader: adminListTenants,
@@ -64,6 +67,14 @@ export function TenantsTab() {
 							<p className="mt-2 text-[10px] text-slate-500">
 								Created {new Date(t.createdAt).toLocaleDateString()}
 							</p>
+							<Button
+								size="sm"
+								variant="secondary"
+								className="mt-3 w-full"
+								onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: null })}
+							>
+								🗺 Edit Map Layout
+							</Button>
 						</div>
 					))}
 				</div>
@@ -77,6 +88,15 @@ export function TenantsTab() {
 					setCreateOpen(false);
 				}}
 			/>
+
+			{editingMap && (
+				<MapLayoutEditor
+					tenantId={editingMap.tenantId}
+					tenantName={editingMap.orgName}
+					initialLayout={editingMap.layout ?? (editingMap.tenantId === 'tenant_metlife_ops' ? METLIFE_MAP_LAYOUT : null)}
+					onClose={() => setEditingMap(null)}
+				/>
+			)}
 		</div>
 	);
 }

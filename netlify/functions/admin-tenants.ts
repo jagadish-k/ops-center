@@ -25,6 +25,35 @@ import { tenantsTable } from '../../database/schema.ts';
 import { eq } from 'drizzle-orm';
 import { jsonResponse, handlePreflight, badRequest, serverError } from '../lib/http.ts';
 
+// ─── Update map layout ───────────────────────────────────────────────────────
+
+async function updateMapLayout(
+	claims: JwtClaimsLike,
+	body: { tenantId: string; mapLayout: unknown },
+): Promise<Response> {
+	authorizeAdminOp(claims, 'tenant:manage');
+
+	if (!body.tenantId || !body.mapLayout) {
+		throw new AdminHttpError(400, 'bad_request', 'tenantId and mapLayout are required.');
+	}
+
+	await db
+		.update(tenantsTable)
+		.set({ mapLayout: body.mapLayout as never })
+		.where(eq(tenantsTable.id, body.tenantId))
+		.execute();
+
+	await auditWrite({
+		claims,
+		tenantId: body.tenantId,
+		action: 'TENANT_MAP_LAYOUT_UPDATE',
+		targetResourceId: body.tenantId,
+		stateDelta: { before: null, after: { layoutKeys: Object.keys(body.mapLayout as Record<string, unknown>) } },
+	});
+
+	return jsonResponse({ tenantId: body.tenantId, updated: true });
+}
+
 // ─── Action handlers ──────────────────────────────────────────────────────────
 
 async function listTenants(claims: JwtClaims) {
@@ -118,6 +147,7 @@ export default async (request: Request): Promise<Response> => {
 			tenantId?: string;
 			orgName?: string;
 			bbox?: CreateTenantBody['bbox'];
+			mapLayout?: unknown;
 		};
 
 		switch (body.action) {
@@ -128,6 +158,11 @@ export default async (request: Request): Promise<Response> => {
 					tenantId: body.tenantId ?? '',
 					orgName: body.orgName ?? '',
 					bbox: body.bbox,
+				});
+			case 'update_map_layout':
+				return await updateMapLayout(claims, {
+					tenantId: body.tenantId ?? '',
+					mapLayout: body.mapLayout,
 				});
 			default:
 				return badRequest(`Unknown action: ${body.action}`);

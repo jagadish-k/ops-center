@@ -361,6 +361,13 @@ export async function adminCreateTenant(input: CreateTenantInput): Promise<Admin
 	});
 }
 
+export async function adminUpdateMapLayout(tenantId: string, mapLayout: unknown): Promise<AdminMutationResponse> {
+	return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
+		method: 'POST',
+		body: JSON.stringify({ action: 'update_map_layout', tenantId, mapLayout }),
+	});
+}
+
 // ── Policies ──
 
 export interface AdminPolicy {
