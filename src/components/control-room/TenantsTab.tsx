@@ -42,7 +42,7 @@ export function TenantsTab() {
 				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
 					Tenants
 				</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					{count} tenant{count === 1 ? '' : 's'}
 				</span>
 				<div className="ml-auto">
@@ -101,18 +101,18 @@ export function TenantsTab() {
 								<Table.Body
 									items={tenants ?? []}
 									renderEmptyState={() => (
-										<div className="p-8 text-center text-xs text-slate-500 dark:text-slate-500">
+										<div className="p-8 text-center text-xs text-slate-900 dark:text-slate-500 dark:text-slate-500">
 											No tenants yet. Click &quot;+ New Tenant&quot; to create one.
 										</div>
 									)}
 								>
 									{(t) => (
-										<Table.Row id={t.id} className="hover:bg-slate-100/70 dark:hover:bg-slate-800/30">
+										<Table.Row id={t.id} className="hover:bg-slate-100/70 dark:hover:bg-slate-200 dark:bg-slate-800/30">
 											<Table.Cell className="font-bold text-slate-800 dark:text-slate-100">
 												{t.orgName}
 											</Table.Cell>
 											<Table.Cell>
-												<code className="text-[10px] text-slate-500 dark:text-slate-500">{t.id}</code>
+												<code className="text-[10px] text-slate-900 dark:text-slate-500 dark:text-slate-500">{t.id}</code>
 											</Table.Cell>
 											<Table.Cell>
 												{t.status === 'ACTIVE' ? (

@@ -40,7 +40,7 @@ export function ErrorFallback({
 				{error.message || 'An unexpected error occurred while rendering this section.'}
 			</p>
 			{process.env.NODE_ENV !== 'production' && (
-				<details className="max-w-md text-left text-[10px] text-slate-500 dark:text-slate-500">
+				<details className="max-w-md text-left text-[10px] text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					<summary className="cursor-pointer">Stack trace</summary>
 					<pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap">{error.stack}</pre>
 				</details>

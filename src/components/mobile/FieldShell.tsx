@@ -70,10 +70,10 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 	};
 
 	return (
-		<div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+		<div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
 			{/* ── Header ───────────────────────────────────────────── */}
-			<header className="flex items-center gap-2 border-b border-slate-800 bg-slate-900/70 px-4 py-3">
-				<h1 className="font-mono text-xs font-black uppercase tracking-widest text-slate-100">
+			<header className="flex items-center gap-2 border-b border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/70 px-4 py-3">
+				<h1 className="font-mono text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
 					Field Active Link
 				</h1>
 				<div className="ml-auto flex items-center gap-2">
@@ -92,7 +92,7 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 							connectionHealthy && isOnline ? 'bg-emerald-500' : 'bg-amber-500'
 						}`}
 					/>
-					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
+					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400">
 						{staffPhone}
 					</span>
 				</div>
@@ -116,14 +116,14 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 					/>
 				) : (
 					<>
-						<div className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+						<div className="w-full max-w-sm rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 p-6 text-center">
 							<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10">
 								<span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500" />
 							</div>
 							<h2 className="font-mono text-xs font-bold uppercase tracking-widest text-emerald-300">
 								Awaiting Dispatch
 							</h2>
-							<p className="mt-2 font-sans text-xs leading-relaxed text-slate-400">
+							<p className="mt-2 font-sans text-xs leading-relaxed text-slate-500 dark:text-slate-400">
 								You are on the active roster. Hold the push-to-talk control below to file a
 								verbal report, or open manual triage.
 							</p>
@@ -141,7 +141,7 @@ export function FieldShell({ staffPhone, tenantId, onDisconnect }: FieldShellPro
 			</main>
 
 			{/* ── Bottom thumb zone (voice control) ────────────────── */}
-			<footer className="border-t border-slate-800 bg-slate-900/70 px-4 pb-6 pt-4">
+			<footer className="border-t border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/70 px-4 pb-6 pt-4">
 				<VoiceIngest staffPhone={staffPhone} tenantId={tenantId} />
 			</footer>
 

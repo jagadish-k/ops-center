@@ -74,7 +74,7 @@ export function PoliciesTab() {
 		<div className="flex h-full flex-col gap-3 p-4">
 			<header className="flex items-center gap-3">
 				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Policies</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					{policies?.length ?? 0} polic{policies?.length === 1 ? 'y' : 'ies'}
 				</span>
 				<div className="ml-auto">
@@ -91,7 +91,7 @@ export function PoliciesTab() {
 
 			<div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1fr_2fr]">
 				{/* Left: policy list */}
-				<aside className="overflow-auto rounded border border-slate-800 bg-slate-900/40">
+				<aside className="overflow-auto rounded border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40">
 					{loading && policies === null ? (
 						<div className="p-3"><CardGridSkeleton cards={3} /></div>
 					) : (
@@ -99,7 +99,7 @@ export function PoliciesTab() {
 							{policies?.map((p) => (
 								<li
 									key={p.name}
-									className={`cursor-pointer p-3 hover:bg-slate-800/30 ${selected?.name === p.name ? 'bg-slate-800/40' : ''}`}
+									className={`cursor-pointer p-3 hover:bg-slate-200 dark:bg-slate-800/30 ${selected?.name === p.name ? 'bg-slate-200 dark:bg-slate-800/40' : ''}`}
 									onClick={() => setSelected(p)}
 								>
 									<div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export function PoliciesTab() {
 					{selected ? (
 						<PolicyEditor key={selected.name} policy={selected} mutate={mutate} />
 					) : (
-						<div className="flex h-full items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-500">
+						<div className="flex h-full items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-900 dark:text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-500">
 							Select a policy to edit, or create a new one.
 						</div>
 					)}
@@ -226,7 +226,7 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 						read-only
 					</span>
 				)}
-				<span className="ml-auto font-mono text-[10px] text-slate-500 dark:text-slate-500">
+				<span className="ml-auto font-mono text-[10px] text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					{source.length} chars
 					{dirty && <span className="ml-2 text-amber-600 dark:text-amber-400">● unsaved</span>}
 				</span>
@@ -250,7 +250,7 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 
 			<p className="text-xs text-slate-600 dark:text-slate-400">{policy.description}</p>
 
-			<div className="min-h-[300px] flex-1 overflow-hidden rounded border border-slate-800">
+			<div className="min-h-[300px] flex-1 overflow-hidden rounded border border-slate-300 dark:border-slate-800">
 				<CodeMirror
 					value={source}
 					height="100%"
@@ -269,11 +269,11 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 			)}
 
 			{/* Test runner */}
-			<details className="rounded border border-slate-800 bg-slate-900/40" open>
+			<details className="rounded border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40" open>
 			<summary className="cursor-pointer p-3 font-mono text-[10px] uppercase tracking-widest text-slate-700 dark:text-slate-300">
 				Test runner (opa eval)
 			</summary>
-				<div className="flex flex-col gap-2 border-t border-slate-800 p-3">
+				<div className="flex flex-col gap-2 border-t border-slate-300 dark:border-slate-800 p-3">
 					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
 						Input JSON
 					</Label>
@@ -288,7 +288,7 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 						<Button size="sm" variant="secondary" onPress={runTest} isDisabled={testing} className="neu-raised-sm neu-hover neu-active">
 							{testing ? <Spinner size="sm" /> : 'Run test'}
 						</Button>
-						<span className="font-mono text-[10px] text-slate-500 dark:text-slate-500">
+						<span className="font-mono text-[10px] text-slate-900 dark:text-slate-500 dark:text-slate-500">
 							Evaluates <code>data.stadium.authz.allow</code> with the input above
 						</span>
 					</div>
@@ -392,7 +392,7 @@ function CreatePolicyDrawer({
 					/>
 				</div>
 
-				<div className="min-h-0 flex-1 overflow-hidden rounded border border-slate-800">
+				<div className="min-h-0 flex-1 overflow-hidden rounded border border-slate-300 dark:border-slate-800">
 					<CodeMirror
 						value={source}
 						theme={oneDark}

@@ -25,7 +25,7 @@ export default function FieldClient() {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+			<div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400">
 				<p className="font-mono text-xs uppercase tracking-widest">Authorizing…</p>
 			</div>
 		);

@@ -49,7 +49,7 @@ export function RolesTab() {
 		<div className="flex h-full flex-col gap-4 p-4">
 			<header className="flex items-center gap-3">
 				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Roles</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					{count} role{count === 1 ? '' : 's'}
 				</span>
 				<div className="ml-auto">
@@ -158,7 +158,7 @@ function RoleCard({
 			<p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{role.description}</p>
 
 			<div className="mt-3">
-				<p className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+				<p className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					{role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'}
 				</p>
 				<div className="mt-1 flex flex-wrap gap-1">

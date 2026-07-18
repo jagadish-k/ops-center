@@ -38,7 +38,7 @@ export function tierBadge(tier: InfoTier): BadgeStyle {
 			};
 		case 5:
 			return {
-				className: 'border-slate-500 bg-slate-500/10 text-slate-300',
+				className: 'border-slate-500 bg-slate-500/10 text-slate-600 dark:text-slate-300',
 				hex: '#3b82f6',
 				label: 'T5',
 			};
@@ -58,7 +58,7 @@ export function severityBadge(severity: IncidentSeverity): BadgeStyle {
 				label: 'MEDIUM',
 			};
 		case 'LOW':
-			return { className: 'border-slate-500 bg-slate-500/10 text-slate-400', hex: '#64748b', label: 'LOW' };
+			return { className: 'border-slate-500 bg-slate-500/10 text-slate-500 dark:text-slate-400', hex: '#64748b', label: 'LOW' };
 	}
 }
 

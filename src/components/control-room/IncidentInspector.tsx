@@ -102,7 +102,7 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 	return (
 		<div className="flex h-full flex-col">
 			{/* Header */}
-			<div className="border-b border-slate-800 px-4 py-3">
+			<div className="border-b border-slate-300 dark:border-slate-800 px-4 py-3">
 				<div className="mb-1 flex items-center gap-1.5">
 					<span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${tier.className}`}>
 						{tier.label}
@@ -110,16 +110,16 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 					<span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${st.className}`}>
 						{st.label}
 					</span>
-					<span className="ml-auto font-mono text-[10px] text-slate-500">{incident.id}</span>
+					<span className="ml-auto font-mono text-[10px] text-slate-900 dark:text-slate-500">{incident.id}</span>
 				</div>
-				<h3 className="font-mono text-xs uppercase tracking-widest text-slate-300">
+				<h3 className="font-mono text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
 					Incident Inspector
 				</h3>
 			</div>
 
 			{/* Body */}
 			<div className="min-h-0 flex-1 overflow-y-auto p-4">
-				<p className="mb-4 rounded-lg border border-slate-800 bg-slate-950/60 p-3 font-sans text-sm leading-relaxed text-slate-200">
+				<p className="mb-4 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-3 font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-200">
 					{incident.rawText}
 				</p>
 
@@ -137,7 +137,7 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 
 				{incident.extractedMetadata.actionRequired && (
 					<div className="mt-4">
-						<p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-slate-500">
+						<p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">
 							Action Required
 						</p>
 						<p className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-3 font-sans text-xs leading-relaxed text-amber-200">
@@ -159,11 +159,11 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 			</div>
 
 			{/* Action rail */}
-			<div className="border-t border-slate-800 p-3">
+			<div className="border-t border-slate-300 dark:border-slate-800 p-3">
 				{showDispatchPicker ? (
 					/* Dispatch staff picker */
 					<div className="space-y-2">
-						<p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+						<p className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">
 							Select staff to dispatch ({availableStaff.length} available)
 						</p>
 						<div className="max-h-40 space-y-1.5 overflow-y-auto">
@@ -177,11 +177,11 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
 										key={s.id}
 										disabled={pending !== null}
 										onClick={() => void handleSelectStaff(s.phoneNumber)}
-										className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-left transition-colors hover:border-blue-600 disabled:opacity-40">
-										<span className="font-mono text-xs font-bold text-slate-200">
+										className="flex w-full items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-2 text-left transition-colors hover:border-blue-600 disabled:opacity-40">
+										<span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
 											{s.fullName}
 										</span>
-										<span className="ml-auto font-mono text-[10px] text-slate-500">
+										<span className="ml-auto font-mono text-[10px] text-slate-900 dark:text-slate-500">
 											{s.specialty} · {s.assignedZone}
 										</span>
 									</button>
@@ -251,9 +251,9 @@ function Field({
 	valueClass?: string;
 }) {
 	return (
-		<div className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
+		<div className="rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-3 py-2">
 			<dt className="text-[9px] uppercase tracking-widest text-slate-600">{label}</dt>
-			<dd className={`mt-0.5 font-bold uppercase tracking-wide text-slate-300 ${valueClass ?? ''}`}>
+			<dd className={`mt-0.5 font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300 ${valueClass ?? ''}`}>
 				{value}
 			</dd>
 		</div>

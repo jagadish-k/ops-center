@@ -174,7 +174,7 @@ export function OtpGateway() {
 							type="button"
 							onClick={handleBack}
 							disabled={isPending}
-							className="w-full pt-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-300">
+							className="w-full pt-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-900 dark:text-slate-500 transition-colors hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-600 dark:text-slate-300">
 							← Back to phone
 						</button>
 					</form>

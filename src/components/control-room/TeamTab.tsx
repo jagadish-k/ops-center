@@ -75,7 +75,7 @@ export function TeamTab() {
 		<div className="flex h-full flex-col gap-4 p-4">
 			<header className="flex items-center gap-3">
 				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Team</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-500">
 					{count} member{count === 1 ? '' : 's'}
 				</span>
 				<div className="ml-auto" data-tour="team-add">
@@ -119,12 +119,12 @@ export function TeamTab() {
 									<Table.Column className="text-end font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Actions</Table.Column>
 								</Table.Header>
 								<Table.Body items={users ?? []} renderEmptyState={() => (
-									<div className="p-8 text-center text-xs text-slate-500 dark:text-slate-500">
+									<div className="p-8 text-center text-xs text-slate-900 dark:text-slate-500 dark:text-slate-500">
 										No team members yet.
 									</div>
 								)}>
 									{(u) => (
-										<Table.Row id={u.userId} className="hover:bg-slate-100/70 dark:hover:bg-slate-800/30">
+										<Table.Row id={u.userId} className="hover:bg-slate-100/70 dark:hover:bg-slate-200 dark:bg-slate-800/30">
 											<Table.Cell className="font-mono text-slate-700 dark:text-slate-300">{u.phone}</Table.Cell>
 											<Table.Cell className="text-slate-800 dark:text-slate-100">{u.fullName}</Table.Cell>
 											<Table.Cell>
@@ -367,7 +367,7 @@ function CreateStaffDrawer({
 										</div>
 									</CheckboxGroup>
 									{!isSuperadmin && (
-										<p className="mt-1 text-[10px] text-slate-500 dark:text-slate-500">
+										<p className="mt-1 text-[10px] text-slate-900 dark:text-slate-500 dark:text-slate-500">
 											Only superadmins can assign the admin role.
 										</p>
 									)}
@@ -542,7 +542,7 @@ function EditUserDrawer({
 										})}
 									</div>
 									{!isSuperadmin && (
-										<p className="mt-1 text-[10px] text-slate-500 dark:text-slate-500">
+										<p className="mt-1 text-[10px] text-slate-900 dark:text-slate-500 dark:text-slate-500">
 											Only superadmins can promote/demote the admin role.
 										</p>
 									)}

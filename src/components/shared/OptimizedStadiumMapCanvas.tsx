@@ -725,7 +725,7 @@ export function OptimizedStadiumMapCanvas({
 	return (
 		<div
 			ref={containerRef}
-			className="relative h-full w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+			className="relative h-full w-full overflow-hidden rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
 			<canvas
 				ref={canvasRef}
 				className="block touch-none cursor-grab active:cursor-grabbing"
@@ -745,19 +745,19 @@ export function OptimizedStadiumMapCanvas({
 			{tooltipData?.visible && (
 				<div
 					ref={tooltipRef}
-					className="pointer-events-none absolute z-20 rounded-lg border border-slate-700 bg-slate-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
+					className="pointer-events-none absolute z-20 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
 					style={{
 						left: tooltipData.x + 16,
 						top: tooltipData.y - 10,
 					}}
 				>
-					<p className="font-bold text-slate-100">{tooltipData.name}</p>
-					<p className="text-slate-400">
+					<p className="font-bold text-slate-800 dark:text-slate-100">{tooltipData.name}</p>
+					<p className="text-slate-500 dark:text-slate-400">
 						{tooltipData.specialty} · {tooltipData.zone}
 					</p>
 					<p className={
 						tooltipData.status === 'AVAILABLE' ? 'text-emerald-400' :
-						tooltipData.status === 'DISPATCHED' ? 'text-amber-400' : 'text-slate-500'
+						tooltipData.status === 'DISPATCHED' ? 'text-amber-400' : 'text-slate-900 dark:text-slate-500'
 					}>
 						● {tooltipData.status}
 					</p>
@@ -772,33 +772,33 @@ export function OptimizedStadiumMapCanvas({
 					(inc) => inc.reportedBy === selectedStaff.userId || inc.reportedBy === selectedStaff.id,
 				);
 				return (
-				<div className="absolute bottom-3 right-3 z-20 w-72 rounded-xl border border-slate-700 bg-slate-900/95 p-4 text-xs shadow-xl backdrop-blur">
+				<div className="absolute bottom-3 right-3 z-20 w-72 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900/95 p-4 text-xs shadow-xl backdrop-blur">
 					<div className="flex items-center justify-between">
-						<h4 className="font-bold text-slate-100">{selectedStaff.fullName}</h4>
+						<h4 className="font-bold text-slate-800 dark:text-slate-100">{selectedStaff.fullName}</h4>
 						<button
 							onClick={() => setSelectedStaff(null)}
-							className="text-slate-500 hover:text-slate-300"
+							className="text-slate-900 dark:text-slate-500 hover:text-slate-600 dark:text-slate-300"
 						>
 							✕
 						</button>
 					</div>
-					<div className="mt-2 space-y-1 text-slate-400">
-						<p>Phone: <span className="font-mono text-slate-300">{selectedStaff.phoneNumber}</span></p>
-						<p>Specialty: <span className="capitalize text-slate-300">{selectedStaff.specialty}</span></p>
-						<p>Zone: <span className="text-slate-300">{selectedStaff.assignedZone}</span></p>
+					<div className="mt-2 space-y-1 text-slate-500 dark:text-slate-400">
+						<p>Phone: <span className="font-mono text-slate-600 dark:text-slate-300">{selectedStaff.phoneNumber}</span></p>
+						<p>Specialty: <span className="capitalize text-slate-600 dark:text-slate-300">{selectedStaff.specialty}</span></p>
+						<p>Zone: <span className="text-slate-600 dark:text-slate-300">{selectedStaff.assignedZone}</span></p>
 						<p>Status: <span className={
 							selectedStaff.status === 'AVAILABLE' ? 'text-emerald-400' :
-							selectedStaff.status === 'DISPATCHED' ? 'text-amber-400' : 'text-slate-500'
+							selectedStaff.status === 'DISPATCHED' ? 'text-amber-400' : 'text-slate-900 dark:text-slate-500'
 						}>{selectedStaff.status}</span></p>
 						{selectedStaff.roles.length > 0 && (
-							<p>Roles: <span className="text-slate-300">{selectedStaff.roles.join(', ')}</span></p>
+							<p>Roles: <span className="text-slate-600 dark:text-slate-300">{selectedStaff.roles.join(', ')}</span></p>
 						)}
 					</div>
 
 					{/* Reports filed by this person */}
 					{staffIncidents.length > 0 && (
-						<div className="mt-3 border-t border-slate-700 pt-2">
-							<p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+						<div className="mt-3 border-t border-slate-300 dark:border-slate-700 pt-2">
+							<p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-slate-900 dark:text-slate-500">
 								Reports filed ({staffIncidents.length})
 							</p>
 							<div className="max-h-32 space-y-1 overflow-auto">
@@ -809,7 +809,7 @@ export function OptimizedStadiumMapCanvas({
 											onIncidentSelect(inc);
 											setSelectedStaff(null);
 										}}
-										className="block w-full rounded px-2 py-1 text-left hover:bg-slate-800"
+										className="block w-full rounded px-2 py-1 text-left hover:bg-slate-200 dark:bg-slate-800"
 									>
 										<div className="flex items-center gap-1.5">
 											<span
@@ -822,14 +822,14 @@ export function OptimizedStadiumMapCanvas({
 														inc.tier === 4 ? '#3b82f6' : '#64748b',
 												}}
 											/>
-											<span className="text-[10px] text-slate-300">
+											<span className="text-[10px] text-slate-600 dark:text-slate-300">
 												T{inc.tier} · {inc.extractedMetadata.category}
 											</span>
 											<span className="ml-auto text-[9px] text-slate-600">
 												{inc.status}
 											</span>
 										</div>
-										<p className="mt-0.5 truncate text-[10px] text-slate-500">
+										<p className="mt-0.5 truncate text-[10px] text-slate-900 dark:text-slate-500">
 											{inc.rawText}
 										</p>
 									</button>
@@ -839,7 +839,7 @@ export function OptimizedStadiumMapCanvas({
 					)}
 
 					{staffIncidents.length === 0 && (
-						<div className="mt-3 border-t border-slate-700 pt-2">
+						<div className="mt-3 border-t border-slate-300 dark:border-slate-700 pt-2">
 							<p className="text-[10px] text-slate-600">No reports filed by this person.</p>
 						</div>
 					)}
@@ -857,7 +857,7 @@ export function OptimizedStadiumMapCanvas({
 							className={`rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
 								effectiveFloorId === floor.id
 									? 'neu-pressed-sm bg-blue-600 text-white'
-									: 'neu-raised-sm text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'
+									: 'neu-raised-sm text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-200 dark:bg-slate-800'
 							}`}
 						>
 							{floor.name}
@@ -872,7 +872,7 @@ export function OptimizedStadiumMapCanvas({
 
 				{/* Specialty filters */}
 				<div className="space-y-1">
-					<p className="text-[9px] uppercase text-slate-500 dark:text-slate-600">Specialty</p>
+					<p className="text-[9px] uppercase text-slate-900 dark:text-slate-500 dark:text-slate-600">Specialty</p>
 					{([
 						['security', '#3b82f6'],
 						['medical', '#22c55e'],
@@ -907,7 +907,7 @@ export function OptimizedStadiumMapCanvas({
 
 				{/* Status filters */}
 				<div className="mt-2 space-y-1">
-					<p className="text-[9px] uppercase text-slate-500 dark:text-slate-600">Status</p>
+					<p className="text-[9px] uppercase text-slate-900 dark:text-slate-500 dark:text-slate-600">Status</p>
 					{([
 						['AVAILABLE', '#22c55e'],
 						['DISPATCHED', '#f59e0b'],
@@ -941,7 +941,7 @@ export function OptimizedStadiumMapCanvas({
 
 				{/* Incident tier legend (informational, not toggleable) */}
 				<div className="mt-2 space-y-1">
-					<p className="text-[9px] uppercase text-slate-500 dark:text-slate-600">Incidents</p>
+					<p className="text-[9px] uppercase text-slate-900 dark:text-slate-500 dark:text-slate-600">Incidents</p>
 					{([
 						['T1 Life', '#ef4444'],
 						['T2 Urgent', '#f97316'],
@@ -961,7 +961,7 @@ export function OptimizedStadiumMapCanvas({
 			</div>
 
 			{/* HUD overlay (imperatively updated, never re-renders React) */}
-			<div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-400 backdrop-blur">
+			<div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 backdrop-blur">
 				<div className="flex items-center gap-2">
 					<span className="text-slate-600">ZOOM</span>
 					<span ref={hudZoomRef} className="font-bold text-emerald-400">
@@ -970,7 +970,7 @@ export function OptimizedStadiumMapCanvas({
 				</div>
 				<div className="flex items-center gap-2">
 					<span className="text-slate-600">CTR</span>
-					<span ref={hudCoordRef} className="font-bold text-slate-300">
+					<span ref={hudCoordRef} className="font-bold text-slate-600 dark:text-slate-300">
 						500, 500
 					</span>
 				</div>

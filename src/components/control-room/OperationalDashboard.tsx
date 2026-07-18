@@ -146,7 +146,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			{/* ── Operator identity (footprint) ─────────────────────────── */}
 			{(phone || fullName) && (
 				<div className="border-b border-slate-300 bg-slate-50 px-4 py-1 dark:border-slate-800/60 dark:bg-slate-950">
-					<p className="font-mono text-[9px] uppercase tracking-widest text-slate-500 dark:text-slate-600">
+					<p className="font-mono text-[9px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-600">
 						Operator {fullName ?? phone} · {isSuperadmin ? 'superadmin' : 'member'}
 						{claims?.tenant_id ? ` · ${claims.tenant_id}` : ''}
 					</p>
@@ -187,7 +187,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 						</button>
 						<button
 							onClick={tour.dismissBanner}
-							className="ml-auto text-[10px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+							className="ml-auto text-[10px] text-slate-900 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-600 dark:text-slate-300"
 						>
 							✕ Dismiss
 						</button>

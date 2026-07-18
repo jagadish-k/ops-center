@@ -65,7 +65,7 @@ export function DispatchModal({ dispatch, onAcknowledge, onOnScene, onResolve }:
 					variant="secondary"
 					isDisabled={!acknowledged}
 					onPress={() => onResolve(dispatch)}
-					className="border-slate-400/40 bg-slate-800 font-bold uppercase tracking-widest text-slate-100 hover:bg-slate-700">
+					className="border-slate-400/40 bg-slate-200 dark:bg-slate-800 font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100 hover:bg-slate-700">
 					Mark Resolved
 				</Button>
 			</div>

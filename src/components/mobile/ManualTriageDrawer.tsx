@@ -31,7 +31,7 @@ const SEVERITIES: { id: IncidentSeverity; label: string; className: string }[] =
 	{ id: 'CRITICAL', label: 'Critical', className: 'border-red-500 bg-red-500/15 text-red-300' },
 	{ id: 'HIGH', label: 'High', className: 'border-amber-500 bg-amber-500/15 text-amber-300' },
 	{ id: 'MEDIUM', label: 'Medium', className: 'border-yellow-500 bg-yellow-500/15 text-yellow-300' },
-	{ id: 'LOW', label: 'Low', className: 'border-slate-500 bg-slate-500/15 text-slate-300' },
+	{ id: 'LOW', label: 'Low', className: 'border-slate-500 bg-slate-500/15 text-slate-600 dark:text-slate-300' },
 ];
 
 const ZONES = ['ZONE-A', 'ZONE-B', 'ZONE-C', 'ZONE-D', 'ZONE-E', 'ZONE-F'] as const;
@@ -109,19 +109,19 @@ export function ManualTriageDrawer({
 				onOpenChange={(open) => {
 					if (!open) handleClose();
 				}}
-				className="bg-slate-950/80 backdrop-blur-sm">
-				<Drawer.Content placement="bottom" className="bg-slate-900 text-slate-100">
+				className="bg-slate-50 dark:bg-slate-950/80 backdrop-blur-sm">
+				<Drawer.Content placement="bottom" className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
 					<Drawer.Dialog className="w-full rounded-t-2xl">
 						<Drawer.Handle />
-						<Drawer.Header className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-							<h2 className="font-mono text-xs font-bold uppercase tracking-widest text-slate-200">
+						<Drawer.Header className="flex items-center justify-between border-b border-slate-300 dark:border-slate-800 px-4 py-3">
+							<h2 className="font-mono text-xs font-bold uppercase tracking-widest text-slate-700 dark:text-slate-200">
 								{STEP_LABELS[step]}
 							</h2>
 							<button
 								type="button"
 								onClick={handleClose}
 								disabled={submitting}
-								className="font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-300 disabled:opacity-40">
+								className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 hover:text-slate-600 dark:text-slate-300 disabled:opacity-40">
 								Cancel
 							</button>
 						</Drawer.Header>
@@ -183,7 +183,7 @@ export function ManualTriageDrawer({
 											className={`rounded-xl border-2 px-3 py-6 font-mono text-xs font-bold uppercase tracking-widest transition-colors ${
 												zone === z
 													? 'border-emerald-500 bg-emerald-500/20 text-emerald-200'
-													: 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-500'
+													: 'border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-500'
 											}`}>
 											{z}
 										</button>
@@ -203,7 +203,7 @@ export function ManualTriageDrawer({
 							)}
 						</Drawer.Body>
 
-						<Drawer.Footer className="flex items-center gap-2 border-t border-slate-800 p-3">
+						<Drawer.Footer className="flex items-center gap-2 border-t border-slate-300 dark:border-slate-800 p-3">
 							{step > 1 && (
 								<Button
 									variant="secondary"

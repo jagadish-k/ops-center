@@ -477,16 +477,16 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 	// ─── Render ─────────────────────────────────────────────────────────────
 
 	return (
-		<div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
+		<div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-slate-950">
 			{/* Header */}
-			<header className="flex items-center gap-3 border-b border-slate-800 bg-slate-900/60 px-4 py-2">
-				<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">
+			<header className="flex items-center gap-3 border-b border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-4 py-2">
+				<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
 					Map Layout Editor — {tenantName}
 				</h1>
-				<span className="font-mono text-[10px] text-slate-500">
+				<span className="font-mono text-[10px] text-slate-900 dark:text-slate-500">
 					Zoom: {Math.round(GRID_MAX / viewBox.w * 100)}%
 				</span>
-				<button onClick={resetZoom} className="rounded px-2 py-0.5 text-[10px] text-blue-400 hover:bg-slate-800">Reset Zoom</button>
+				<button onClick={resetZoom} className="rounded px-2 py-0.5 text-[10px] text-blue-400 hover:bg-slate-200 dark:bg-slate-800">Reset Zoom</button>
 				<div className="ml-auto flex items-center gap-2">
 					{savedMsg && <span className="text-xs text-emerald-400">{savedMsg}</span>}
 					{saveError && <span className="text-xs text-red-400">{saveError}</span>}
@@ -499,11 +499,11 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 			<div className="flex min-h-0 flex-1">
 				{/* Left sidebar */}
-				<aside className="w-52 shrink-0 overflow-auto border-r border-slate-800 bg-slate-900/40 p-3">
-					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Floors</h3>
+				<aside className="w-52 shrink-0 overflow-auto border-r border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 p-3">
+					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">Floors</h3>
 					<div className="space-y-1">
 						{layout.floors.map((floor) => (
-							<div key={floor.id} className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${activeFloorId === floor.id ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`}>
+							<div key={floor.id} className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${activeFloorId === floor.id ? 'bg-blue-900/40 text-blue-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:bg-slate-800/40'}`}>
 								<button className="flex-1 text-left" onClick={() => { setActiveFloorId(floor.id); setSelected(new Set()); }}>
 									{floor.name}
 									<span className="ml-1 text-[9px] text-slate-600">({floor.zones.length}z/{floor.pois.length}p)</span>
@@ -512,10 +512,10 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 							</div>
 						))}
 					</div>
-					<button className="mt-2 w-full rounded border border-slate-700 py-1 text-[10px] uppercase text-slate-400 hover:bg-slate-800/40" onClick={addFloor}>+ Add Floor</button>
+					<button className="mt-2 w-full rounded border border-slate-300 dark:border-slate-700 py-1 text-[10px] uppercase text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:bg-slate-800/40" onClick={addFloor}>+ Add Floor</button>
 
 					{/* Tools */}
-					<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-500">Tools</h3>
+					<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">Tools</h3>
 					<div className="space-y-1">
 						{([
 							['select', '🖱 Select'],
@@ -524,13 +524,13 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 							['freehand', '✏ Freehand Zone'],
 							['pan', '✋ Pan'],
 						] as const).map(([m, label]) => (
-							<button key={m} className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs ${mode === m ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`} onClick={() => { setMode(m); drawRef.current = { isDrawing: false, start: null, points: [] }; setDrawPreview(null); }}>
+							<button key={m} className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs ${mode === m ? 'bg-blue-900/40 text-blue-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:bg-slate-800/40'}`} onClick={() => { setMode(m); drawRef.current = { isDrawing: false, start: null, points: [] }; setDrawPreview(null); }}>
 								{label}
 								{mode === m && m !== 'select' && m !== 'pan' && <span className="ml-auto text-[8px] text-amber-400">drag to draw</span>}
 							</button>
 						))}
 						<div className={`rounded px-2 py-1 ${mode === 'poi' ? 'bg-blue-900/40' : ''}`}>
-							<button className={`flex w-full items-center gap-2 text-xs ${mode === 'poi' ? 'text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`} onClick={() => setMode('poi')}>📍 Place POI</button>
+							<button className={`flex w-full items-center gap-2 text-xs ${mode === 'poi' ? 'text-blue-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:bg-slate-800/40'}`} onClick={() => setMode('poi')}>📍 Place POI</button>
 							{mode === 'poi' && (
 								<Select
 									className="mt-1 w-full"
@@ -559,7 +559,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					{/* Floor properties */}
 					{activeFloor && (
 						<>
-							<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-500">Floor Details</h3>
+							<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">Floor Details</h3>
 							<div className="space-y-2">
 								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Name</Label><Input value={activeFloor.name} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, name: e.target.value }))} className="text-xs neu-pressed" /></div>
 								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Level</Label><Input type="number" value={activeFloor.level} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(e.target.value) || 0 }))} className="text-xs neu-pressed" /></div>
@@ -568,7 +568,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					)}
 
 					{/* Help text */}
-					<div className="mt-4 border-t border-slate-700 pt-2">
+					<div className="mt-4 border-t border-slate-300 dark:border-slate-700 pt-2">
 						<p className="text-[9px] text-slate-600">
 							<b>Shift+Click</b> — multi-select<br />
 							<b>Delete</b> — remove selected<br />
@@ -579,12 +579,12 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 				</aside>
 
 				{/* Center — SVG grid */}
-				<main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-950">
+				<main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950">
 					{activeFloor ? (
 						<svg
 							ref={svgRef}
 							viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
-							className="h-full w-full border border-slate-700 bg-slate-900"
+							className="h-full w-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900"
 							style={{ cursor: mode === 'pan' ? 'grab' : mode === 'select' ? 'default' : 'crosshair' }}
 							onMouseDown={handleMouseDown}
 							onMouseMove={handleMouseMove}
@@ -674,16 +674,16 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 							})}
 						</svg>
 					) : (
-						<div className="text-slate-500">No floors. Add one from the left sidebar.</div>
+						<div className="text-slate-900 dark:text-slate-500">No floors. Add one from the left sidebar.</div>
 					)}
 				</main>
 
 				{/* Right sidebar — properties */}
-				<aside className="w-64 shrink-0 overflow-auto border-l border-slate-800 bg-slate-900/40 p-3">
+				<aside className="w-64 shrink-0 overflow-auto border-l border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 p-3">
 					{/* Bulk selection */}
 					{selected.size > 1 && (
 						<div>
-							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">{selected.size} items selected</h3>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">{selected.size} items selected</h3>
 							<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set(selected))}>
 								Delete {selected.size} items
 							</Button>
@@ -693,7 +693,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					{/* Single zone */}
 					{singleZone && (
 						<div>
-							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Zone Properties</h3>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">Zone Properties</h3>
 							<div className="space-y-2">
 								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Name</Label><Input value={singleZone.zone.name} onChange={(e) => updateZone(singleZone.floor.id, singleZone.zone.id, { name: e.target.value })} className="neu-pressed" /></div>
 								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Shape</Label><p className="text-xs text-slate-700 dark:text-slate-300 capitalize">{singleZone.zone.shape}</p></div>
@@ -701,7 +701,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 									<Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Color</Label>
 									<div className="flex flex-wrap gap-1">
 										{ZONE_COLORS.map((c) => (
-											<button key={c} className={`h-6 w-6 rounded border-2 ${singleZone.zone.color === c ? 'border-slate-800 dark:border-white' : 'border-transparent'}`} style={{ backgroundColor: c }} onClick={() => updateZone(singleZone.floor.id, singleZone.zone.id, { color: c })} />
+											<button key={c} className={`h-6 w-6 rounded border-2 ${singleZone.zone.color === c ? 'border-slate-300 dark:border-slate-800 dark:border-white' : 'border-transparent'}`} style={{ backgroundColor: c }} onClick={() => updateZone(singleZone.floor.id, singleZone.zone.id, { color: c })} />
 										))}
 									</div>
 								</div>
@@ -713,7 +713,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					{/* Single POI */}
 					{singlePoi && (
 						<div>
-							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">POI Properties</h3>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">POI Properties</h3>
 							<div className="space-y-2">
 								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Name</Label><Input value={singlePoi.poi.name} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { name: e.target.value })} className="neu-pressed" /></div>
 								<div>
@@ -749,12 +749,12 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					{/* Nothing selected — show floor summary */}
 					{selected.size === 0 && activeFloor && (
 						<div>
-							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">{activeFloor.name}</h3>
-							<div className="space-y-1 text-[11px] text-slate-400">
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">{activeFloor.name}</h3>
+							<div className="space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
 								<p>Zones: {activeFloor.zones.length}</p>
 								<p>POIs: {activeFloor.pois.length}</p>
 								{activeFloor.pois.length > 0 && (
-									<div className="mt-2 border-t border-slate-700 pt-2">
+									<div className="mt-2 border-t border-slate-300 dark:border-slate-700 pt-2">
 										<p className="text-[9px] uppercase text-slate-600">POI Summary</p>
 										{Object.entries(activeFloor.pois.reduce((acc, p) => { acc[p.type] = (acc[p.type] ?? 0) + 1; return acc; }, {} as Record<string, number>)).map(([type, count]) => (
 											<div key={type} className="flex items-center gap-1"><span>{POI_ICONS[type as POIType]}</span><span className="capitalize">{type}</span><span className="ml-auto text-slate-600">{count}</span></div>
@@ -768,8 +768,8 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 			</div>
 
 			{/* Status bar */}
-			<footer className="border-t border-slate-800 bg-slate-900/60 px-4 py-1.5 text-[10px] text-slate-500">
-				Floor: {activeFloor?.name ?? '—'} · Zones: {activeFloor?.zones.length ?? 0} · POIs: {activeFloor?.pois.length ?? 0} · Floors: {layout.floors.length} · Mode: <span className="text-slate-300 capitalize">{mode}</span>
+			<footer className="border-t border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-4 py-1.5 text-[10px] text-slate-900 dark:text-slate-500">
+				Floor: {activeFloor?.name ?? '—'} · Zones: {activeFloor?.zones.length ?? 0} · POIs: {activeFloor?.pois.length ?? 0} · Floors: {layout.floors.length} · Mode: <span className="text-slate-600 dark:text-slate-300 capitalize">{mode}</span>
 				{selected.size > 0 && <> · Selected: <span className="text-blue-400">{selected.size}</span></>}
 			</footer>
 
@@ -786,7 +786,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 									</Modal.Heading>
 								</Modal.Header>
 								<Modal.Body>
-									<p className="text-xs text-slate-400">
+									<p className="text-xs text-slate-500 dark:text-slate-400">
 										This will remove {deleteConfirm.size} zone/POI{deleteConfirm.size === 1 ? '' : 's'} from the layout.
 										Click Save to persist the change.
 									</p>

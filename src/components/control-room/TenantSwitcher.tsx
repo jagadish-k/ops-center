@@ -33,15 +33,15 @@ export function TenantSwitcher({ tenants, activeTenantId, onTenantChange }: Tena
 				onChange={handleChange}
 				aria-label="Switch tenant">
 				<Label className="sr-only">Tenant</Label>
-				<Select.Trigger className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5">
-					<Select.Value className="font-mono text-xs uppercase tracking-widest text-slate-300" />
+				<Select.Trigger className="rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-1.5">
+					<Select.Value className="font-mono text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300" />
 					<Select.Indicator />
 				</Select.Trigger>
 				<Select.Popover>
 					<ListBox>
 						{tenants.map((tenant) => (
 							<ListBox.Item key={tenant.tenantId} id={tenant.tenantId} textValue={tenant.orgName}>
-								<span className="font-mono text-xs uppercase tracking-wide text-slate-300">
+								<span className="font-mono text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300">
 									{tenant.orgName}
 								</span>
 								<ListBox.ItemIndicator />

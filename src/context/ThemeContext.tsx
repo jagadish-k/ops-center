@@ -20,8 +20,8 @@ function applyThemeToDOM(theme: ThemeMode): void {
 	const root = document.documentElement;
 	root.dataset.theme = theme;
 
-	// Tailwind dark: prefix: active for flat-dark and neu-dark, inactive for neu-light.
-	if (theme === 'neu-light') {
+	// Tailwind dark: prefix: active for flat-dark and neu-dark, inactive for light themes.
+	if (theme === 'neu-light' || theme === 'flat-light') {
 		root.classList.remove('dark');
 	} else {
 		root.classList.add('dark');
@@ -29,13 +29,10 @@ function applyThemeToDOM(theme: ThemeMode): void {
 
 	// Set the body background color directly — this is the baseline that
 	// neumorphic shadows are calibrated against.
-	const bgColors: Record<ThemeMode, string> = {
-		'flat-dark': '#020617',  // slate-950
-		'neu-dark': '#1e293b',   // slate-800
-		'neu-light': '#e0e8f6',  // soft blue-grey
-	};
-	document.body.style.backgroundColor = bgColors[theme];
-	document.body.style.color = theme === 'neu-light' ? '#1e293b' : '#f1f5f9';
+	// NOTE: We now rely on Tailwind's dark: prefix and CSS variables in neumorphism.css
+	// to manage the body background color, so we no longer apply inline styles here.
+	document.body.style.backgroundColor = '';
+	document.body.style.color = '';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }): ReactNode {
@@ -74,7 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }): ReactNode 
 		setTheme,
 		cycleTheme,
 		isNeumorphic: theme === 'neu-dark' || theme === 'neu-light',
-		isDark: theme !== 'neu-light',
+		isDark: theme === 'flat-dark' || theme === 'neu-dark',
 	};
 
 	return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

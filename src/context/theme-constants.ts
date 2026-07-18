@@ -12,7 +12,7 @@ import { createContext, useContext } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type ThemeMode = 'flat-dark' | 'neu-dark' | 'neu-light';
+export type ThemeMode = 'flat-dark' | 'neu-dark' | 'neu-light' | 'flat-light';
 
 export interface ThemeContextValue {
 	theme: ThemeMode;
@@ -32,18 +32,20 @@ export const ThemeContext = createContext<ThemeContextValue | undefined>(undefin
 
 export const THEME_KEY = 'stadiumops_theme';
 export const DEFAULT_THEME: ThemeMode = 'flat-dark';
-export const THEME_ORDER: ThemeMode[] = ['flat-dark', 'neu-dark', 'neu-light'];
+export const THEME_ORDER: ThemeMode[] = ['flat-dark', 'neu-dark', 'neu-light', 'flat-light'];
 
 export const THEME_LABELS: Record<ThemeMode, string> = {
 	'flat-dark': 'Flat Dark',
 	'neu-dark': 'Neu Dark',
 	'neu-light': 'Neu Light',
+	'flat-light': 'Flat Light',
 };
 
 export const THEME_ICONS: Record<ThemeMode, string> = {
 	'flat-dark': '◉',
 	'neu-dark': '◐',
 	'neu-light': '○',
+	'flat-light': '◎',
 };
 
 // ─── Hook ────────────────────────────────────────────────────────────────────

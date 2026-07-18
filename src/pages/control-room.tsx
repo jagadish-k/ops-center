@@ -23,7 +23,7 @@ export default function ControlRoom() {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+			<div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400">
 				<p className="font-mono text-xs uppercase tracking-widest">Authorizing…</p>
 			</div>
 		);
@@ -38,12 +38,12 @@ export default function ControlRoom() {
 		<ErrorBoundary
 			name="Control Room"
 			fallback={
-				<div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 p-6 text-center">
+				<div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950 p-6 text-center">
 					<div className="text-4xl">⚠️</div>
 					<h1 className="font-mono text-lg font-black uppercase tracking-widest text-red-300">
 						Control Room crashed
 					</h1>
-					<p className="max-w-md text-sm text-slate-400">
+					<p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
 						A fatal error occurred. Sign out and back in to reset the session. If the
 						problem persists, check the browser console for details.
 					</p>

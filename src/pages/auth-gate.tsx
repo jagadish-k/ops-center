@@ -22,9 +22,9 @@ export default function AuthGate() {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-slate-50">
+			<div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50">
 				<Spinner size="lg" />
-				<p className="font-mono text-xs uppercase tracking-widest text-slate-500">
+				<p className="font-mono text-xs uppercase tracking-widest text-slate-900 dark:text-slate-500">
 					Initializing Grid Matrix
 				</p>
 			</div>

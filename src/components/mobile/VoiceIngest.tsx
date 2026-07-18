@@ -161,7 +161,7 @@ export function VoiceIngest({ staffPhone, tenantId }: VoiceIngestProps) {
 
 			<p
 				className={`font-mono text-[10px] uppercase tracking-widest ${
-					state === 'ERROR' ? 'text-red-400' : state === 'SUCCESS' ? 'text-emerald-400' : 'text-slate-400'
+					state === 'ERROR' ? 'text-red-400' : state === 'SUCCESS' ? 'text-emerald-400' : 'text-slate-500 dark:text-slate-400'
 				}`}>
 				{stateLabel[state]}
 			</p>
@@ -173,7 +173,7 @@ export function VoiceIngest({ staffPhone, tenantId }: VoiceIngestProps) {
 				type="button"
 				onClick={handlePress}
 				disabled={isUploading}
-				className="font-mono text-[10px] uppercase tracking-widest text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline disabled:opacity-40">
+				className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500 underline-offset-2 hover:text-slate-600 dark:text-slate-300 hover:underline disabled:opacity-40">
 				Tap to {isRecording ? 'stop' : 'report'}
 			</button>
 		</div>

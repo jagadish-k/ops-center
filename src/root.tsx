@@ -10,7 +10,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<html
 			lang="en"
-			className="dark"
+			className=""
 			data-theme="flat-dark">
 			<head>
 				<meta charSet="utf-8" />
@@ -21,7 +21,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<Meta />
 				<Links />
 			</head>
-			<body className="min-h-screen bg-slate-950 text-slate-50 antialiased transition-colors duration-300">
+			<body className="min-h-screen bg-slate-50 text-slate-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-50">
 				{children}
 				<ScrollRestoration />
 				<Scripts />
@@ -46,7 +46,7 @@ export default function App() {
 // 3. Hydration Fallback (Crucial for SPA mode)
 export function HydrateFallback() {
 	return (
-		<div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-slate-50">
+		<div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
 			<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
 			<p className="text-sm font-medium tracking-wide text-slate-400">Initializing Grid Matrix...</p>
 		</div>
