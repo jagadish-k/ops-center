@@ -495,8 +495,8 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 		<div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-slate-950">
 			{isSettingBounds && (
 				<GeoBoundsSelector
-					onSave={(bounds) => {
-						setLayout((prev) => ({ ...prev, geoBounds: bounds }));
+					onSave={(bounds, mapProvider) => {
+						setLayout((prev) => ({ ...prev, geoBounds: bounds, mapProvider }));
 						setIsSettingBounds(false);
 					}}
 					onCancel={() => setIsSettingBounds(false)}

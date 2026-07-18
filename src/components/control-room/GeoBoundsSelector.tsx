@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Map } from 'leaflet';
 
 interface GeoBoundsSelectorProps {
-	onSave: (bounds: { north: number; south: number; east: number; west: number }) => void;
+	onSave: (bounds: { north: number; south: number; east: number; west: number }, mapProvider: 'openmaps' | 'google') => void;
 	onCancel: () => void;
 }
 
@@ -13,6 +13,7 @@ export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) 
 	const mapRef = useRef<Map | null>(null);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [isSearching, setIsSearching] = useState(false);
+	const [provider, setProvider] = useState<'openmaps' | 'google'>('openmaps');
 
 	const handleSearch = async () => {
 		if (!searchQuery.trim() || !mapRef.current) return;
@@ -48,8 +49,8 @@ export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) 
 			north: tl.lat,
 			west: tl.lng,
 			south: br.lat,
-			east: br.lng
-		});
+			east: br.lng,
+		}, provider);
 	};
 
 	return (
@@ -75,9 +76,19 @@ export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) 
 					</Button>
 				</div>
 
-				<div className="flex gap-2">
-					<Button variant="ghost" className="text-slate-300" onPress={onCancel}>Cancel</Button>
-					<Button variant="primary" onPress={handleSave}>Set Map Area</Button>
+				<div className="flex items-center gap-4">
+					<select 
+						value={provider} 
+						onChange={(e) => setProvider(e.target.value as 'openmaps' | 'google')} 
+						className="bg-slate-900 text-sm text-slate-100 border border-slate-700 rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+					>
+						<option value="openmaps">OpenStreetMap</option>
+						<option value="google">Google Maps</option>
+					</select>
+					<div className="flex gap-2">
+						<Button variant="ghost" className="text-slate-300" onPress={onCancel}>Cancel</Button>
+						<Button variant="primary" onPress={handleSave}>Set Map Area</Button>
+					</div>
 				</div>
 			</header>
 
@@ -88,10 +99,17 @@ export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) 
 					ref={mapRef}
 					className="h-full w-full"
 				>
-					<TileLayer
-						attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-						url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-					/>
+					{provider === 'google' ? (
+						<TileLayer
+							attribution='&copy; Google'
+							url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+						/>
+					) : (
+						<TileLayer
+							attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+							url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+						/>
+					)}
 				</MapContainer>
 
 				{/* The target square overlay */}

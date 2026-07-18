@@ -10,6 +10,7 @@ export interface LeafletMapRef {
 
 interface LeafletMapBackgroundProps {
 	bounds: { north: number; south: number; east: number; west: number };
+	mapProvider?: 'openmaps' | 'google';
 }
 
 function MapUpdater({ mapRef }: { mapRef: React.MutableRefObject<Map | null> }) {
@@ -20,7 +21,7 @@ function MapUpdater({ mapRef }: { mapRef: React.MutableRefObject<Map | null> }) 
 	return null;
 }
 
-export const LeafletMapBackground = forwardRef<LeafletMapRef, LeafletMapBackgroundProps>(({ bounds }, ref) => {
+export const LeafletMapBackground = forwardRef<LeafletMapRef, LeafletMapBackgroundProps>(({ bounds, mapProvider = 'openmaps' }, ref) => {
 	const mapRef = useRef<Map | null>(null);
 	const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -62,10 +63,17 @@ export const LeafletMapBackground = forwardRef<LeafletMapRef, LeafletMapBackgrou
 				zoomSnap={0}
 				className="h-full w-full bg-transparent"
 			>
-				<TileLayer
-					attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-					url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-				/>
+				{mapProvider === 'google' ? (
+					<TileLayer
+						attribution='&copy; Google'
+						url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+					/>
+				) : (
+					<TileLayer
+						attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+						url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+					/>
+				)}
 				<MapUpdater mapRef={mapRef} />
 			</MapContainer>
 		</div>

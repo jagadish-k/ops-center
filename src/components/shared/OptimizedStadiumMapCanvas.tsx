@@ -753,7 +753,7 @@ export function OptimizedStadiumMapCanvas({
 			ref={containerRef}
 			className="relative h-full w-full overflow-hidden rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
 			{layoutData?.geoBounds && (
-				<LeafletMapBackground ref={leafletMapRef} bounds={layoutData.geoBounds} />
+				<LeafletMapBackground ref={leafletMapRef} bounds={layoutData.geoBounds} mapProvider={layoutData.mapProvider} />
 			)}
 			<canvas
 				ref={canvasRef}

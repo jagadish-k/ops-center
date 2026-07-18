@@ -79,12 +79,21 @@ export interface MapLayout {
 		east: number;  // Right Longitude
 		west: number;  // Left Longitude
 	};
+	/** Optional real map provider to render under the zones instead of the grid. */
+	mapProvider?: 'openmaps' | 'google';
 }
 
 // ─── Default layout for MetLife Stadium (seeded) ──────────────────────────────
 
 export const METLIFE_MAP_LAYOUT: MapLayout = {
 	defaultFloorId: 'ground',
+	mapProvider: 'openmaps',
+	geoBounds: {
+		north: 40.815,
+		south: 40.812,
+		east: -74.072,
+		west: -74.076,
+	},
 	floors: [
 		{
 			id: 'ground',
