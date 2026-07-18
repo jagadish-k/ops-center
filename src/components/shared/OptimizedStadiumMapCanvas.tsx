@@ -531,20 +531,8 @@ export function OptimizedStadiumMapCanvas({
 			const activeLayout = propsRef.current.mapLayout as MapLayout | null | undefined;
 			if (activeLayout?.geoBounds && leafletMapRef.current) {
 				const s = baseScale(Math.min(cssWidth, cssHeight)) * vp.zoom;
-				const { north, south, east, west } = activeLayout.geoBounds;
-				// pixel coordinates for corners of the screen
-				const gx1 = -vp.offsetX / s;
-				const gy1 = -vp.offsetY / s;
-				const gx2 = (cssWidth - vp.offsetX) / s;
-				const gy2 = (cssHeight - vp.offsetY) / s;
-
-				// Convert grid to lat/lng
-				const lat1 = north - (gy1 / 1000) * (north - south);
-				const lng1 = west + (gx1 / 1000) * (east - west);
-				const lat2 = north - (gy2 / 1000) * (north - south);
-				const lng2 = west + (gx2 / 1000) * (east - west);
-
-				leafletMapRef.current.updateBounds({ lat1, lng1, lat2, lng2 });
+				// We now use CSS transform to perfectly sync the 1000x1000 map wrapper
+				leafletMapRef.current.applyTransform(vp.offsetX, vp.offsetY, s / 1000);
 			}
 
 			rafId = requestAnimationFrame(render);
