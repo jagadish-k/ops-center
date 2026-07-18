@@ -33,7 +33,7 @@ export interface PollingState {
 	connectionHealthy: boolean;
 }
 
-const BASE_INTERVAL_MS = 2_000;
+const BASE_INTERVAL_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
 
 function isStale(): number {
