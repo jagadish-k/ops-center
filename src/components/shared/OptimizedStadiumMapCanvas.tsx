@@ -27,6 +27,7 @@ import type {
 	InfoTier,
 	StaffSpecialty,
 	MapCoordinates,
+	IncidentStatus,
 } from '@/types';
 import type { MapLayout } from '@/lib/map-layout';
 import { POI_COLORS } from '@/lib/map-layout';
@@ -106,9 +107,11 @@ export function OptimizedStadiumMapCanvas({
 	const [filters, setFilters] = useState<{
 		specialties: Set<StaffSpecialty>;
 		statuses: Set<string>;
+		incidentStatuses: Set<IncidentStatus>;
 	}>({
 		specialties: new Set(['security', 'medical', 'cleaning', 'supervisor']),
 		statuses: new Set(['AVAILABLE', 'DISPATCHED', 'OFF_DUTY']),
+		incidentStatuses: new Set(['OPEN', 'ACKNOWLEDGED']),
 	});
 	const filtersRef = useRef(filters);
 
@@ -467,31 +470,32 @@ export function OptimizedStadiumMapCanvas({
 
 			// Incident beacons (pulsing, tier-colored, filtered by floor).
 			for (const incident of inc) {
+				if (!f.incidentStatuses.has(incident.status)) continue;
 				// Skip if this incident is on a different floor.
 				if (activeFloorId && incident.floorId && incident.floorId !== activeFloorId) continue;
 				const pos = gridToScreen(incident.coordinates);
 				const color = tierColor(incident.tier);
-				const baseRadius = incident.tier <= 2 ? 9 : incident.tier === 3 ? 7 : 6;
-				// Outer pulse halo.
-				ctx.beginPath();
-				ctx.arc(pos.x, pos.y, baseRadius + pulse * 8, 0, Math.PI * 2);
+				const size = incident.tier <= 2 ? 18 : incident.tier === 3 ? 14 : 12;
+				const half = size / 2;
+
+				// Outer pulse halo (square/diamond bounding).
 				ctx.fillStyle = color;
 				ctx.globalAlpha = 0.18;
-				ctx.fill();
+				ctx.fillRect(pos.x - half - pulse * 4, pos.y - half - pulse * 4, size + pulse * 8, size + pulse * 8);
 				ctx.globalAlpha = 1;
+
 				// Solid core.
-				ctx.beginPath();
-				ctx.arc(pos.x, pos.y, baseRadius, 0, Math.PI * 2);
-				ctx.fillStyle = color;
-				ctx.fill();
+				ctx.fillRect(pos.x - half, pos.y - half, size, size);
 				ctx.strokeStyle = isDark ? 'rgba(2, 6, 23, 0.85)' : 'rgba(255, 255, 255, 0.85)';
 				ctx.lineWidth = 1.5;
-				ctx.stroke();
+				ctx.strokeRect(pos.x - half, pos.y - half, size, size);
 
 				// Selection ring.
 				if (selectedIdRef.current === incident.id) {
 					ctx.beginPath();
-					ctx.arc(pos.x, pos.y, baseRadius + 6, 0, Math.PI * 2);
+					const selSize = size + 12;
+					const selHalf = selSize / 2;
+					ctx.rect(pos.x - selHalf, pos.y - selHalf, selSize, selSize);
 					ctx.strokeStyle = isDark ? '#f8fafc' : '#0f172a';
 					ctx.lineWidth = 2;
 					ctx.setLineDash([4, 3]);
@@ -968,9 +972,43 @@ export function OptimizedStadiumMapCanvas({
 					))}
 				</div>
 
+				{/* Incident statuses */}
+				<div className="mt-2 space-y-1">
+					<p className="text-[9px] uppercase text-slate-900 dark:text-slate-500 dark:text-slate-600">Incident Status</p>
+					{([
+						['PENDING', '#ef4444'],
+						['ACKNOWLEDGED', '#f59e0b'],
+						['RESOLVED', '#10b981'],
+					] as const).map(([status, color]) => (
+						<Checkbox
+							key={status}
+							isSelected={filters.incidentStatuses.has(status as IncidentStatus)}
+							onChange={() => {
+								setFilters((prev) => {
+									const next = new Set(prev.incidentStatuses);
+									if (next.has(status as IncidentStatus)) next.delete(status as IncidentStatus);
+									else next.add(status as IncidentStatus);
+									return { ...prev, incidentStatuses: next };
+								});
+							}}
+						>
+							<Checkbox.Content className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
+								<Checkbox.Control>
+									<Checkbox.Indicator />
+								</Checkbox.Control>
+								<span
+									className="inline-block h-2 w-2 ring-1 ring-slate-400 dark:ring-slate-600"
+									style={{ backgroundColor: color }}
+								/>
+								<span>{status}</span>
+							</Checkbox.Content>
+						</Checkbox>
+					))}
+				</div>
+
 				{/* Incident tier legend (informational, not toggleable) */}
 				<div className="mt-2 space-y-1">
-					<p className="text-[9px] uppercase text-slate-900 dark:text-slate-500 dark:text-slate-600">Incidents</p>
+					<p className="text-[9px] uppercase text-slate-900 dark:text-slate-500 dark:text-slate-600">Incident Tiers</p>
 					{([
 						['T1 Life', '#ef4444'],
 						['T2 Urgent', '#f97316'],
@@ -980,7 +1018,7 @@ export function OptimizedStadiumMapCanvas({
 					] as const).map(([label, color]) => (
 						<div key={label} className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
 							<span
-								className="inline-block h-2 w-2 rounded-full ring-1 ring-slate-400 dark:ring-slate-600"
+								className="inline-block h-2 w-2 ring-1 ring-slate-400 dark:ring-slate-600"
 								style={{ backgroundColor: color }}
 							/>
 							<span>{label}</span>

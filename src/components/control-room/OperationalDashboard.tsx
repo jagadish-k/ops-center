@@ -213,7 +213,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 									/>
 								</div>
 								<div data-tour="incident-inspector" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
-									<IncidentInspector incident={selected} />
+									<IncidentInspector key={selected?.id ?? 'empty'} incident={selected} />
 								</div>
 							</aside>
 						</div>
