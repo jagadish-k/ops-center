@@ -26,6 +26,8 @@ import {
 	POI_ICONS,
 	POI_COLORS,
 } from '@/lib/map-layout';
+import { GeoBoundsSelector } from './GeoBoundsSelector';
+import { LeafletMapBackground, type LeafletMapRef } from '../shared/LeafletMapBackground';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -67,12 +69,25 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [savedMsg, setSavedMsg] = useState<string | null>(null);
+	const [isSettingBounds, setIsSettingBounds] = useState(false);
+	const leafletMapRef = useRef<LeafletMapRef>(null);
 
 	// Delete confirmation modal.
 	const [deleteConfirm, setDeleteConfirm] = useState<Set<ItemKey> | null>(null);
 
-	// ViewBox for zoom/pan: { x, y, w, h } in grid coordinates.
 	const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: GRID_MAX, h: GRID_MAX });
+
+	// Sync Leaflet map with viewBox when in geo mode
+	useEffect(() => {
+		if (layout.geoBounds && leafletMapRef.current) {
+			const { north, south, east, west } = layout.geoBounds;
+			const lat1 = north - (viewBox.y / 1000) * (north - south);
+			const lng1 = west + (viewBox.x / 1000) * (east - west);
+			const lat2 = north - ((viewBox.y + viewBox.h) / 1000) * (north - south);
+			const lng2 = west + ((viewBox.x + viewBox.w) / 1000) * (east - west);
+			leafletMapRef.current.updateBounds({ lat1, lng1, lat2, lng2 });
+		}
+	}, [viewBox, layout.geoBounds]);
 
 	// Drawing state (rect / circle / freehand).
 	const drawRef = useRef<{
@@ -478,6 +493,15 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 	return (
 		<div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-slate-950">
+			{isSettingBounds && (
+				<GeoBoundsSelector
+					onSave={(bounds) => {
+						setLayout((prev) => ({ ...prev, geoBounds: bounds }));
+						setIsSettingBounds(false);
+					}}
+					onCancel={() => setIsSettingBounds(false)}
+				/>
+			)}
 			{/* Header */}
 			<header className="flex items-center gap-3 border-b border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-4 py-2">
 				<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -579,7 +603,8 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 				</aside>
 
 				{/* Center — SVG grid */}
-				<main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950">
+				<main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950">
+					{layout.geoBounds && <LeafletMapBackground ref={leafletMapRef} bounds={layout.geoBounds} />}
 					{activeFloor ? (
 						<svg
 							ref={svgRef}
@@ -680,6 +705,19 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 				{/* Right sidebar — properties */}
 				<aside className="w-64 shrink-0 overflow-auto border-l border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 p-3">
+					{/* Base Map / Geo Mode */}
+					<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">Geographic Base</h3>
+					<div className="space-y-2">
+						<Button size="sm" variant="bordered" className="w-full text-xs" onPress={() => setIsSettingBounds(true)}>
+							{layout.geoBounds ? 'Edit Geo Bounds' : 'Set Geographic Base'}
+						</Button>
+						{layout.geoBounds && (
+							<Button size="sm" variant="ghost" className="w-full text-xs text-red-500" onPress={() => setLayout(prev => { const next = { ...prev }; delete next.geoBounds; return next; })}>
+								Remove Geo Base
+							</Button>
+						)}
+					</div>
+
 					{/* Bulk selection */}
 					{selected.size > 1 && (
 						<div>

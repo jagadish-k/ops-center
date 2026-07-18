@@ -80,7 +80,9 @@ via `perms_version`** (ADR-0010 through ADR-0014). See all ADRs in
 | M9.6 — Hardening | ✅ Done | Error boundaries, optimistic updates, skeleton loaders |
 | M10 — Policy UI v1 | ✅ Done | CodeMirror Rego editor + OPA test runner + DB-stored policies |
 | M10+ — Hardening | ✅ Done | Guide tour, role-aware onboarding, seed expansion, multi-floor map layout |
-| M10 — Policy UI v2 | ⏳ Planned | Per-tenant overrides, rebuild-and-deploy, audit integration |
+| M11 — Landing & Marketing | ✅ Done | Premium marketing page with Hero, Features, and Contact Lead form |
+| M12 — Geographic Mode | ✅ Done | OpenStreetMap integration, geo-bounds selector, 60fps canvas sync |
+| M13 — Policy UI v2 | ⏳ Planned | Per-tenant overrides, rebuild-and-deploy, audit integration |
 
 ---
 

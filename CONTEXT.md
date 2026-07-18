@@ -93,6 +93,9 @@ touch an area before working in it.
 
 - **Grid** — The normalized 0–1000 coordinate plane onto which all physical
   stadium locations are projected. Not "map space" or "pixel grid".
+- **Geographic Bounds (geoBounds)** — The real-world Lat/Lng coordinates mapping
+  to the four corners of the 0-1000 Grid, enabling the overlay of live satellite
+  and street data from OpenStreetMap.
 - **Optimized Stadium Map Canvas** — The offscreen-double-buffered HTML5 Canvas
   component (`OptimizedStadiumMapCanvas`). Not "the map" or "canvas widget".
 - **Map Layout** — The `tenants.mapLayout` JSONB column storing a multi-floor

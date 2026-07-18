@@ -72,6 +72,13 @@ export interface MapLayout {
 	floors: MapFloor[];
 	/** Default floor ID to show when the map loads. */
 	defaultFloorId?: string;
+	/** Optional geographic bounds (Top-Left & Bottom-Right) to map the 0-1000 grid to real-world coordinates. */
+	geoBounds?: {
+		north: number; // Top Latitude
+		south: number; // Bottom Latitude
+		east: number;  // Right Longitude
+		west: number;  // Left Longitude
+	};
 }
 
 // ─── Default layout for MetLife Stadium (seeded) ──────────────────────────────

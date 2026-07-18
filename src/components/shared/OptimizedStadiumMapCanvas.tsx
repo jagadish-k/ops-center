@@ -30,6 +30,7 @@ import type {
 } from '@/types';
 import type { MapLayout } from '@/lib/map-layout';
 import { POI_COLORS } from '@/lib/map-layout';
+import { LeafletMapBackground, type LeafletMapRef } from './LeafletMapBackground';
 
 interface OptimizedStadiumMapCanvasProps {
 	incidents: IncidentReport[];
@@ -91,6 +92,7 @@ export function OptimizedStadiumMapCanvas({
 	const { isDark } = useTheme();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
+	const leafletMapRef = useRef<LeafletMapRef | null>(null);
 
 	// ── Imperative refs (read by the rAF loop WITHOUT restarting it) ────────────
 	const propsRef = useRef({ incidents, staffMembers, onIncidentSelect, mapLayout });
@@ -235,71 +237,75 @@ export function OptimizedStadiumMapCanvas({
 			y: coord.y * s + oy,
 		});
 
-		// Grid lines (every 100 grid units).
-		ctx.lineWidth = 1;
-		ctx.strokeStyle = isDark ? 'rgba(51, 65, 85, 0.35)' : 'rgba(203, 213, 225, 0.6)';
-		ctx.beginPath();
-		for (let g = 0; g <= 1000; g += 100) {
-			const top = gridToBg({ x: g, y: 0 });
-			const bottom = gridToBg({ x: g, y: 1000 });
-			ctx.moveTo(top.x, top.y);
-			ctx.lineTo(bottom.x, bottom.y);
-			const left = gridToBg({ x: 0, y: g });
-			const right = gridToBg({ x: 1000, y: g });
-			ctx.moveTo(left.x, left.y);
-			ctx.lineTo(right.x, right.y);
-		}
-		ctx.stroke();
+		const layoutData = propsRef.current.mapLayout as MapLayout | null | undefined;
+		const isGeoMode = !!layoutData?.geoBounds;
 
-		// Stadium bowl rings (concentric, centered on grid center 500,500).
-		const center = gridToBg({ x: 500, y: 500 });
-		const ringBase = s * 200; // outer ring radius in px at zoom 1
-		for (let i = 0; i < 4; i++) {
-			const r = ringBase * (1 - i * 0.18);
+		if (!isGeoMode) {
+			// Grid lines (every 100 grid units).
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = isDark ? 'rgba(51, 65, 85, 0.35)' : 'rgba(203, 213, 225, 0.6)';
 			ctx.beginPath();
-			ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-			ctx.strokeStyle = i === 0 
-				? (isDark ? 'rgba(71, 85, 105, 0.55)' : 'rgba(148, 163, 184, 0.6)') 
-				: (isDark ? 'rgba(71, 85, 105, 0.28)' : 'rgba(148, 163, 184, 0.3)');
-			ctx.lineWidth = i === 0 ? 2 : 1;
+			for (let g = 0; g <= 1000; g += 100) {
+				const top = gridToBg({ x: g, y: 0 });
+				const bottom = gridToBg({ x: g, y: 1000 });
+				ctx.moveTo(top.x, top.y);
+				ctx.lineTo(bottom.x, bottom.y);
+				const left = gridToBg({ x: 0, y: g });
+				const right = gridToBg({ x: 1000, y: g });
+				ctx.moveTo(left.x, left.y);
+				ctx.lineTo(right.x, right.y);
+			}
 			ctx.stroke();
-		}
 
-		// Pitch boundary (the field of play).
-		const pitchTL = gridToBg({ x: 360, y: 360 });
-		const pitchBR = gridToBg({ x: 640, y: 640 });
-		ctx.strokeStyle = isDark ? 'rgba(34, 197, 94, 0.55)' : 'rgba(34, 197, 94, 0.4)';
-		ctx.lineWidth = 2;
-		ctx.strokeRect(pitchTL.x, pitchTL.y, pitchBR.x - pitchTL.x, pitchBR.y - pitchTL.y);
-		// Center circle + halfway line.
-		ctx.beginPath();
-		ctx.arc(center.x, center.y, (pitchBR.x - pitchTL.x) * 0.12, 0, Math.PI * 2);
-		ctx.stroke();
-		ctx.beginPath();
-		ctx.moveTo(pitchTL.x, center.y);
-		ctx.lineTo(pitchBR.x, center.y);
-		ctx.stroke();
+			// Stadium bowl rings (concentric, centered on grid center 500,500).
+			const center = gridToBg({ x: 500, y: 500 });
+			const ringBase = s * 200; // outer ring radius in px at zoom 1
+			for (let i = 0; i < 4; i++) {
+				const r = ringBase * (1 - i * 0.18);
+				ctx.beginPath();
+				ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+				ctx.strokeStyle = i === 0 
+					? (isDark ? 'rgba(71, 85, 105, 0.55)' : 'rgba(148, 163, 184, 0.6)') 
+					: (isDark ? 'rgba(71, 85, 105, 0.28)' : 'rgba(148, 163, 184, 0.3)');
+				ctx.lineWidth = i === 0 ? 2 : 1;
+				ctx.stroke();
+			}
 
-		// Sector labels around the bowl.
-		ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.55)' : 'rgba(100, 116, 139, 0.8)';
-		ctx.font = '600 10px ui-monospace, SFMono-Regular, Menlo, monospace';
-		ctx.textAlign = 'center';
-		ctx.textBaseline = 'middle';
-		const sectors: { label: string; coord: MapCoordinates }[] = [
-			{ label: 'SEC-112', coord: { x: 330, y: 230 } },
-			{ label: 'SEC-308', coord: { x: 540, y: 730 } },
-			{ label: 'CONC-1C', coord: { x: 640, y: 430 } },
-			{ label: 'GATE-A', coord: { x: 210, y: 500 } },
-			{ label: 'GATE-D', coord: { x: 790, y: 500 } },
-		];
-		for (const sec of sectors) {
-			const p = gridToBg(sec.coord);
-			ctx.fillText(sec.label, p.x, p.y);
+			// Pitch boundary (the field of play).
+			const pitchTL = gridToBg({ x: 360, y: 360 });
+			const pitchBR = gridToBg({ x: 640, y: 640 });
+			ctx.strokeStyle = isDark ? 'rgba(34, 197, 94, 0.55)' : 'rgba(34, 197, 94, 0.4)';
+			ctx.lineWidth = 2;
+			ctx.strokeRect(pitchTL.x, pitchTL.y, pitchBR.x - pitchTL.x, pitchBR.y - pitchTL.y);
+			// Center circle + halfway line.
+			ctx.beginPath();
+			ctx.arc(center.x, center.y, (pitchBR.x - pitchTL.x) * 0.12, 0, Math.PI * 2);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(pitchTL.x, center.y);
+			ctx.lineTo(pitchBR.x, center.y);
+			ctx.stroke();
+
+			// Sector labels around the bowl.
+			ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.55)' : 'rgba(100, 116, 139, 0.8)';
+			ctx.font = '600 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			const sectors: { label: string; coord: MapCoordinates }[] = [
+				{ label: 'SEC-112', coord: { x: 330, y: 230 } },
+				{ label: 'SEC-308', coord: { x: 540, y: 730 } },
+				{ label: 'CONC-1C', coord: { x: 640, y: 430 } },
+				{ label: 'GATE-A', coord: { x: 210, y: 500 } },
+				{ label: 'GATE-D', coord: { x: 790, y: 500 } },
+			];
+			for (const sec of sectors) {
+				const p = gridToBg(sec.coord);
+				ctx.fillText(sec.label, p.x, p.y);
+			}
 		}
 
 		// ── Render zones + POIs from tenant mapLayout ────────────────────────
 		// These replace the hardcoded rings/sectors above when a layout exists.
-		const layoutData = propsRef.current.mapLayout as MapLayout | null | undefined;
 		if (layoutData?.floors?.length) {
 			// Use the selected floor (or default, or first).
 			const floorId = selectedFloorRef.current ?? layoutData.defaultFloorId;
@@ -521,6 +527,25 @@ export function OptimizedStadiumMapCanvas({
 				fpsFrames.current = 0;
 				fpsLastUpdate.current = nowMs;
 			}
+			// Update Leaflet geographic bounds if active
+			const activeLayout = propsRef.current.mapLayout as MapLayout | null | undefined;
+			if (activeLayout?.geoBounds && leafletMapRef.current) {
+				const s = baseScale(Math.min(cssWidth, cssHeight)) * vp.zoom;
+				const { north, south, east, west } = activeLayout.geoBounds;
+				// pixel coordinates for corners of the screen
+				const gx1 = -vp.offsetX / s;
+				const gy1 = -vp.offsetY / s;
+				const gx2 = (cssWidth - vp.offsetX) / s;
+				const gy2 = (cssHeight - vp.offsetY) / s;
+
+				// Convert grid to lat/lng
+				const lat1 = north - (gy1 / 1000) * (north - south);
+				const lng1 = west + (gx1 / 1000) * (east - west);
+				const lat2 = north - (gy2 / 1000) * (north - south);
+				const lng2 = west + (gx2 / 1000) * (east - west);
+
+				leafletMapRef.current.updateBounds({ lat1, lng1, lat2, lng2 });
+			}
 
 			rafId = requestAnimationFrame(render);
 		};
@@ -739,9 +764,12 @@ export function OptimizedStadiumMapCanvas({
 		<div
 			ref={containerRef}
 			className="relative h-full w-full overflow-hidden rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+			{layoutData?.geoBounds && (
+				<LeafletMapBackground ref={leafletMapRef} bounds={layoutData.geoBounds} />
+			)}
 			<canvas
 				ref={canvasRef}
-				className="block touch-none cursor-grab active:cursor-grabbing"
+				className={`block touch-none cursor-grab active:cursor-grabbing ${layoutData?.geoBounds ? 'absolute inset-0 z-10' : ''}`}
 				onPointerDown={handlePointerDown}
 				onPointerMove={(e) => {
 					trackDrag(e);
