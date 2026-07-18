@@ -1,14 +1,17 @@
 // src/root.tsx
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import './index.css'; // Imports Tailwind v4 and HeroUI v3 styles
+import './styles/neumorphism.css'; // Neumorphic utility classes (scoped to data-theme)
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // 1. Global Shell Layout (Document Structure)
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<html
 			lang="en"
-			className="dark">
+			className="dark"
+			data-theme="flat-dark">
 			<head>
 				<meta charSet="utf-8" />
 				<meta
@@ -18,7 +21,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<Meta />
 				<Links />
 			</head>
-			<body className="min-h-screen bg-slate-950 text-slate-50 antialiased">
+			<body className="min-h-screen bg-slate-950 text-slate-50 antialiased transition-colors duration-300">
 				{children}
 				<ScrollRestoration />
 				<Scripts />
@@ -28,12 +31,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 // 2. Main App Component (Required: Renders the matched route layout)
+// ThemeProvider wraps AuthProvider so useTheme() is available everywhere.
 // AuthProvider wraps every route so useAuth() is available across surfaces.
 export default function App() {
 	return (
-		<AuthProvider>
-			<Outlet />
-		</AuthProvider>
+		<ThemeProvider>
+			<AuthProvider>
+				<Outlet />
+			</AuthProvider>
+		</ThemeProvider>
 	);
 }
 

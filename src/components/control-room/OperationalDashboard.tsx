@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import type { IncidentReport } from '@/types';
-import { adminListTenants, type AdminTenant } from '@/services/api';
+import { adminListTenants } from '@/services/api';
 
 import { IncidentQueue } from './IncidentQueue';
 import { IncidentInspector } from './IncidentInspector';
@@ -28,6 +28,7 @@ import { TenantsTab } from './TenantsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useTabTourBanner, startTabTour } from '@/components/shared/GuideTour';
+import { useTheme, THEME_LABELS, THEME_ICONS } from '@/context/theme-constants';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
 type TabId = 'operations' | 'team' | 'roles' | 'tenants' | 'policies';
@@ -65,6 +66,9 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 
 	// Per-tab tour banner: shows "Take a quick tour?" on first visit.
 	const tour = useTabTourBanner(activeTab);
+
+	// Theme toggle.
+	const { theme, cycleTheme } = useTheme();
 
 	// Derive the freshest selected incident from the polled list.
 	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
@@ -119,6 +123,14 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 						className="font-bold uppercase tracking-widest">
 						? Help
 					</Button>
+					<button
+						onClick={cycleTheme}
+						title={`Theme: ${THEME_LABELS[theme]} (click to cycle)`}
+						className="rounded-lg border border-slate-700 bg-slate-800/60 px-2 py-1 text-xs text-slate-300 transition-colors hover:bg-slate-700/60"
+					>
+						<span className="mr-1">{THEME_ICONS[theme]}</span>
+						<span className="font-mono text-[9px] uppercase tracking-widest">{THEME_LABELS[theme]}</span>
+					</button>
 					<Button
 						size="sm"
 						variant="secondary"

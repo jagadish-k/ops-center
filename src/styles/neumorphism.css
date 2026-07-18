@@ -1,0 +1,97 @@
+/**
+ * Neumorphic utility classes.
+ *
+ * Activated by data-theme="neu-dark" or data-theme="neu-light" on <html>.
+ * When the theme is "flat-dark", these classes are no-ops (no shadows).
+ *
+ * Usage in components:
+ *   <div className="neu-raised rounded-2xl ...">  // raised card
+ *   <input className="neu-pressed rounded-xl ..." // inset input
+ *   <button className="neu-raised-sm active:neu-pressed-sm ...">  // button
+ *
+ * The utility classes use CSS custom properties so the same class works
+ * for both neu-dark and neu-light — the shadow colors change via the
+ * [data-theme] selector below.
+ */
+
+/* ─── CSS variable defaults (flat-dark — no shadows) ──────────────────────── */
+:root {
+	--neu-bg: transparent;
+	--neu-shadow-dark: transparent;
+	--neu-shadow-light: transparent;
+	--neu-blur: 0px;
+	--neu-spread: 0px;
+}
+
+/* ─── neu-dark palette (slate-800 baseline) ───────────────────────────────── */
+[data-theme="neu-dark"] {
+	--neu-bg: #1e293b;
+	--neu-shadow-dark: #0f172a;
+	--neu-shadow-light: #334155;
+}
+
+/* ─── neu-light palette (#e0e8f6 baseline) ────────────────────────────────── */
+[data-theme="neu-light"] {
+	--neu-bg: #e0e8f6;
+	--neu-shadow-dark: #c8d2e6;
+	--neu-shadow-light: #ffffff;
+}
+
+/* ─── Utility classes ─────────────────────────────────────────────────────── */
+
+/* Raised / extruded surface (light from top-left). */
+.neu-raised {
+	background-color: var(--neu-bg);
+	box-shadow:
+		9px 9px 16px var(--neu-shadow-dark),
+		-9px -9px 16px var(--neu-shadow-light);
+}
+
+.neu-raised-sm {
+	background-color: var(--neu-bg);
+	box-shadow:
+		4px 4px 8px var(--neu-shadow-dark),
+		-4px -4px 8px var(--neu-shadow-light);
+}
+
+/* Pressed / inset surface (for inputs, active buttons, selected tabs). */
+.neu-pressed {
+	background-color: var(--neu-bg);
+	box-shadow:
+		inset 9px 9px 16px var(--neu-shadow-dark),
+		inset -9px -9px 16px var(--neu-shadow-light);
+}
+
+.neu-pressed-sm {
+	background-color: var(--neu-bg);
+	box-shadow:
+		inset 4px 4px 8px var(--neu-shadow-dark),
+		inset -4px -4px 8px var(--neu-shadow-light);
+}
+
+/* Hover transition (raised → slightly less raised). */
+.neu-hover {
+	transition: box-shadow 200ms ease-in-out, background-color 200ms ease-in-out;
+}
+
+.neu-hover:hover {
+	box-shadow:
+		6px 6px 12px var(--neu-shadow-dark),
+		-6px -6px 12px var(--neu-shadow-light);
+}
+
+/* Active (raised → pressed on click). */
+.neu-active:active {
+	box-shadow:
+		inset 4px 4px 8px var(--neu-shadow-dark),
+		inset -4px -4px 8px var(--neu-shadow-light);
+}
+
+/* ─── When theme is flat-dark, all neu-* classes are no-ops ────────────────── */
+[data-theme="flat-dark"] .neu-raised,
+[data-theme="flat-dark"] .neu-raised-sm,
+[data-theme="flat-dark"] .neu-pressed,
+[data-theme="flat-dark"] .neu-pressed-sm {
+	box-shadow: none;
+	background-color: transparent;
+}
