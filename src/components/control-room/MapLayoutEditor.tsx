@@ -91,6 +91,13 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 	// Pan state.
 	const panRef = useRef<{ startX: number; startY: number; vbX: number; vbY: number } | null>(null);
 
+	// Drag-to-move state for items (zones + POIs).
+	const dragRef = useRef<{
+		keys: Set<ItemKey>;
+		lastGrid: GridPoint;
+		hasMoved: boolean;
+	} | null>(null);
+
 	const svgRef = useRef<SVGSVGElement | null>(null);
 
 	const activeFloor = useMemo(
@@ -119,6 +126,31 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 		}));
 	}, []);
 
+	// Move all selected items by (dx, dy) in grid coordinates. Single state update.
+	const moveSelectedItems = useCallback((keys: Set<ItemKey>, dx: number, dy: number) => {
+		setLayout((prev) => ({
+			...prev,
+			floors: prev.floors.map((floor) => ({
+				...floor,
+				zones: floor.zones.map((zone) => {
+					if (!keys.has(`zone:${floor.id}:${zone.id}`)) return zone;
+					return {
+						...zone,
+						polygon: zone.polygon.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+						anchor: { x: zone.anchor.x + dx, y: zone.anchor.y + dy },
+						circle: zone.circle
+							? { center: { x: zone.circle.center.x + dx, y: zone.circle.center.y + dy }, radius: zone.circle.radius }
+							: undefined,
+					};
+				}),
+				pois: floor.pois.map((poi) => {
+					if (!keys.has(`poi:${floor.id}:${poi.id}`)) return poi;
+					return { ...poi, x: poi.x + dx, y: poi.y + dy };
+				}),
+			}),
+		}));
+	}, []);
+
 	// ─── Zoom / Pan ──────────────────────────────────────────────────────────
 
 	const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
@@ -141,6 +173,36 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 	const resetZoom = () => setViewBox({ x: 0, y: 0, w: GRID_MAX, h: GRID_MAX });
 
 	// ─── Mouse interaction ───────────────────────────────────────────────────
+
+	// Called when the user mousedowns on a zone or POI element.
+	const handleItemMouseDown = (e: React.MouseEvent, key: ItemKey) => {
+		e.stopPropagation();
+
+		// In drawing modes, clicking an item selects it (no drag).
+		if (mode !== 'select') {
+			toggleSelect(key, e.shiftKey);
+			return;
+		}
+
+		// Shift+click = multi-select toggle (no drag).
+		if (e.shiftKey) {
+			toggleSelect(key, true);
+			return;
+		}
+
+		// Regular click in select mode: select (if not already) + prepare drag.
+		if (!selected.has(key)) {
+			setSelected(new Set([key]));
+		}
+
+		const pos = toGrid(e.clientX, e.clientY);
+		// Drag ALL currently selected items together.
+		dragRef.current = {
+			keys: selected.has(key) ? new Set(selected) : new Set([key]),
+			lastGrid: pos,
+			hasMoved: false,
+		};
+	};
 
 	const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
 		if (!activeFloor) return;
@@ -203,6 +265,19 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 			return;
 		}
 
+		// Drag-to-move items.
+		if (dragRef.current && mode === 'select') {
+			const pos = toGrid(e.clientX, e.clientY);
+			const dx = pos.x - dragRef.current.lastGrid.x;
+			const dy = pos.y - dragRef.current.lastGrid.y;
+			if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+				dragRef.current.hasMoved = true;
+				moveSelectedItems(dragRef.current.keys, dx, dy);
+				dragRef.current.lastGrid = pos;
+			}
+			return;
+		}
+
 		if (!drawRef.current.isDrawing || !activeFloor) return;
 		const pos = toGrid(e.clientX, e.clientY);
 		const start = drawRef.current.start!;
@@ -220,6 +295,13 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 	const handleMouseUp = () => {
 		if (panRef.current) {
 			panRef.current = null;
+			return;
+		}
+
+		// Finalize item drag — if no movement, it was just a click (selection
+		// already handled in handleItemMouseDown).
+		if (dragRef.current) {
+			dragRef.current = null;
 			return;
 		}
 
@@ -521,7 +603,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 								if (zone.shape === 'circle' && zone.circle) {
 									return (
-										<g key={zone.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+										<g key={zone.id} onMouseDown={(e) => handleItemMouseDown(e, key)}>
 											<circle cx={zone.circle.center.x} cy={zone.circle.center.y} r={zone.circle.radius} fill={zone.color} fillOpacity={fillOp} stroke={zone.color} strokeWidth={strokeW} strokeDasharray={isSelected ? '6 3' : undefined} />
 											<text x={zone.anchor.x} y={zone.anchor.y} fill={zone.color} fontSize={16} fontWeight="bold" textAnchor="middle">{zone.name}</text>
 										</g>
@@ -531,7 +613,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 								if (zone.shape === 'polygon' && zone.polygon.length >= 3) {
 									const pts = zone.polygon.map((p) => `${p.x},${p.y}`).join(' ');
 									return (
-										<g key={zone.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+										<g key={zone.id} onMouseDown={(e) => handleItemMouseDown(e, key)}>
 											<polygon points={pts} fill={zone.color} fillOpacity={fillOp} stroke={zone.color} strokeWidth={strokeW} strokeDasharray={isSelected ? '6 3' : undefined} />
 											<text x={zone.anchor.x} y={zone.anchor.y} fill={zone.color} fontSize={16} fontWeight="bold" textAnchor="middle">{zone.name}</text>
 										</g>
@@ -544,7 +626,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 								const minX = Math.min(...xs), maxX = Math.max(...xs);
 								const minY = Math.min(...ys), maxY = Math.max(...ys);
 								return (
-									<g key={zone.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+									<g key={zone.id} onMouseDown={(e) => handleItemMouseDown(e, key)}>
 										<rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill={zone.color} fillOpacity={fillOp} stroke={zone.color} strokeWidth={strokeW} strokeDasharray={isSelected ? '6 3' : undefined} />
 										<text x={zone.anchor.x} y={zone.anchor.y} fill={zone.color} fontSize={16} fontWeight="bold" textAnchor="middle">{zone.name}</text>
 									</g>
@@ -567,7 +649,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 								const key = `poi:${activeFloor.id}:${poi.id}`;
 								const isSelected = selected.has(key);
 								return (
-									<g key={poi.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+									<g key={poi.id} onMouseDown={(e) => handleItemMouseDown(e, key)}>
 										<circle cx={poi.x} cy={poi.y} r={isSelected ? 18 : 12} fill={POI_COLORS[poi.type]} fillOpacity={0.85} stroke={isSelected ? '#fff' : POI_COLORS[poi.type]} strokeWidth={isSelected ? 3 : 1} />
 										<text x={poi.x} y={poi.y + 5} fill="#fff" fontSize={14} textAnchor="middle">{POI_ICONS[poi.type]}</text>
 										{isSelected && <text x={poi.x} y={poi.y - 22} fill="#fff" fontSize={12} textAnchor="middle">{poi.name}</text>}
