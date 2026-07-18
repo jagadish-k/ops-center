@@ -532,7 +532,7 @@ export function OptimizedStadiumMapCanvas({
 			if (activeLayout?.geoBounds && leafletMapRef.current) {
 				const s = baseScale(Math.min(cssWidth, cssHeight)) * vp.zoom;
 				// We now use CSS transform to perfectly sync the 1000x1000 map wrapper
-				leafletMapRef.current.applyTransform(vp.offsetX, vp.offsetY, s / 1000);
+				leafletMapRef.current.applyTransform(vp.offsetX, vp.offsetY, s);
 			}
 
 			rafId = requestAnimationFrame(render);

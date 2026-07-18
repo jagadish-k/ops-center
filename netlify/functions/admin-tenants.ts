@@ -37,9 +37,20 @@ async function updateMapLayout(
 		throw new AdminHttpError(400, 'bad_request', 'tenantId and mapLayout are required.');
 	}
 
+	const layoutObj = body.mapLayout as { geoBounds?: { south: number, north: number, west: number, east: number } };
+	const geo = layoutObj?.geoBounds;
+
 	await db
 		.update(tenantsTable)
-		.set({ mapLayout: body.mapLayout as never })
+		.set({
+			mapLayout: body.mapLayout as never,
+			...(geo ? {
+				bboxMinLat: geo.south,
+				bboxMaxLat: geo.north,
+				bboxMinLng: geo.west,
+				bboxMaxLng: geo.east,
+			} : {}),
+		})
 		.where(eq(tenantsTable.id, body.tenantId))
 		.execute();
 
