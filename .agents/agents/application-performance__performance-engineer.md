@@ -1,1 +1,0 @@
-/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/application-performance__performance-engineer.md

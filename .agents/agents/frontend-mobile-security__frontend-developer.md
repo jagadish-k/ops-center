@@ -1,1 +1,0 @@
-/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/frontend-mobile-security__frontend-developer.md

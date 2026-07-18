@@ -1,1 +1,0 @@
-/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/machine-learning-ops__data-scientist.md

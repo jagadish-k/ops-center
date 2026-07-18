@@ -1,1 +1,0 @@
-/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/accessibility-compliance__ui-visual-validator.md

@@ -1,1 +1,0 @@
-/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/multi-platform-apps__mobile-developer.md

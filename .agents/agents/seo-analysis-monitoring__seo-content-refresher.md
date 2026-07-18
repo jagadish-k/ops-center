@@ -1,1 +1,0 @@
-/Users/jagzviruz/projects/personal/prompt-wars/agents/.opencode/agents/seo-analysis-monitoring__seo-content-refresher.md
