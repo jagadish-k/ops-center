@@ -22,24 +22,21 @@ interface ActiveOpsContextValue extends PollingState {
 const ActiveOpsContext = createContext<ActiveOpsContextValue | undefined>(undefined);
 
 interface ActiveOpsProviderProps {
-	/** Tenant isolation boundary from JWT claims (or an override). */
+	/** Tenant isolation boundary from JWT claims. When the JWT is re-minted
+	 * (e.g., via switchTenant), this prop changes, triggering a re-poll. */
 	tenantId: string;
-	/** Optional override — lets a superadmin switch tenants client-side. */
-	overrideTenantId?: string;
 	children: ReactNode;
 }
 
 export function ActiveOpsProvider({
 	tenantId,
-	overrideTenantId,
 	children,
 }: ActiveOpsProviderProps): ReactNode {
-	const effectiveTenantId = overrideTenantId ?? tenantId;
-	const polling = usePollingState(effectiveTenantId);
+	const polling = usePollingState(tenantId);
 
 	const value: ActiveOpsContextValue = {
 		...polling,
-		activeTenantId: effectiveTenantId,
+		activeTenantId: tenantId,
 	};
 
 	return <ActiveOpsContext.Provider value={value}>{children}</ActiveOpsContext.Provider>;

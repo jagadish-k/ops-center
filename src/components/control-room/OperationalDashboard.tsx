@@ -10,12 +10,13 @@
  *
  * Live operational state is consumed from the ActiveOps context (diff-polling).
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button, Tabs } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
 import type { IncidentReport } from '@/types';
+import { adminListTenants, type AdminTenant } from '@/services/api';
 
 import { IncidentQueue } from './IncidentQueue';
 import { IncidentInspector } from './IncidentInspector';
@@ -27,7 +28,6 @@ import { TenantsTab } from './TenantsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useTabTourBanner, startTabTour } from '@/components/shared/GuideTour';
-import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
 type TabId = 'operations' | 'team' | 'roles' | 'tenants' | 'policies';
@@ -45,13 +45,31 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 	const [auditOpen, setAuditOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<TabId>('operations');
 
+	// Fetch real tenant list from the API for the TenantSwitcher.
+	const [tenants, setTenants] = useState<{ tenantId: string; orgName: string }[]>([]);
+	useEffect(() => {
+		if (!can('tenant:switch')) return;
+		adminListTenants()
+			.then((list) => {
+				setTenants(list.map((t) => ({ tenantId: t.id, orgName: t.orgName })));
+			})
+			.catch(() => {
+				// Fall back to mock data if the API call fails.
+				setTenants([
+					{ tenantId: 'tenant_metlife_ops', orgName: 'MetLife Stadium' },
+					{ tenantId: 'tenant_sofi_ops', orgName: 'SoFi Stadium' },
+					{ tenantId: 'tenant_hardrock_ops', orgName: 'Hard Rock Stadium' },
+				]);
+			});
+	}, [can]);
+
 	// Per-tab tour banner: shows "Take a quick tour?" on first visit.
 	const tour = useTabTourBanner(activeTab);
 
 	// Derive the freshest selected incident from the polled list.
 	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
 
-	const tenantName = mockTenants.find((t) => t.tenantId === activeTenantId)?.orgName ?? activeTenantId;
+	const tenantName = tenants.find((t) => t.tenantId === activeTenantId)?.orgName ?? activeTenantId;
 
 	const handleSelect = (incident: IncidentReport): void => {
 		setSelectedId(incident.id);
@@ -74,12 +92,12 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 				</div>
 
 				<div className="ml-auto flex items-center gap-2">
-					{can('tenant:switch') && (
+					{can('tenant:switch') && tenants.length > 0 && (
 						<div data-tour="tenant-switcher">
 							<TenantSwitcher
-								tenants={mockTenants}
+								tenants={tenants}
 								activeTenantId={activeTenantId}
-								onTenantChange={onTenantChange}
+								onTenantChange={(tid) => void onTenantChange(tid)}
 							/>
 						</div>
 					)}

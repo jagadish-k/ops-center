@@ -249,7 +249,7 @@ export interface TenantOption {
 
 /** Tenants available to a superadmin switcher. */
 export const mockTenants: TenantOption[] = [
-	{ tenantId: 'tenant_metlife', orgName: 'MetLife Stadium' },
-	{ tenantId: 'tenant_sofi', orgName: 'SoFi Stadium' },
-	{ tenantId: 'tenant_hardrock', orgName: 'Hard Rock Stadium' },
+	{ tenantId: 'tenant_metlife_ops', orgName: 'MetLife Stadium' },
+	{ tenantId: 'tenant_sofi_ops', orgName: 'SoFi Stadium' },
+	{ tenantId: 'tenant_hardrock_ops', orgName: 'Hard Rock Stadium' },
 ];
