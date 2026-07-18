@@ -849,7 +849,7 @@ export function OptimizedStadiumMapCanvas({
 
 			{/* Floor selector — switch between multi-floor layouts */}
 			{floors.length > 1 && (
-				<div className="absolute left-3 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-300 bg-white/90 p-1.5 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
+				<div className="absolute left-50 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-300 bg-white/90 p-1.5 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
 					{floors.map((floor) => (
 						<button
 							key={floor.id}
