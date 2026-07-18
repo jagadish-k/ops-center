@@ -38,12 +38,17 @@ export interface MapPOI {
 	notes?: string;
 }
 
-/** A zone/sector of the stadium with a polygon shape. */
+/** A zone/sector of the stadium. Supports rect, circle, and freehand polygon. */
+export type ZoneShape = 'rect' | 'circle' | 'polygon';
+
 export interface MapZone {
 	id: string;
 	name: string;
-	/** Polygon vertices on the 0–1000 grid. Minimum 3 points. */
+	shape: ZoneShape;
+	/** For rect: 4 corner points. For polygon: N points. For circle: unused (use circle field). */
 	polygon: GridPoint[];
+	/** For circle shape only: center + radius in grid units. */
+	circle?: { center: GridPoint; radius: number };
 	/** Fill color for the zone (hex). */
 	color: string;
 	/** Center point for label placement. */
@@ -82,42 +87,42 @@ export const METLIFE_MAP_LAYOUT: MapLayout = {
 				{
 					id: 'zone-a',
 					name: 'ZONE-A (Gate A / West)',
-					polygon: [{ x: 100, y: 100 }, { x: 450, y: 100 }, { x: 450, y: 450 }, { x: 100, y: 450 }],
+					shape: 'rect', polygon: [{ x: 100, y: 100 }, { x: 450, y: 100 }, { x: 450, y: 450 }, { x: 100, y: 450 }],
 					color: '#3b82f6',
 					anchor: { x: 275, y: 275 },
 				},
 				{
 					id: 'zone-b',
 					name: 'ZONE-B (Gate B / South)',
-					polygon: [{ x: 450, y: 100 }, { x: 800, y: 100 }, { x: 800, y: 450 }, { x: 450, y: 450 }],
+					shape: 'rect', polygon: [{ x: 450, y: 100 }, { x: 800, y: 100 }, { x: 800, y: 450 }, { x: 450, y: 450 }],
 					color: '#22c55e',
 					anchor: { x: 625, y: 275 },
 				},
 				{
 					id: 'zone-c',
 					name: 'ZONE-C (Gate C / East)',
-					polygon: [{ x: 800, y: 100 }, { x: 950, y: 100 }, { x: 950, y: 450 }, { x: 800, y: 450 }],
+					shape: 'rect', polygon: [{ x: 800, y: 100 }, { x: 950, y: 100 }, { x: 950, y: 450 }, { x: 800, y: 450 }],
 					color: '#f59e0b',
 					anchor: { x: 875, y: 275 },
 				},
 				{
 					id: 'zone-d',
 					name: 'ZONE-D (South Stands)',
-					polygon: [{ x: 100, y: 450 }, { x: 700, y: 450 }, { x: 700, y: 800 }, { x: 100, y: 800 }],
+					shape: 'rect', polygon: [{ x: 100, y: 450 }, { x: 700, y: 450 }, { x: 700, y: 800 }, { x: 100, y: 800 }],
 					color: '#a855f7',
 					anchor: { x: 400, y: 625 },
 				},
 				{
 					id: 'zone-e',
 					name: 'ZONE-E (Facilities)',
-					polygon: [{ x: 700, y: 450 }, { x: 950, y: 450 }, { x: 950, y: 800 }, { x: 700, y: 800 }],
+					shape: 'rect', polygon: [{ x: 700, y: 450 }, { x: 950, y: 450 }, { x: 950, y: 800 }, { x: 700, y: 800 }],
 					color: '#eab308',
 					anchor: { x: 825, y: 625 },
 				},
 				{
 					id: 'zone-f',
 					name: 'ZONE-F (VIP / Suites)',
-					polygon: [{ x: 100, y: 800 }, { x: 950, y: 800 }, { x: 950, y: 950 }, { x: 100, y: 950 }],
+					shape: 'rect', polygon: [{ x: 100, y: 800 }, { x: 950, y: 800 }, { x: 950, y: 950 }, { x: 100, y: 950 }],
 					color: '#ec4899',
 					anchor: { x: 525, y: 875 },
 				},
@@ -151,21 +156,21 @@ export const METLIFE_MAP_LAYOUT: MapLayout = {
 				{
 					id: 'zone-a-200',
 					name: 'ZONE-A Upper (Sec 200-230)',
-					polygon: [{ x: 100, y: 100 }, { x: 500, y: 100 }, { x: 500, y: 500 }, { x: 100, y: 500 }],
+					shape: 'rect', polygon: [{ x: 100, y: 100 }, { x: 500, y: 100 }, { x: 500, y: 500 }, { x: 100, y: 500 }],
 					color: '#3b82f6',
 					anchor: { x: 300, y: 300 },
 				},
 				{
 					id: 'zone-b-200',
 					name: 'ZONE-B Upper (Sec 231-260)',
-					polygon: [{ x: 500, y: 100 }, { x: 900, y: 100 }, { x: 900, y: 500 }, { x: 500, y: 500 }],
+					shape: 'rect', polygon: [{ x: 500, y: 100 }, { x: 900, y: 100 }, { x: 900, y: 500 }, { x: 500, y: 500 }],
 					color: '#22c55e',
 					anchor: { x: 700, y: 300 },
 				},
 				{
 					id: 'zone-c-200',
 					name: 'ZONE-C Upper (Sec 261-300)',
-					polygon: [{ x: 100, y: 500 }, { x: 900, y: 500 }, { x: 900, y: 900 }, { x: 100, y: 900 }],
+					shape: 'rect', polygon: [{ x: 100, y: 500 }, { x: 900, y: 500 }, { x: 900, y: 900 }, { x: 100, y: 900 }],
 					color: '#f59e0b',
 					anchor: { x: 500, y: 700 },
 				},
@@ -190,14 +195,14 @@ export const METLIFE_MAP_LAYOUT: MapLayout = {
 				{
 					id: 'zone-suites-n',
 					name: 'Suites North (1-20)',
-					polygon: [{ x: 100, y: 100 }, { x: 900, y: 100 }, { x: 900, y: 400 }, { x: 100, y: 400 }],
+					shape: 'rect', polygon: [{ x: 100, y: 100 }, { x: 900, y: 100 }, { x: 900, y: 400 }, { x: 100, y: 400 }],
 					color: '#ec4899',
 					anchor: { x: 500, y: 250 },
 				},
 				{
 					id: 'zone-suites-s',
 					name: 'Suites South (21-40)',
-					polygon: [{ x: 100, y: 400 }, { x: 900, y: 400 }, { x: 900, y: 900 }, { x: 100, y: 900 }],
+					shape: 'rect', polygon: [{ x: 100, y: 400 }, { x: 900, y: 400 }, { x: 900, y: 900 }, { x: 100, y: 900 }],
 					color: '#a855f7',
 					anchor: { x: 500, y: 650 },
 				},

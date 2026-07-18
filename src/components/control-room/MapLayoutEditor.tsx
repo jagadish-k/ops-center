@@ -1,18 +1,17 @@
 /**
  * MapLayoutEditor — visual zone/POI/floor editor for tenant map layouts.
  *
- * Opens as a full-screen overlay from the Tenants tab. Provides:
- *   - SVG grid (0–1000 coordinate system) with grid lines + sector labels
- *   - Floor selector (tabs for Ground, Level 200, Suite, etc.)
- *   - Zone drawing (click-drag rectangles)
- *   - POI placement (click to add gates, restrooms, first aid, etc.)
- *   - Properties panel (edit selected item's name, color, notes)
+ * Features:
+ *   - SVG grid (0–1000) with mouse wheel zoom + drag pan
+ *   - Three zone shapes: rectangle, circle, freehand polygon
+ *   - POI placement (11 types)
+ *   - Shift+click multi-select + bulk delete
+ *   - Delete key + confirmation dialog
+ *   - Floor management (add/remove/rename)
  *   - Save → POST /api/admin/tenants action=update_map_layout
- *
- * The layout structure matches src/lib/map-layout.ts (MapLayout interface).
  */
-import { useState, useRef, useCallback, useMemo } from 'react';
-import { Button, Input, Spinner } from '@heroui/react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { Button, Input, Spinner, Modal } from '@heroui/react';
 import {
 	adminUpdateMapLayout,
 	ApiError,
@@ -23,6 +22,7 @@ import {
 	type MapZone,
 	type MapPOI,
 	type POIType,
+	type GridPoint,
 	POI_ICONS,
 	POI_COLORS,
 	METLIFE_MAP_LAYOUT,
@@ -30,9 +30,8 @@ import {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const SVG_SIZE = 500; // CSS pixels for the SVG canvas
 const GRID_MAX = 1000;
-const SCALE = SVG_SIZE / GRID_MAX; // 0.5
+const ZONE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#eab308', '#ec4899', '#10b981', '#ef4444'];
 
 const POI_TYPES: { value: POIType; label: string }[] = [
 	{ value: 'entry', label: '🚪 Entry / Gate' },
@@ -48,10 +47,8 @@ const POI_TYPES: { value: POIType; label: string }[] = [
 	{ value: 'custom', label: '📍 Custom' },
 ];
 
-const ZONE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#eab308', '#ec4899', '#10b981', '#ef4444'];
-
-type EditorMode = 'select' | 'zone' | 'poi';
-type SelectedItem = { kind: 'zone'; floorId: string; zoneId: string } | { kind: 'poi'; floorId: string; poiId: string } | null;
+type EditorMode = 'select' | 'rect' | 'circle' | 'freehand' | 'poi' | 'pan';
+type ItemKey = string; // `zone:${floorId}:${zoneId}` or `poi:${floorId}:${poiId}`
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -67,31 +64,53 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 	const [activeFloorId, setActiveFloorId] = useState<string>(layout.defaultFloorId ?? layout.floors[0]?.id ?? '');
 	const [mode, setMode] = useState<EditorMode>('select');
 	const [selectedPoiType, setSelectedPoiType] = useState<POIType>('entry');
-	const [selected, setSelected] = useState<SelectedItem>(null);
+	const [selected, setSelected] = useState<Set<ItemKey>>(new Set());
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
-	// Zone drawing state.
-	const drawStartRef = useRef<{ x: number; y: number } | null>(null);
-	const [drawPreview, setDrawPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+	// Delete confirmation modal.
+	const [deleteConfirm, setDeleteConfirm] = useState<Set<ItemKey> | null>(null);
+
+	// ViewBox for zoom/pan: { x, y, w, h } in grid coordinates.
+	const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: GRID_MAX, h: GRID_MAX });
+
+	// Drawing state (rect / circle / freehand).
+	const drawRef = useRef<{
+		isDrawing: boolean;
+		start: GridPoint | null;
+		points: GridPoint[]; // for freehand
+	}>({ isDrawing: false, start: null, points: [] });
+	const [drawPreview, setDrawPreview] = useState<{
+		shape: 'rect' | 'circle' | 'polygon';
+		start?: GridPoint;
+		end?: GridPoint;
+		points?: GridPoint[];
+	} | null>(null);
+
+	// Pan state.
+	const panRef = useRef<{ startX: number; startY: number; vbX: number; vbY: number } | null>(null);
+
+	const svgRef = useRef<SVGSVGElement | null>(null);
 
 	const activeFloor = useMemo(
 		() => layout.floors.find((f) => f.id === activeFloorId) ?? null,
 		[layout, activeFloorId],
 	);
 
-	// ─── Helpers ──────────────────────────────────────────────────────────────
+	// ─── Coordinate helpers ──────────────────────────────────────────────────
 
-	const toGrid = useCallback((cssX: number, cssY: number, svgEl: SVGSVGElement): { x: number; y: number } => {
-		const rect = svgEl.getBoundingClientRect();
-		const x = Math.round(((cssX - rect.left) / rect.width) * GRID_MAX);
-		const y = Math.round(((cssY - rect.top) / rect.height) * GRID_MAX);
+	const toGrid = useCallback((clientX: number, clientY: number): GridPoint => {
+		const svg = svgRef.current;
+		if (!svg) return { x: 0, y: 0 };
+		const rect = svg.getBoundingClientRect();
+		const x = viewBox.x + ((clientX - rect.left) / rect.width) * viewBox.w;
+		const y = viewBox.y + ((clientY - rect.top) / rect.height) * viewBox.h;
 		return {
-			x: Math.max(0, Math.min(GRID_MAX, x)),
-			y: Math.max(0, Math.min(GRID_MAX, y)),
+			x: Math.max(0, Math.min(GRID_MAX, Math.round(x))),
+			y: Math.max(0, Math.min(GRID_MAX, Math.round(y))),
 		};
-	}, []);
+	}, [viewBox]);
 
 	const updateFloor = useCallback((floorId: string, updater: (floor: MapFloor) => MapFloor) => {
 		setLayout((prev) => ({
@@ -100,15 +119,52 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 		}));
 	}, []);
 
-	// ─── SVG interaction ─────────────────────────────────────────────────────
+	// ─── Zoom / Pan ──────────────────────────────────────────────────────────
 
-	const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+	const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+		e.preventDefault();
+		const pos = toGrid(e.clientX, e.clientY);
+		const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+		const newW = Math.max(200, Math.min(GRID_MAX * 2, viewBox.w * factor));
+		const newH = newW; // Keep aspect ratio square
+		// Keep cursor point fixed in grid space.
+		const newX = pos.x - ((pos.x - viewBox.x) * newW) / viewBox.w;
+		const newY = pos.y - ((pos.y - viewBox.y) * newH) / viewBox.h;
+		setViewBox({
+			x: Math.max(-200, Math.min(GRID_MAX, newX)),
+			y: Math.max(-200, Math.min(GRID_MAX, newY)),
+			w: newW,
+			h: newH,
+		});
+	};
+
+	const resetZoom = () => setViewBox({ x: 0, y: 0, w: GRID_MAX, h: GRID_MAX });
+
+	// ─── Mouse interaction ───────────────────────────────────────────────────
+
+	const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
 		if (!activeFloor) return;
-		const svg = e.currentTarget;
-		const pos = toGrid(e.clientX, e.clientY, svg);
+		const pos = toGrid(e.clientX, e.clientY);
 
+		// Pan mode or middle-click.
+		if (mode === 'pan' || e.button === 1) {
+			panRef.current = { startX: e.clientX, startY: e.clientY, vbX: viewBox.x, vbY: viewBox.y };
+			return;
+		}
+
+		// Drawing modes.
+		if (mode === 'rect' || mode === 'circle') {
+			drawRef.current = { isDrawing: true, start: pos, points: [] };
+			return;
+		}
+
+		if (mode === 'freehand') {
+			drawRef.current = { isDrawing: true, start: pos, points: [pos] };
+			return;
+		}
+
+		// POI placement.
 		if (mode === 'poi') {
-			// Place a new POI at the clicked position.
 			const newPoi: MapPOI = {
 				id: `poi_${Date.now()}`,
 				name: `${selectedPoiType}_${activeFloor.pois.length + 1}`,
@@ -117,137 +173,239 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 				y: pos.y,
 			};
 			updateFloor(activeFloor.id, (f) => ({ ...f, pois: [...f.pois, newPoi] }));
-			setSelected({ kind: 'poi', floorId: activeFloor.id, poiId: newPoi.id });
-		} else if (mode === 'zone') {
-			if (!drawStartRef.current) {
-				drawStartRef.current = pos;
-			} else {
-				// Complete the rectangle.
-				const start = drawStartRef.current;
-				const minX = Math.min(start.x, pos.x);
-				const minY = Math.min(start.y, pos.y);
-				const maxX = Math.max(start.x, pos.x);
-				const maxY = Math.max(start.y, pos.y);
-				const colorIdx = activeFloor.zones.length % ZONE_COLORS.length;
-				const newZone: MapZone = {
-					id: `zone_${Date.now()}`,
-					name: `Zone ${activeFloor.zones.length + 1}`,
-					polygon: [
-						{ x: minX, y: minY },
-						{ x: maxX, y: minY },
-						{ x: maxX, y: maxY },
-						{ x: minX, y: maxY },
-					],
-					color: ZONE_COLORS[colorIdx],
-					anchor: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 },
-				};
-				updateFloor(activeFloor.id, (f) => ({ ...f, zones: [...f.zones, newZone] }));
-				setSelected({ kind: 'zone', floorId: activeFloor.id, zoneId: newZone.id });
-				drawStartRef.current = null;
-				setDrawPreview(null);
-				setMode('select');
-			}
+			// Don't switch to select — let user place more.
+			return;
+		}
+
+		// Select mode — clicking empty space deselects (unless shift).
+		if (mode === 'select' && !e.shiftKey) {
+			// Only deselect if we didn't click on an item (items stopPropagation).
+			// This fires when clicking empty SVG area.
+			setSelected(new Set());
 		}
 	};
 
-	const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-		if (mode !== 'zone' || !drawStartRef.current) return;
-		const svg = e.currentTarget;
-		const pos = toGrid(e.clientX, e.clientY, svg);
-		const start = drawStartRef.current;
-		setDrawPreview({
-			x: Math.min(start.x, pos.x),
-			y: Math.min(start.y, pos.y),
-			w: Math.abs(pos.x - start.x),
-			h: Math.abs(pos.y - start.y),
+	const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+		// Pan.
+		if (panRef.current) {
+			const dx = e.clientX - panRef.current.startX;
+			const dy = e.clientY - panRef.current.startY;
+			const svgRect = svgRef.current?.getBoundingClientRect();
+			if (svgRect) {
+				const gridDx = (dx / svgRect.width) * viewBox.w;
+				const gridDy = (dy / svgRect.height) * viewBox.h;
+				setViewBox((prev) => ({
+					...prev,
+					x: panRef.current!.vbX - gridDx,
+					y: panRef.current!.vbY - gridDy,
+				}));
+			}
+			return;
+		}
+
+		if (!drawRef.current.isDrawing || !activeFloor) return;
+		const pos = toGrid(e.clientX, e.clientY);
+		const start = drawRef.current.start!;
+
+		if (mode === 'rect') {
+			setDrawPreview({ shape: 'rect', start, end: pos });
+		} else if (mode === 'circle') {
+			setDrawPreview({ shape: 'circle', start, end: pos });
+		} else if (mode === 'freehand') {
+			drawRef.current.points.push(pos);
+			setDrawPreview({ shape: 'polygon', points: [...drawRef.current.points] });
+		}
+	};
+
+	const handleMouseUp = () => {
+		if (panRef.current) {
+			panRef.current = null;
+			return;
+		}
+
+		if (!drawRef.current.isDrawing || !activeFloor) {
+			drawRef.current = { isDrawing: false, start: null, points: [] };
+			return;
+		}
+
+		const start = drawRef.current.start!;
+		const colorIdx = activeFloor.zones.length % ZONE_COLORS.length;
+
+		if (mode === 'rect') {
+			const minX = Math.min(start.x, drawPreview?.end?.x ?? start.x);
+			const minY = Math.min(start.y, drawPreview?.end?.y ?? start.y);
+			const maxX = Math.max(start.x, drawPreview?.end?.x ?? start.x);
+			const maxY = Math.max(start.y, drawPreview?.end?.y ?? start.y);
+			if (maxX - minX < 20 || maxY - minY < 20) { drawRef.current = { isDrawing: false, start: null, points: [] }; setDrawPreview(null); return; }
+			const newZone: MapZone = {
+				id: `zone_${Date.now()}`,
+				name: `Zone ${activeFloor.zones.length + 1}`,
+				shape: 'rect',
+				polygon: [{ x: minX, y: minY }, { x: maxX, y: minY }, { x: maxX, y: maxY }, { x: minX, y: maxY }],
+				color: ZONE_COLORS[colorIdx],
+				anchor: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 },
+			};
+			updateFloor(activeFloor.id, (f) => ({ ...f, zones: [...f.zones, newZone] }));
+			setSelected(new Set([`zone:${activeFloor.id}:${newZone.id}`]));
+			setMode('select');
+		} else if (mode === 'circle') {
+			const end = drawPreview?.end ?? start;
+			const radius = Math.round(Math.hypot(end.x - start.x, end.y - start.y));
+			if (radius < 20) { drawRef.current = { isDrawing: false, start: null, points: [] }; setDrawPreview(null); return; }
+			const newZone: MapZone = {
+				id: `zone_${Date.now()}`,
+				name: `Zone ${activeFloor.zones.length + 1}`,
+				shape: 'circle',
+				polygon: [],
+				circle: { center: start, radius },
+				color: ZONE_COLORS[colorIdx],
+				anchor: start,
+			};
+			updateFloor(activeFloor.id, (f) => ({ ...f, zones: [...f.zones, newZone] }));
+			setSelected(new Set([`zone:${activeFloor.id}:${newZone.id}`]));
+			setMode('select');
+		} else if (mode === 'freehand') {
+			const points = drawRef.current.points;
+			if (points.length < 3) { drawRef.current = { isDrawing: false, start: null, points: [] }; setDrawPreview(null); return; }
+			const cx = Math.round(points.reduce((s, p) => s + p.x, 0) / points.length);
+			const cy = Math.round(points.reduce((s, p) => s + p.y, 0) / points.length);
+			const newZone: MapZone = {
+				id: `zone_${Date.now()}`,
+				name: `Zone ${activeFloor.zones.length + 1}`,
+				shape: 'polygon',
+				polygon: points,
+				color: ZONE_COLORS[colorIdx],
+				anchor: { x: cx, y: cy },
+			};
+			updateFloor(activeFloor.id, (f) => ({ ...f, zones: [...f.zones, newZone] }));
+			setSelected(new Set([`zone:${activeFloor.id}:${newZone.id}`]));
+			setMode('select');
+		}
+
+		drawRef.current = { isDrawing: false, start: null, points: [] };
+		setDrawPreview(null);
+	};
+
+	// ─── Selection helpers ──────────────────────────────────────────────────
+
+	const toggleSelect = (key: ItemKey, shiftKey: boolean) => {
+		setSelected((prev) => {
+			if (shiftKey) {
+				const next = new Set(prev);
+				if (next.has(key)) next.delete(key);
+				else next.add(key);
+				return next;
+			}
+			return new Set([key]);
 		});
 	};
 
-	// ─── CRUD operations ─────────────────────────────────────────────────────
+	// ─── Keyboard delete ────────────────────────────────────────────────────
+
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if ((e.key === 'Delete' || e.key === 'Backspace') && selected.size > 0 && !deleteConfirm) {
+				// Don't trigger if focus is in an input.
+				const target = e.target as HTMLElement;
+				if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+				e.preventDefault();
+				setDeleteConfirm(new Set(selected));
+			}
+			if (e.key === 'Escape') {
+				setSelected(new Set());
+				setMode('select');
+			}
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [selected, deleteConfirm]);
+
+	const confirmDelete = () => {
+		if (!deleteConfirm) return;
+		for (const key of deleteConfirm) {
+			const [kind, floorId, itemId] = key.split(':');
+			if (kind === 'zone') {
+				updateFloor(floorId, (f) => ({ ...f, zones: f.zones.filter((z) => z.id !== itemId) }));
+			} else if (kind === 'poi') {
+				updateFloor(floorId, (f) => ({ ...f, pois: f.pois.filter((p) => p.id !== itemId) }));
+			}
+		}
+		setSelected(new Set());
+		setDeleteConfirm(null);
+	};
+
+	// ─── CRUD ───────────────────────────────────────────────────────────────
 
 	const updateZone = (floorId: string, zoneId: string, updates: Partial<MapZone>) => {
-		updateFloor(floorId, (f) => ({
-			...f,
-			zones: f.zones.map((z) => (z.id === zoneId ? { ...z, ...updates } : z)),
-		}));
+		updateFloor(floorId, (f) => ({ ...f, zones: f.zones.map((z) => (z.id === zoneId ? { ...z, ...updates } : z)) }));
 	};
-
-	const deleteZone = (floorId: string, zoneId: string) => {
-		updateFloor(floorId, (f) => ({ ...f, zones: f.zones.filter((z) => z.id !== zoneId) }));
-		setSelected(null);
-	};
-
 	const updatePoi = (floorId: string, poiId: string, updates: Partial<MapPOI>) => {
-		updateFloor(floorId, (f) => ({
-			...f,
-			pois: f.pois.map((p) => (p.id === poiId ? { ...p, ...updates } : p)),
-		}));
+		updateFloor(floorId, (f) => ({ ...f, pois: f.pois.map((p) => (p.id === poiId ? { ...p, ...updates } : p)) }));
 	};
-
-	const deletePoi = (floorId: string, poiId: string) => {
-		updateFloor(floorId, (f) => ({ ...f, pois: f.pois.filter((p) => p.id !== poiId) }));
-		setSelected(null);
-	};
-
 	const addFloor = () => {
-		const newFloor: MapFloor = {
-			id: `floor_${Date.now()}`,
-			name: `New Floor ${layout.floors.length + 1}`,
-			level: layout.floors.length,
-			zones: [],
-			pois: [],
-		};
+		const newFloor: MapFloor = { id: `floor_${Date.now()}`, name: `New Floor ${layout.floors.length + 1}`, level: layout.floors.length, zones: [], pois: [] };
 		setLayout((prev) => ({ ...prev, floors: [...prev.floors, newFloor] }));
 		setActiveFloorId(newFloor.id);
 	};
-
 	const deleteFloor = (floorId: string) => {
 		if (layout.floors.length <= 1) return;
-		setLayout((prev) => ({
-			...prev,
-			floors: prev.floors.filter((f) => f.id !== floorId),
-		}));
-		if (activeFloorId === floorId) {
-			const remaining = layout.floors.filter((f) => f.id !== floorId);
-			setActiveFloorId(remaining[0]?.id ?? '');
-		}
+		setLayout((prev) => ({ ...prev, floors: prev.floors.filter((f) => f.id !== floorId) }));
+		if (activeFloorId === floorId) { const remaining = layout.floors.filter((f) => f.id !== floorId); setActiveFloorId(remaining[0]?.id ?? ''); }
 	};
-
-	// ─── Save ────────────────────────────────────────────────────────────────
 
 	const handleSave = async () => {
-		setSaving(true);
-		setSaveError(null);
-		setSavedMsg(null);
+		setSaving(true); setSaveError(null); setSavedMsg(null);
 		try {
 			await adminUpdateMapLayout(tenantId, layout);
-			setSavedMsg('✓ Layout saved');
-			setTimeout(() => setSavedMsg(null), 3000);
-		} catch (err) {
-			setSaveError(err instanceof ApiError ? err.message : 'Failed to save layout');
-		} finally {
-			setSaving(false);
-		}
+			setSavedMsg('✓ Layout saved'); setTimeout(() => setSavedMsg(null), 3000);
+		} catch (err) { setSaveError(err instanceof ApiError ? err.message : 'Failed to save layout'); }
+		finally { setSaving(false); }
 	};
 
-	// ─── Selected item details ──────────────────────────────────────────────
+	// ─── Selected item details for right panel ──────────────────────────────
 
-	const selectedZone = selected?.kind === 'zone'
-		? layout.floors.find((f) => f.id === selected.floorId)?.zones.find((z) => z.id === selected.zoneId)
-		: null;
-	const selectedPoi = selected?.kind === 'poi'
-		? layout.floors.find((f) => f.id === selected.floorId)?.pois.find((p) => p.id === selected.poiId)
-		: null;
+	const selectedZones = useMemo(() => {
+		const result: { floor: MapFloor; zone: MapZone }[] = [];
+		for (const key of selected) {
+			const [kind, floorId, zoneId] = key.split(':');
+			if (kind === 'zone') {
+				const floor = layout.floors.find((f) => f.id === floorId);
+				const zone = floor?.zones.find((z) => z.id === zoneId);
+				if (floor && zone) result.push({ floor, zone });
+			}
+		}
+		return result;
+	}, [selected, layout]);
+
+	const selectedPois = useMemo(() => {
+		const result: { floor: MapFloor; poi: MapPOI }[] = [];
+		for (const key of selected) {
+			const [kind, floorId, poiId] = key.split(':');
+			if (kind === 'poi') {
+				const floor = layout.floors.find((f) => f.id === floorId);
+				const poi = floor?.pois.find((p) => p.id === poiId);
+				if (floor && poi) result.push({ floor, poi });
+			}
+		}
+		return result;
+	}, [selected, layout]);
+
+	const singleZone = selectedZones.length === 1 ? selectedZones[0] : null;
+	const singlePoi = selectedPois.length === 1 ? selectedPois[0] : null;
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
 	return (
 		<div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
 			{/* Header */}
-			<header className="flex items-center gap-4 border-b border-slate-800 bg-slate-900/60 px-4 py-2.5">
+			<header className="flex items-center gap-3 border-b border-slate-800 bg-slate-900/60 px-4 py-2">
 				<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">
 					Map Layout Editor — {tenantName}
 				</h1>
+				<span className="font-mono text-[10px] text-slate-500">
+					Zoom: {Math.round(GRID_MAX / viewBox.w * 100)}%
+				</span>
+				<button onClick={resetZoom} className="rounded px-2 py-0.5 text-[10px] text-blue-400 hover:bg-slate-800">Reset Zoom</button>
 				<div className="ml-auto flex items-center gap-2">
 					{savedMsg && <span className="text-xs text-emerald-400">{savedMsg}</span>}
 					{saveError && <span className="text-xs text-red-400">{saveError}</span>}
@@ -259,77 +417,42 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 			</header>
 
 			<div className="flex min-h-0 flex-1">
-				{/* Left sidebar — floors + toolbar */}
+				{/* Left sidebar */}
 				<aside className="w-52 shrink-0 overflow-auto border-r border-slate-800 bg-slate-900/40 p-3">
 					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Floors</h3>
 					<div className="space-y-1">
 						{layout.floors.map((floor) => (
-							<div
-								key={floor.id}
-								className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${
-									activeFloorId === floor.id ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'
-								}`}
-							>
-								<button
-									className="flex-1 text-left"
-									onClick={() => { setActiveFloorId(floor.id); setSelected(null); }}
-								>
+							<div key={floor.id} className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${activeFloorId === floor.id ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`}>
+								<button className="flex-1 text-left" onClick={() => { setActiveFloorId(floor.id); setSelected(new Set()); }}>
 									{floor.name}
-									<span className="ml-1 text-[9px] text-slate-600">
-										({floor.zones.length}z/{floor.pois.length}p)
-									</span>
+									<span className="ml-1 text-[9px] text-slate-600">({floor.zones.length}z/{floor.pois.length}p)</span>
 								</button>
-								{layout.floors.length > 1 && (
-									<button
-										className="text-slate-600 hover:text-red-400"
-										onClick={() => deleteFloor(floor.id)}
-									>
-										✕
-									</button>
-								)}
+								{layout.floors.length > 1 && <button className="text-slate-600 hover:text-red-400" onClick={() => deleteFloor(floor.id)}>✕</button>}
 							</div>
 						))}
 					</div>
-					<button
-						className="mt-2 w-full rounded border border-slate-700 py-1 text-[10px] uppercase text-slate-400 hover:bg-slate-800/40"
-						onClick={addFloor}
-					>
-						+ Add Floor
-					</button>
+					<button className="mt-2 w-full rounded border border-slate-700 py-1 text-[10px] uppercase text-slate-400 hover:bg-slate-800/40" onClick={addFloor}>+ Add Floor</button>
 
-					{/* Toolbar */}
+					{/* Tools */}
 					<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-500">Tools</h3>
 					<div className="space-y-1">
-						<button
-							className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs ${mode === 'select' ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`}
-							onClick={() => setMode('select')}
-						>
-							🖱 Select / Move
-						</button>
-						<button
-							className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs ${mode === 'zone' ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`}
-							onClick={() => { setMode('zone'); drawStartRef.current = null; setDrawPreview(null); }}
-						>
-							🔲 Draw Zone
-							{mode === 'zone' && !drawStartRef.current && <span className="text-[9px] text-amber-400">click 1st corner</span>}
-							{mode === 'zone' && drawStartRef.current && <span className="text-[9px] text-amber-400">click 2nd corner</span>}
-						</button>
-						<div className={`rounded px-2 py-1 ${mode === 'poi' ? 'bg-blue-900/40' : ''}`}>
-							<button
-								className={`flex w-full items-center gap-2 text-xs ${mode === 'poi' ? 'text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`}
-								onClick={() => setMode('poi')}
-							>
-								📍 Place POI
+						{([
+							['select', '🖱 Select'],
+							['rect', '▭ Rect Zone'],
+							['circle', '⬭ Circle Zone'],
+							['freehand', '✏ Freehand Zone'],
+							['pan', '✋ Pan'],
+						] as const).map(([m, label]) => (
+							<button key={m} className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs ${mode === m ? 'bg-blue-900/40 text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`} onClick={() => { setMode(m); drawRef.current = { isDrawing: false, start: null, points: [] }; setDrawPreview(null); }}>
+								{label}
+								{mode === m && m !== 'select' && m !== 'pan' && <span className="ml-auto text-[8px] text-amber-400">drag to draw</span>}
 							</button>
+						))}
+						<div className={`rounded px-2 py-1 ${mode === 'poi' ? 'bg-blue-900/40' : ''}`}>
+							<button className={`flex w-full items-center gap-2 text-xs ${mode === 'poi' ? 'text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`} onClick={() => setMode('poi')}>📍 Place POI</button>
 							{mode === 'poi' && (
-								<select
-									className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[10px] text-slate-300"
-									value={selectedPoiType}
-									onChange={(e) => setSelectedPoiType(e.target.value as POIType)}
-								>
-									{POI_TYPES.map((pt) => (
-										<option key={pt.value} value={pt.value}>{pt.label}</option>
-									))}
+								<select className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[10px] text-slate-300" value={selectedPoiType} onChange={(e) => setSelectedPoiType(e.target.value as POIType)}>
+									{POI_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
 								</select>
 							)}
 						</div>
@@ -340,117 +463,114 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<>
 							<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-500">Floor Details</h3>
 							<div className="space-y-2">
-								<div>
-									<label className="text-[9px] uppercase text-slate-600">Name</label>
-									<Input
-										value={activeFloor.name}
-										onValueChange={(v) => updateFloor(activeFloor.id, (f) => ({ ...f, name: v }))}
-										className="text-xs"
-									/>
-								</div>
-								<div>
-									<label className="text-[9px] uppercase text-slate-600">Level</label>
-									<Input
-										type="number"
-										value={String(activeFloor.level)}
-										onValueChange={(v) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(v) || 0 }))}
-										className="text-xs"
-									/>
-								</div>
+								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={activeFloor.name} onValueChange={(v) => updateFloor(activeFloor.id, (f) => ({ ...f, name: v }))} className="text-xs" /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Level</label><Input type="number" value={String(activeFloor.level)} onValueChange={(v) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(v) || 0 }))} className="text-xs" /></div>
 							</div>
 						</>
 					)}
+
+					{/* Help text */}
+					<div className="mt-4 border-t border-slate-700 pt-2">
+						<p className="text-[9px] text-slate-600">
+							<b>Shift+Click</b> — multi-select<br />
+							<b>Delete</b> — remove selected<br />
+							<b>Scroll</b> — zoom in/out<br />
+							<b>Pan tool</b> — drag to move view
+						</p>
+					</div>
 				</aside>
 
 				{/* Center — SVG grid */}
-				<main className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-slate-950 p-4">
+				<main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-950">
 					{activeFloor ? (
 						<svg
-							width={SVG_SIZE}
-							height={SVG_SIZE}
-							onClick={handleSvgClick}
-							onMouseMove={handleSvgMouseMove}
-							className={`border border-slate-700 bg-slate-900 ${mode === 'zone' ? 'cursor-crosshair' : mode === 'poi' ? 'cursor-copy' : 'cursor-default'}`}
-							style={{ maxWidth: '100%', maxHeight: '100%' }}
+							ref={svgRef}
+							viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
+							className="h-full w-full border border-slate-700 bg-slate-900"
+							style={{ cursor: mode === 'pan' ? 'grab' : mode === 'select' ? 'default' : 'crosshair' }}
+							onMouseDown={handleMouseDown}
+							onMouseMove={handleMouseMove}
+							onMouseUp={handleMouseUp}
+							onMouseLeave={handleMouseUp}
+							onWheel={handleWheel}
+							onContextMenu={(e) => e.preventDefault()}
 						>
 							{/* Grid lines */}
 							{Array.from({ length: 11 }).map((_, i) => (
 								<g key={`grid-${i}`}>
-									<line x1={i * 50} y1={0} x2={i * 50} y2={SVG_SIZE} stroke="rgba(51,65,85,0.3)" strokeWidth={0.5} />
-									<line x1={0} y1={i * 50} x2={SVG_SIZE} y2={i * 50} stroke="rgba(51,65,85,0.3)" strokeWidth={0.5} />
+									<line x1={i * 100} y1={0} x2={i * 100} y2={GRID_MAX} stroke="rgba(51,65,85,0.3)" strokeWidth={1} />
+									<line x1={0} y1={i * 100} x2={GRID_MAX} y2={i * 100} stroke="rgba(51,65,85,0.3)" strokeWidth={1} />
 								</g>
 							))}
+							<rect x={0} y={0} width={GRID_MAX} height={GRID_MAX} fill="none" stroke="rgba(51,65,85,0.5)" strokeWidth={2} />
 
-							{/* Grid labels */}
-							{Array.from({ length: 11 }).map((_, i) => (
+							{/* Grid labels (only when zoomed in) */}
+							{viewBox.w < 800 && Array.from({ length: 11 }).map((_, i) => (
 								<g key={`label-${i}`}>
-									<text x={i * 50} y={8} fill="rgba(100,116,139,0.5)" fontSize={6}>{i * 100}</text>
-									<text x={2} y={i * 50 + 4} fill="rgba(100,116,139,0.5)" fontSize={6}>{i * 100}</text>
+									<text x={i * 100 + 3} y={15} fill="rgba(100,116,139,0.6)" fontSize={12}>{i * 100}</text>
+									<text x={3} y={i * 100 + 15} fill="rgba(100,116,139,0.6)" fontSize={12}>{i * 100}</text>
 								</g>
 							))}
 
 							{/* Zones */}
 							{activeFloor.zones.map((zone) => {
-								const xs = zone.polygon.map((p) => p.x * SCALE);
-								const ys = zone.polygon.map((p) => p.y * SCALE);
-								const minX = Math.min(...xs);
-								const minY = Math.min(...ys);
-								const maxX = Math.max(...xs);
-								const maxY = Math.max(...ys);
-								const isSelected = selected?.kind === 'zone' && selected.zoneId === zone.id;
+								const key = `zone:${activeFloor.id}:${zone.id}`;
+								const isSelected = selected.has(key);
+								const fillOp = isSelected ? 0.45 : 0.2;
+								const strokeW = isSelected ? 3 : 1.5;
+
+								if (zone.shape === 'circle' && zone.circle) {
+									return (
+										<g key={zone.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+											<circle cx={zone.circle.center.x} cy={zone.circle.center.y} r={zone.circle.radius} fill={zone.color} fillOpacity={fillOp} stroke={zone.color} strokeWidth={strokeW} strokeDasharray={isSelected ? '6 3' : undefined} />
+											<text x={zone.anchor.x} y={zone.anchor.y} fill={zone.color} fontSize={16} fontWeight="bold" textAnchor="middle">{zone.name}</text>
+										</g>
+									);
+								}
+
+								if (zone.shape === 'polygon' && zone.polygon.length >= 3) {
+									const pts = zone.polygon.map((p) => `${p.x},${p.y}`).join(' ');
+									return (
+										<g key={zone.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+											<polygon points={pts} fill={zone.color} fillOpacity={fillOp} stroke={zone.color} strokeWidth={strokeW} strokeDasharray={isSelected ? '6 3' : undefined} />
+											<text x={zone.anchor.x} y={zone.anchor.y} fill={zone.color} fontSize={16} fontWeight="bold" textAnchor="middle">{zone.name}</text>
+										</g>
+									);
+								}
+
+								// Default: rect (use bounding box of polygon)
+								const xs = zone.polygon.map((p) => p.x);
+								const ys = zone.polygon.map((p) => p.y);
+								const minX = Math.min(...xs), maxX = Math.max(...xs);
+								const minY = Math.min(...ys), maxY = Math.max(...ys);
 								return (
-									<g key={zone.id} onClick={(e) => { e.stopPropagation(); setSelected({ kind: 'zone', floorId: activeFloor.id, zoneId: zone.id }); }}>
-										<rect
-											x={minX} y={minY}
-											width={maxX - minX} height={maxY - minY}
-											fill={zone.color} fillOpacity={isSelected ? 0.4 : 0.2}
-											stroke={zone.color} strokeWidth={isSelected ? 2 : 1}
-											strokeDasharray={isSelected ? '4 2' : undefined}
-										/>
-										<text
-											x={zone.anchor.x * SCALE} y={zone.anchor.y * SCALE}
-											fill={zone.color} fontSize={7} fontWeight="bold" textAnchor="middle"
-										>
-											{zone.name}
-										</text>
+									<g key={zone.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+										<rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill={zone.color} fillOpacity={fillOp} stroke={zone.color} strokeWidth={strokeW} strokeDasharray={isSelected ? '6 3' : undefined} />
+										<text x={zone.anchor.x} y={zone.anchor.y} fill={zone.color} fontSize={16} fontWeight="bold" textAnchor="middle">{zone.name}</text>
 									</g>
 								);
 							})}
 
 							{/* Draw preview */}
-							{drawPreview && (
-								<rect
-									x={drawPreview.x * SCALE} y={drawPreview.y * SCALE}
-									width={drawPreview.w * SCALE} height={drawPreview.h * SCALE}
-									fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.6)" strokeWidth={1} strokeDasharray="3 3"
-								/>
+							{drawPreview?.shape === 'rect' && drawPreview.start && drawPreview.end && (
+								<rect x={Math.min(drawPreview.start.x, drawPreview.end.x)} y={Math.min(drawPreview.start.y, drawPreview.end.y)} width={Math.abs(drawPreview.end.x - drawPreview.start.x)} height={Math.abs(drawPreview.end.y - drawPreview.start.y)} fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.6)" strokeWidth={2} strokeDasharray="5 3" />
+							)}
+							{drawPreview?.shape === 'circle' && drawPreview.start && drawPreview.end && (
+								<circle cx={drawPreview.start.x} cy={drawPreview.start.y} r={Math.hypot(drawPreview.end.x - drawPreview.start.x, drawPreview.end.y - drawPreview.start.y)} fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.6)" strokeWidth={2} strokeDasharray="5 3" />
+							)}
+							{drawPreview?.shape === 'polygon' && drawPreview.points && drawPreview.points.length >= 2 && (
+								<polyline points={drawPreview.points.map((p) => `${p.x},${p.y}`).join(' ')} fill="rgba(59,130,246,0.1)" stroke="rgba(59,130,246,0.6)" strokeWidth={2} strokeDasharray="5 3" />
 							)}
 
 							{/* POIs */}
 							{activeFloor.pois.map((poi) => {
-								const isSelected = selected?.kind === 'poi' && selected.poiId === poi.id;
+								const key = `poi:${activeFloor.id}:${poi.id}`;
+								const isSelected = selected.has(key);
 								return (
-									<g key={poi.id} onClick={(e) => { e.stopPropagation(); setSelected({ kind: 'poi', floorId: activeFloor.id, poiId: poi.id }); }}>
-										<circle
-											cx={poi.x * SCALE} cy={poi.y * SCALE}
-											r={isSelected ? 7 : 5}
-											fill={POI_COLORS[poi.type]} fillOpacity={0.8}
-											stroke={isSelected ? '#fff' : POI_COLORS[poi.type]} strokeWidth={isSelected ? 2 : 0.5}
-										/>
-										<text
-											x={poi.x * SCALE} y={poi.y * SCALE + 2}
-											fill="#fff" fontSize={7} textAnchor="middle"
-										>
-											{POI_ICONS[poi.type]}
-										</text>
-										{isSelected && (
-											<text
-												x={poi.x * SCALE} y={poi.y * SCALE - 10}
-												fill="#fff" fontSize={6} textAnchor="middle"
-											>
-												{poi.name}
-											</text>
-										)}
+									<g key={poi.id} onMouseDown={(e) => { e.stopPropagation(); toggleSelect(key, e.shiftKey); }}>
+										<circle cx={poi.x} cy={poi.y} r={isSelected ? 18 : 12} fill={POI_COLORS[poi.type]} fillOpacity={0.85} stroke={isSelected ? '#fff' : POI_COLORS[poi.type]} strokeWidth={isSelected ? 3 : 1} />
+										<text x={poi.x} y={poi.y + 5} fill="#fff" fontSize={14} textAnchor="middle">{POI_ICONS[poi.type]}</text>
+										{isSelected && <text x={poi.x} y={poi.y - 22} fill="#fff" fontSize={12} textAnchor="middle">{poi.name}</text>}
 									</g>
 								);
 							})}
@@ -460,105 +580,72 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					)}
 				</main>
 
-				{/* Right sidebar — properties of selected item */}
+				{/* Right sidebar — properties */}
 				<aside className="w-64 shrink-0 overflow-auto border-l border-slate-800 bg-slate-900/40 p-3">
-					{selectedZone && (
+					{/* Bulk selection */}
+					{selected.size > 1 && (
+						<div>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">{selected.size} items selected</h3>
+							<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set(selected))}>
+								Delete {selected.size} items
+							</Button>
+						</div>
+					)}
+
+					{/* Single zone */}
+					{singleZone && (
 						<div>
 							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Zone Properties</h3>
 							<div className="space-y-2">
-								<div>
-									<label className="text-[9px] uppercase text-slate-600">Name</label>
-									<Input
-										value={selectedZone.name}
-										onValueChange={(v) => updateZone(selected!.floorId, selectedZone.id, { name: v, anchor: { ...selectedZone.anchor } })}
-									/>
-								</div>
+								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={singleZone.zone.name} onValueChange={(v) => updateZone(singleZone.floor.id, singleZone.zone.id, { name: v })} /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Shape</label><p className="text-xs text-slate-300 capitalize">{singleZone.zone.shape}</p></div>
 								<div>
 									<label className="text-[9px] uppercase text-slate-600">Color</label>
 									<div className="flex flex-wrap gap-1">
 										{ZONE_COLORS.map((c) => (
-											<button
-												key={c}
-												className={`h-5 w-5 rounded border-2 ${selectedZone.color === c ? 'border-white' : 'border-transparent'}`}
-												style={{ backgroundColor: c }}
-												onClick={() => updateZone(selected!.floorId, selectedZone.id, { color: c })}
-											/>
+											<button key={c} className={`h-6 w-6 rounded border-2 ${singleZone.zone.color === c ? 'border-white' : 'border-transparent'}`} style={{ backgroundColor: c }} onClick={() => updateZone(singleZone.floor.id, singleZone.zone.id, { color: c })} />
 										))}
 									</div>
 								</div>
-								<div className="text-[10px] text-slate-500">
-									Anchor: ({selectedZone.anchor.x}, {selectedZone.anchor.y})
-								</div>
-								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => deleteZone(selected!.floorId, selectedZone.id)}>
-									Delete Zone
-								</Button>
+								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set([`zone:${singleZone.floor.id}:${singleZone.zone.id}`]))}>Delete Zone</Button>
 							</div>
 						</div>
 					)}
 
-					{selectedPoi && (
+					{/* Single POI */}
+					{singlePoi && (
 						<div>
 							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">POI Properties</h3>
 							<div className="space-y-2">
-								<div>
-									<label className="text-[9px] uppercase text-slate-600">Name</label>
-									<Input
-										value={selectedPoi.name}
-										onValueChange={(v) => updatePoi(selected!.floorId, selectedPoi.id, { name: v })}
-									/>
-								</div>
+								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={singlePoi.poi.name} onValueChange={(v) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { name: v })} /></div>
 								<div>
 									<label className="text-[9px] uppercase text-slate-600">Type</label>
-									<select
-										className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300"
-										value={selectedPoi.type}
-										onChange={(e) => updatePoi(selected!.floorId, selectedPoi.id, { type: e.target.value as POIType })}
-									>
-										{POI_TYPES.map((pt) => (
-											<option key={pt.value} value={pt.value}>{pt.label}</option>
-										))}
+									<select className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300" value={singlePoi.poi.type} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { type: e.target.value as POIType })}>
+										{POI_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
 									</select>
 								</div>
-								<div>
-									<label className="text-[9px] uppercase text-slate-600">Notes</label>
-									<Input
-										value={selectedPoi.notes ?? ''}
-										onValueChange={(v) => updatePoi(selected!.floorId, selectedPoi.id, { notes: v })}
-									/>
-								</div>
-								<div className="text-[10px] text-slate-500">
-									Position: ({selectedPoi.x}, {selectedPoi.y})
-								</div>
-								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => deletePoi(selected!.floorId, selectedPoi.id)}>
-									Delete POI
-								</Button>
+								<div><label className="text-[9px] uppercase text-slate-600">Notes</label><Input value={singlePoi.poi.notes ?? ''} onValueChange={(v) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { notes: v })} /></div>
+								<div className="text-[10px] text-slate-500">Position: ({singlePoi.poi.x}, {singlePoi.poi.y})</div>
+								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set([`poi:${singlePoi.floor.id}:${singlePoi.poi.id}`]))}>Delete POI</Button>
 							</div>
 						</div>
 					)}
 
-					{!selected && activeFloor && (
+					{/* Nothing selected — show floor summary */}
+					{selected.size === 0 && activeFloor && (
 						<div>
-							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">
-								{activeFloor.name}
-							</h3>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">{activeFloor.name}</h3>
 							<div className="space-y-1 text-[11px] text-slate-400">
 								<p>Zones: {activeFloor.zones.length}</p>
 								<p>POIs: {activeFloor.pois.length}</p>
-								<div className="mt-2 border-t border-slate-700 pt-2">
-									<p className="text-[9px] uppercase text-slate-600">POI Summary</p>
-									{Object.entries(
-										activeFloor.pois.reduce((acc, p) => {
-											acc[p.type] = (acc[p.type] ?? 0) + 1;
-											return acc;
-										}, {} as Record<string, number>),
-									).map(([type, count]) => (
-										<div key={type} className="flex items-center gap-1">
-											<span>{POI_ICONS[type as POIType]}</span>
-											<span className="capitalize">{type}</span>
-											<span className="ml-auto text-slate-600">{count}</span>
-										</div>
-									))}
-								</div>
+								{activeFloor.pois.length > 0 && (
+									<div className="mt-2 border-t border-slate-700 pt-2">
+										<p className="text-[9px] uppercase text-slate-600">POI Summary</p>
+										{Object.entries(activeFloor.pois.reduce((acc, p) => { acc[p.type] = (acc[p.type] ?? 0) + 1; return acc; }, {} as Record<string, number>)).map(([type, count]) => (
+											<div key={type} className="flex items-center gap-1"><span>{POI_ICONS[type as POIType]}</span><span className="capitalize">{type}</span><span className="ml-auto text-slate-600">{count}</span></div>
+										))}
+									</div>
+								)}
 							</div>
 						</div>
 					)}
@@ -567,12 +654,37 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 			{/* Status bar */}
 			<footer className="border-t border-slate-800 bg-slate-900/60 px-4 py-1.5 text-[10px] text-slate-500">
-				Floor: {activeFloor?.name ?? '—'} ·
-				Zones: {activeFloor?.zones.length ?? 0} ·
-				POIs: {activeFloor?.pois.length ?? 0} ·
-				Total floors: {layout.floors.length} ·
-				Mode: <span className="text-slate-300 capitalize">{mode}</span>
+				Floor: {activeFloor?.name ?? '—'} · Zones: {activeFloor?.zones.length ?? 0} · POIs: {activeFloor?.pois.length ?? 0} · Floors: {layout.floors.length} · Mode: <span className="text-slate-300 capitalize">{mode}</span>
+				{selected.size > 0 && <> · Selected: <span className="text-blue-400">{selected.size}</span></>}
 			</footer>
+
+			{/* Delete confirmation modal */}
+			{deleteConfirm && (
+				<Modal>
+					<Modal.Backdrop isOpen={true} onOpenChange={() => setDeleteConfirm(null)}>
+						<Modal.Container>
+							<Modal.Dialog className="sm:max-w-sm">
+								<Modal.CloseTrigger />
+								<Modal.Header>
+									<Modal.Heading className="font-mono text-sm uppercase tracking-widest">
+										Delete {deleteConfirm.size} item{deleteConfirm.size === 1 ? '' : 's'}?
+									</Modal.Heading>
+								</Modal.Header>
+								<Modal.Body>
+									<p className="text-xs text-slate-400">
+										This will remove {deleteConfirm.size} zone/POI{deleteConfirm.size === 1 ? '' : 's'} from the layout.
+										Click Save to persist the change.
+									</p>
+								</Modal.Body>
+								<Modal.Footer>
+									<Button size="sm" variant="ghost" onPress={() => setDeleteConfirm(null)}>Cancel</Button>
+									<Button size="sm" variant="primary" className="!bg-red-600" onPress={confirmDelete}>Delete</Button>
+								</Modal.Footer>
+							</Modal.Dialog>
+						</Modal.Container>
+					</Modal.Backdrop>
+				</Modal>
+			)}
 		</div>
 	);
 }
