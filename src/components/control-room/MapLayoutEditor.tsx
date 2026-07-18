@@ -79,13 +79,15 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 	// Sync Leaflet map with viewBox when in geo mode
 	useEffect(() => {
-		if (layout.geoBounds && leafletMapRef.current) {
-			const { north, south, east, west } = layout.geoBounds;
-			const lat1 = north - (viewBox.y / 1000) * (north - south);
-			const lng1 = west + (viewBox.x / 1000) * (east - west);
-			const lat2 = north - ((viewBox.y + viewBox.h) / 1000) * (north - south);
-			const lng2 = west + ((viewBox.x + viewBox.w) / 1000) * (east - west);
-			leafletMapRef.current.updateBounds({ lat1, lng1, lat2, lng2 });
+		if (layout.geoBounds && leafletMapRef.current && svgRef.current) {
+			const rect = svgRef.current.getBoundingClientRect();
+			const scale = Math.min(rect.width / viewBox.w, rect.height / viewBox.h);
+			const contentW = viewBox.w * scale;
+			const contentH = viewBox.h * scale;
+			const offsetX = (rect.width - contentW) / 2 - (viewBox.x * scale);
+			const offsetY = (rect.height - contentH) / 2 - (viewBox.y * scale);
+			
+			leafletMapRef.current.applyTransform(offsetX, offsetY, scale);
 		}
 	}, [viewBox, layout.geoBounds]);
 
@@ -604,7 +606,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 
 				{/* Center — SVG grid */}
 				<main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950">
-					{layout.geoBounds && <LeafletMapBackground ref={leafletMapRef} bounds={layout.geoBounds} />}
+					{layout.geoBounds && <LeafletMapBackground ref={leafletMapRef} bounds={layout.geoBounds} mapProvider={layout.mapProvider} />}
 					{activeFloor ? (
 						<svg
 							ref={svgRef}

@@ -213,6 +213,7 @@ export interface AdminTenant {
 	id: string;
 	orgName: string;
 	status: 'ACTIVE' | 'SUSPENDED';
+	mapLayout?: unknown;
 	createdAt: string;
 }
 

@@ -132,7 +132,7 @@ export function TenantsTab() {
 												<Button
 													size="sm"
 													variant="secondary"
-													onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: null })}
+													onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: t.mapLayout as MapLayout | null })}
 													className="neu-raised-sm neu-hover neu-active"
 												>
 													🗺 Edit Map

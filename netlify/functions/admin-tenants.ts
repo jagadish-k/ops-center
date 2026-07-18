@@ -75,6 +75,7 @@ async function listTenants(claims: JwtClaims) {
 			id: tenantsTable.id,
 			orgName: tenantsTable.orgName,
 			status: tenantsTable.status,
+			mapLayout: tenantsTable.mapLayout,
 			createdAt: tenantsTable.createdAt,
 		})
 		.from(tenantsTable)
