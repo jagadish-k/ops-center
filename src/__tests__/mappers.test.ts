@@ -24,6 +24,8 @@ describe('mapIncident', () => {
 		action_required: 'Deploy relief cordons',
 		coord_x: 720,
 		coord_y: 210,
+		floor_id: 'floor1',
+		reported_by: 'user1',
 		created_at: new Date('2026-07-16T12:00:00Z'),
 		updated_at: new Date('2026-07-16T12:01:00Z'),
 	};
@@ -85,6 +87,7 @@ describe('mapStaff', () => {
 		status: 'AVAILABLE',
 		coord_x: 450,
 		coord_y: 320,
+		floor_id: 'floor1',
 		updated_at: new Date('2026-07-16T12:00:00Z'),
 		created_at: new Date('2026-07-16T11:00:00Z'),
 		roles: ['staff'],

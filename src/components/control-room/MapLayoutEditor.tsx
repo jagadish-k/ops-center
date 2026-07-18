@@ -514,7 +514,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 				<div className="ml-auto flex items-center gap-2">
 					{savedMsg && <span className="text-xs text-emerald-400">{savedMsg}</span>}
 					{saveError && <span className="text-xs text-red-400">{saveError}</span>}
-					<Button size="sm" variant="primary" onPress={handleSave} disabled={saving}>
+					<Button size="sm" variant="primary" onPress={handleSave} isDisabled={saving}>
 						{saving ? <Spinner size="sm" /> : 'Save Layout'}
 					</Button>
 					<Button size="sm" variant="ghost" onPress={onClose}>✕ Close</Button>
@@ -708,7 +708,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 					{/* Base Map / Geo Mode */}
 					<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">Geographic Base</h3>
 					<div className="space-y-2">
-						<Button size="sm" variant="bordered" className="w-full text-xs" onPress={() => setIsSettingBounds(true)}>
+						<Button size="sm" variant="outline" className="w-full text-xs" onPress={() => setIsSettingBounds(true)}>
 							{layout.geoBounds ? 'Edit Geo Bounds' : 'Set Geographic Base'}
 						</Button>
 						{layout.geoBounds && (

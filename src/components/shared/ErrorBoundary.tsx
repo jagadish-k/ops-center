@@ -72,10 +72,12 @@ export function ErrorBoundary({
 	onError,
 	fallback,
 }: ErrorBoundaryProps) {
-	const handleError = (error: Error, info: { componentStack: string | null }) => {
+	const handleError = (error: unknown, info: { componentStack?: string | null }) => {
 		// Always log to console — future: hook into Sentry / equivalent.
 		console.error(`[ErrorBoundary${name ? `: ${name}` : ''}]`, error, info);
-		onError?.(error, { componentStack: info.componentStack ?? '' });
+		if (error instanceof Error) {
+			onError?.(error, { componentStack: info.componentStack ?? '' });
+		}
 	};
 
 	return (
@@ -84,7 +86,7 @@ export function ErrorBoundary({
 				fallback ?? (
 					<ErrorFallback
 						{...props}
-						error={props.error}
+						error={props.error as Error}
 						resetErrorBoundary={props.resetErrorBoundary}
 						hint={name ? `${name} failed to load` : undefined}
 					/>

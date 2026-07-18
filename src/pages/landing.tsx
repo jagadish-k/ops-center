@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Input, Textarea, Spinner } from '@heroui/react';
+import { Button, Input, TextArea, Spinner } from '@heroui/react';
 import { useTheme } from '@/context/theme-constants';
 
 export default function LandingPage() {
@@ -51,8 +51,7 @@ export default function LandingPage() {
 							{theme === 'neu-light' && '🌕'}
 						</button>
 						<Button 
-							variant="solid" 
-							color="primary" 
+							variant="primary" 
 							className="font-bold shadow-lg shadow-blue-600/30 transition-all hover:scale-105"
 							onPress={() => navigate('/login')}
 						>
@@ -80,8 +79,7 @@ export default function LandingPage() {
 						<div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
 							<Button 
 								size="lg"
-								variant="solid" 
-								color="primary" 
+								variant="primary" 
 								className="h-14 w-full px-8 text-lg font-bold shadow-2xl shadow-blue-600/40 sm:w-auto"
 								onPress={() => navigate('/login')}
 							>
@@ -89,7 +87,7 @@ export default function LandingPage() {
 							</Button>
 							<Button 
 								size="lg"
-								variant="bordered"
+								variant="outline"
 								className="h-14 w-full border-2 border-slate-300 px-8 text-lg font-bold text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 sm:w-auto"
 								onPress={() => {
 									document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
@@ -150,7 +148,7 @@ export default function LandingPage() {
 									<label htmlFor="name" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
 									<Input 
 										id="name"
-										isRequired
+										required
 										value={formState.name}
 										onChange={(e) => setFormState(prev => ({ ...prev, name: e.target.value }))}
 										placeholder="John Doe"
@@ -162,7 +160,7 @@ export default function LandingPage() {
 									<Input 
 										id="email"
 										type="email"
-										isRequired
+										required
 										value={formState.email}
 										onChange={(e) => setFormState(prev => ({ ...prev, email: e.target.value }))}
 										placeholder="john@stadium.com"
@@ -172,25 +170,25 @@ export default function LandingPage() {
 							</div>
 							<div>
 								<label htmlFor="message" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Venue Details & Requirements</label>
-								<Textarea 
+								<TextArea 
 									id="message"
-									isRequired
+									required
 									value={formState.message}
 									onChange={(e) => setFormState(prev => ({ ...prev, message: e.target.value }))}
 									placeholder="Tell us about your capacity, current systems, and timeline..."
 									className="w-full bg-white dark:bg-slate-900"
-									minRows={4}
+									rows={4}
 								/>
 							</div>
 							
 							<Button 
 								type="submit"
 								size="lg"
-								color="primary"
-								disabled={status === 'loading'}
+								variant="primary"
+								isDisabled={status === 'loading'}
 								className="mt-4 w-full font-bold shadow-lg shadow-blue-600/30"
 							>
-								{status === 'loading' ? <Spinner size="sm" color="white" /> : 'Request Demo'}
+								{status === 'loading' ? <Spinner size="sm" color="current" /> : 'Request Demo'}
 							</Button>
 							
 							{status === 'success' && (

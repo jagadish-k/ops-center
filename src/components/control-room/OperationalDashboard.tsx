@@ -127,7 +127,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 						size="sm"
 						variant="ghost"
 						onPress={cycleTheme}
-						title={`Theme: ${THEME_LABELS[theme]} (click to cycle)`}
+
 						className="neu-raised-sm neu-hover neu-active"
 					>
 						<span className="mr-1">{THEME_ICONS[theme]}</span>

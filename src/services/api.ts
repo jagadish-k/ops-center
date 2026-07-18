@@ -253,7 +253,7 @@ export interface CreateStaffInput {
 }
 
 export async function adminCreateStaff(input: CreateStaffInput, targetTenantId?: string): Promise<{ userId: string; phone: string; roles: string[] }> {
-	return apiFetch<AdminMutationResponse>('/api/admin/users', {
+	return apiFetch<{ userId: string; phone: string; roles: string[] }>('/api/admin/users', {
 		method: 'POST',
 		body: JSON.stringify({ action: 'create', ...input, targetTenantId }),
 	});

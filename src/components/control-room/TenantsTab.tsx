@@ -237,8 +237,8 @@ function CreateTenantModal({
 									<Input
 										id="tenantId"
 										placeholder="tenant_metlife_ops"
-										isInvalid={!!form.formState.errors.tenantId}
-										errorMessage={form.formState.errors.tenantId?.message}
+
+
 										className="neu-pressed"
 										{...form.register('tenantId')}
 									/>
@@ -254,8 +254,8 @@ function CreateTenantModal({
 									<Input
 										id="orgName"
 										placeholder="MetLife Stadium Ops Core"
-										isInvalid={!!form.formState.errors.orgName}
-										errorMessage={form.formState.errors.orgName?.message}
+
+
 										className="neu-pressed"
 										{...form.register('orgName')}
 									/>
@@ -300,7 +300,7 @@ function CreateTenantModal({
 								size="sm"
 								variant="primary"
 								isDisabled={submitting}
-								onPress={form.handleSubmit(onSubmit)}
+								onPress={() => form.handleSubmit(onSubmit)()}
 								className="neu-raised-sm neu-hover neu-active"
 							>
 								{submitting ? <Spinner size="sm" /> : 'Create'}

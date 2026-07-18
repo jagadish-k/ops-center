@@ -145,8 +145,10 @@ const TAB_STEPS: Record<string, () => DriveStep[]> = {
 function runDriver(steps: DriveStep[], tabId: string): void {
 	// Filter steps whose target element doesn't exist in the DOM.
 	const visibleSteps = steps.filter((step) => {
-		if (!step.element) return true;
-		return !!document.querySelector(step.element);
+		if (typeof step.element === 'string') {
+			return !!document.querySelector(step.element);
+		}
+		return true;
 	});
 
 	if (visibleSteps.length === 0) {
@@ -204,7 +206,7 @@ export function useTabTourBanner(tabId: string): {
 	}, [tabId]);
 
 	const dismissBanner = useCallback(() => {
-		setShowBanner(false);
+
 		markTabToured(tabId);
 	}, [tabId]);
 

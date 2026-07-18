@@ -71,7 +71,7 @@ export const regoLanguage = StreamLanguage.define({
 		// Identifiers + keywords.
 		if (/[a-zA-Z_]/.test(startChar as string)) {
 			const m = stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
-			if (m && KEYWORDS.has(m[0])) return 'keyword';
+			if (m && typeof m !== 'boolean' && KEYWORDS.has(m[0])) return 'keyword';
 			// Function call (followed by paren)?
 			const after = stream.peek();
 			if (after === '(') return 'def';

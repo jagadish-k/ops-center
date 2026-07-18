@@ -41,7 +41,7 @@ export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) 
 				</div>
 				<div className="flex gap-2">
 					<Button variant="ghost" className="text-slate-300" onPress={onCancel}>Cancel</Button>
-					<Button variant="solid" color="primary" onPress={handleSave}>Set Map Area</Button>
+					<Button variant="primary" onPress={handleSave}>Set Map Area</Button>
 				</div>
 			</header>
 

@@ -21,11 +21,13 @@ export const createStaffSchema = z.object({
 		.string()
 		.min(1, 'Full name is required')
 		.max(100, 'Maximum 100 characters'),
-	specialty: z.enum(STAFF_SPECIALTIES, {
-		errorMessage: 'Select a specialty',
+	specialty: z.enum(['security', 'medical', 'cleaning', 'supervisor'], {
+		invalid_type_error: 'Select a specialty',
+		required_error: 'Select a specialty',
 	}),
-	assignedZone: z.enum(STAFF_ZONES, {
-		errorMessage: 'Select a zone',
+	assignedZone: z.enum(['ZONE-A', 'ZONE-B', 'ZONE-C', 'ZONE-D', 'ZONE-E', 'ZONE-F'], {
+		invalid_type_error: 'Select a zone',
+		required_error: 'Select a zone',
 	}),
 	roles: z.array(z.string()).min(1, 'At least one role is required'),
 });

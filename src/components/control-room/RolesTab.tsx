@@ -250,7 +250,7 @@ function CreateRoleDrawer({
 	return (
 		<Drawer>
 			<Drawer.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-				<Drawer.Container>
+				<Drawer.Content className="neu-flat bg-slate-100/90 shadow-2xl backdrop-blur-md dark:bg-slate-900/90">
 					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
 						<Drawer.CloseTrigger />
 						<Drawer.Header>
@@ -267,8 +267,7 @@ function CreateRoleDrawer({
 									<Input
 										id="role-name"
 										placeholder="auditor"
-										isInvalid={!!form.formState.errors.name}
-										errorMessage={form.formState.errors.name?.message}
+
 										className="neu-pressed"
 										{...form.register('name')}
 									/>
@@ -281,8 +280,7 @@ function CreateRoleDrawer({
 									<Input
 										id="role-desc"
 										placeholder="Read-only compliance auditor"
-										isInvalid={!!form.formState.errors.description}
-										errorMessage={form.formState.errors.description?.message}
+
 										className="neu-pressed"
 										{...form.register('description')}
 									/>
@@ -346,14 +344,14 @@ function CreateRoleDrawer({
 								size="sm"
 								variant="primary"
 								isDisabled={submitting}
-								onPress={form.handleSubmit(onSubmit)}
+								onPress={() => form.handleSubmit(onSubmit)()}
 								className="neu-raised-sm neu-hover neu-active"
 							>
 								{submitting ? <Spinner size="sm" /> : 'Create'}
 							</Button>
 						</Drawer.Footer>
 					</Drawer.Dialog>
-				</Drawer.Container>
+				</Drawer.Content>
 			</Drawer.Backdrop>
 		</Drawer>
 	);
@@ -407,7 +405,7 @@ function EditRoleDrawer({
 	return (
 		<Drawer>
 			<Drawer.Backdrop isOpen={true} onOpenChange={(o) => !o && onClose()}>
-				<Drawer.Container>
+				<Drawer.Content>
 					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
 						<Drawer.CloseTrigger />
 						<Drawer.Header>
@@ -470,7 +468,7 @@ function EditRoleDrawer({
 							</Button>
 						</Drawer.Footer>
 					</Drawer.Dialog>
-				</Drawer.Container>
+				</Drawer.Content>
 			</Drawer.Backdrop>
 		</Drawer>
 	);

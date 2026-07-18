@@ -260,7 +260,7 @@ function CreateStaffDrawer({
 	return (
 		<Drawer>
 			<Drawer.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-				<Drawer.Container>
+				<Drawer.Content>
 					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
 						<Drawer.CloseTrigger />
 						<Drawer.Header>
@@ -277,8 +277,7 @@ function CreateStaffDrawer({
 									<Input
 										id="phone"
 										placeholder="+14155550000"
-										isInvalid={!!form.formState.errors.phone}
-										errorMessage={form.formState.errors.phone?.message}
+
 										className="neu-pressed"
 										{...form.register('phone')}
 									/>
@@ -291,8 +290,7 @@ function CreateStaffDrawer({
 									<Input
 										id="fullName"
 										placeholder="Jane Doe"
-										isInvalid={!!form.formState.errors.fullName}
-										errorMessage={form.formState.errors.fullName?.message}
+
 										className="neu-pressed"
 										{...form.register('fullName')}
 									/>
@@ -396,14 +394,14 @@ function CreateStaffDrawer({
 								size="sm"
 								variant="primary"
 								isDisabled={submitting}
-								onPress={form.handleSubmit(onSubmit)}
+								onPress={() => form.handleSubmit(onSubmit)()}
 								className="neu-raised-sm neu-hover neu-active"
 							>
 								{submitting ? <Spinner size="sm" /> : 'Create'}
 							</Button>
 						</Drawer.Footer>
 					</Drawer.Dialog>
-				</Drawer.Container>
+				</Drawer.Content>
 			</Drawer.Backdrop>
 		</Drawer>
 	);
@@ -478,7 +476,7 @@ function EditUserDrawer({
 	return (
 		<Drawer>
 			<Drawer.Backdrop isOpen={true} onOpenChange={(o) => !o && onClose()}>
-				<Drawer.Container>
+				<Drawer.Content>
 					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
 						<Drawer.CloseTrigger />
 						<Drawer.Header>
@@ -562,7 +560,7 @@ function EditUserDrawer({
 							</Button>
 						</Drawer.Footer>
 					</Drawer.Dialog>
-				</Drawer.Container>
+				</Drawer.Content>
 			</Drawer.Backdrop>
 		</Drawer>
 	);
@@ -603,7 +601,7 @@ function UserPermissionsDrawer({
 	return (
 		<Drawer>
 			<Drawer.Backdrop isOpen={true} onOpenChange={(o) => !o && onClose()}>
-				<Drawer.Container>
+				<Drawer.Content>
 					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
 						<Drawer.CloseTrigger />
 						<Drawer.Header>
@@ -649,7 +647,7 @@ function UserPermissionsDrawer({
 							<Button size="sm" variant="ghost" onPress={onClose} className="neu-raised-sm neu-hover neu-active">Close</Button>
 						</Drawer.Footer>
 					</Drawer.Dialog>
-				</Drawer.Container>
+				</Drawer.Content>
 			</Drawer.Backdrop>
 		</Drawer>
 	);
