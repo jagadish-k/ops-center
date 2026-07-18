@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Button } from '@heroui/react';
+import { Button, TextField, Input, Spinner } from '@heroui/react';
 import 'leaflet/dist/leaflet.css';
 import type { Map } from 'leaflet';
 
@@ -11,6 +11,26 @@ interface GeoBoundsSelectorProps {
 
 export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) {
 	const mapRef = useRef<Map | null>(null);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [isSearching, setIsSearching] = useState(false);
+
+	const handleSearch = async () => {
+		if (!searchQuery.trim() || !mapRef.current) return;
+		setIsSearching(true);
+		try {
+			const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+			const data = await res.json();
+			if (data && data.length > 0) {
+				const lat = parseFloat(data[0].lat);
+				const lon = parseFloat(data[0].lon);
+				mapRef.current.flyTo([lat, lon], 16, { animate: true });
+			}
+		} catch (err) {
+			console.error('Search failed', err);
+		} finally {
+			setIsSearching(false);
+		}
+	};
 
 	const handleSave = () => {
 		if (!mapRef.current) return;
@@ -39,6 +59,22 @@ export function GeoBoundsSelector({ onSave, onCancel }: GeoBoundsSelectorProps) 
 					<h2 className="font-mono text-sm font-bold uppercase tracking-widest text-slate-100">Locate Venue Base Map</h2>
 					<p className="text-xs text-slate-400">Pan and zoom so the entire venue fits precisely within the highlighted square.</p>
 				</div>
+				
+				<div className="flex items-center gap-2">
+					<TextField aria-label="Search location" className="w-64">
+						<Input 
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+							placeholder="Search city, venue..."
+							className="w-full bg-slate-900 text-sm text-slate-100 placeholder:text-slate-500 border border-slate-700 rounded px-3 py-1.5 focus:outline-none focus:border-blue-500"
+						/>
+					</TextField>
+					<Button variant="outline" size="sm" className="border-slate-700 text-slate-300 h-9" onPress={handleSearch} isDisabled={isSearching}>
+						{isSearching ? <Spinner size="sm" color="current" /> : 'Search'}
+					</Button>
+				</div>
+
 				<div className="flex gap-2">
 					<Button variant="ghost" className="text-slate-300" onPress={onCancel}>Cancel</Button>
 					<Button variant="primary" onPress={handleSave}>Set Map Area</Button>
