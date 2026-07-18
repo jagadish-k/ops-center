@@ -33,7 +33,7 @@ import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumM
 type TabId = 'operations' | 'team' | 'roles' | 'tenants' | 'policies';
 
 interface OperationalDashboardProps {
-	onTenantChange: (tenantId: string) => void;
+	onTenantChange: (tenantId: string) => Promise<void>;
 }
 
 export function OperationalDashboard({ onTenantChange }: OperationalDashboardProps) {

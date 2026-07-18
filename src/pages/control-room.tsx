@@ -9,19 +9,17 @@
  * Top-level ErrorBoundary catches fatal errors that escape the per-tab
  * boundaries inside OperationalDashboard (e.g., context-provider failures).
  */
-import { useState } from 'react';
 import { Navigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ActiveOpsProvider } from '@/context/ActiveOpsContext';
 import { OperationalDashboard } from '@/components/control-room/OperationalDashboard';
-import { ErrorBoundary, ErrorFallback } from '@/components/shared/ErrorBoundary';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { Button } from '@heroui/react';
 
 export default function ControlRoom() {
-	const { claims, loading, signOut } = useAuth();
-	const { can, tenantId: jwtTenantId } = usePermissions();
-	const [overrideTenantId, setOverrideTenantId] = useState<string | undefined>(undefined);
+	const { claims, loading, signOut, switchTenant } = useAuth();
+	const { can } = usePermissions();
 
 	if (loading) {
 		return (
@@ -53,13 +51,9 @@ export default function ControlRoom() {
 				</div>
 			}
 		>
-			<ActiveOpsProvider tenantId={jwtTenantId ?? claims.tenant_id} overrideTenantId={overrideTenantId}>
-				<OperationalDashboard onTenantChange={setOverrideTenantId} />
+			<ActiveOpsProvider tenantId={claims.tenant_id}>
+				<OperationalDashboard onTenantChange={switchTenant} />
 			</ActiveOpsProvider>
 		</ErrorBoundary>
 	);
 }
-
-// `ErrorFallback` re-exported for callers that want the default fallback
-// outside this file.
-void ErrorFallback;

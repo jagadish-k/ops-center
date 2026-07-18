@@ -32,6 +32,10 @@ interface AuthContextValue {
 	signInWithOtp: (phoneNumber: string, code: string) => Promise<void>;
 	/** Clears the token and claims. */
 	signOut: () => void;
+	/** Switches the active tenant context. Calls /api/auth/switch-tenant, gets
+	 * a new JWT, and updates claims. The new tenant_id propagates to all
+	 * downstream consumers (ActiveOpsProvider re-polls, etc.). */
+	switchTenant: (tenantId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -77,6 +81,30 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 		setClaims(null);
 	}, []);
 
+	const switchTenant = useCallback(async (tenantId: string): Promise<void> => {
+		const currentToken = getAuthToken();
+		if (!currentToken) return;
+		const resp = await fetch('/api/auth/switch-tenant', {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${currentToken}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ tenantId }),
+		});
+		if (!resp.ok) {
+			const body = await resp.json().catch(() => ({ error: 'Switch failed' }));
+			throw new Error(body.error ?? `Switch failed (${resp.status})`);
+		}
+		const { token: newToken, claims: newClaims } = (await resp.json()) as {
+			token: string;
+			claims: JwtClaims;
+		};
+		setAuthToken(newToken);
+		setToken(newToken);
+		setClaims(newClaims);
+	}, []);
+
 	const value: AuthContextValue = {
 		token,
 		claims,
@@ -84,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 		sendOtp,
 		signInWithOtp,
 		signOut,
+		switchTenant,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
