@@ -109,7 +109,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 			// after a transient network blip).
 			if (!seededRef.current && !everSucceededRef.current) seedMockData();
 			setConnectionHealthy(false);
-			if (loading) setLoading(false);
+			setLoading(false);
 
 			// Exponential backoff capped at MAX_BACKOFF_MS.
 			backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
@@ -119,16 +119,15 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 				/* non-2xx; will retry with backoff */
 			}
 		}
-	}, [tenantId, seedMockData, loading]);
+	}, [tenantId, seedMockData]);
 
 	useEffect(() => {
-		mountedRef.current = true;
-
+		let isMounted = true;
 		let timer: ReturnType<typeof setTimeout> | undefined;
 
 		const tick = async (): Promise<void> => {
 			await poll();
-			if (mountedRef.current) {
+			if (isMounted) {
 				timer = setTimeout(tick, backoffRef.current);
 			}
 		};
@@ -137,7 +136,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 		void tick();
 
 		return () => {
-			mountedRef.current = false;
+			isMounted = false;
 			if (timer) clearTimeout(timer);
 			abortRef.current?.abort();
 		};
