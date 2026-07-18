@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 	const [loading, setLoading] = useState(true);
 
 	// On mount: hydrate from localStorage if a valid (non-expired) token exists.
+	/* eslint-disable react-hooks/set-state-in-effect */
 	useEffect(() => {
 		const stored = getAuthToken();
 		if (stored) {
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 		}
 		setLoading(false);
 	}, []);
+	/* eslint-enable react-hooks/set-state-in-effect */
 
 	const sendOtp = useCallback(async (phoneNumber: string): Promise<RequestOtpResponse> => {
 		return requestOtp(phoneNumber);
@@ -119,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 }
 
 /** Hook to access the auth context. Must be used within an AuthProvider. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
 	const context = useContext(AuthContext);
 	if (!context) {
@@ -128,6 +131,7 @@ export function useAuth(): AuthContextValue {
 }
 
 /** Type guard for ApiError thrown by the API service. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function isApiError(err: unknown): err is ApiError {
 	return err instanceof Error && err.name === 'ApiError';
 }

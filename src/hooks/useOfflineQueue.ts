@@ -121,6 +121,7 @@ export function useOfflineQueue(): OfflineQueueState {
 		window.addEventListener('offline', handleOffline);
 
 		// Load pending count on mount.
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from IndexedDB
 		void refreshCount();
 		// If we're already online and have pending items, drain immediately.
 		if (navigator.onLine) void drain();

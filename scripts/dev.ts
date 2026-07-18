@@ -132,7 +132,7 @@ function runMigrations(): void {
 	try {
 		execSync('npx tsx database/migrate.ts', { stdio: 'inherit', cwd: process.cwd() });
 		ok('Migrations applied');
-	} catch (err) {
+	} catch {
 		console.error('\n');
 		fail(`Migration failed. Check DATABASE_URL in .env (current: ${process.env.DATABASE_URL ?? 'NOT SET'})`);
 	}
@@ -146,7 +146,7 @@ function runSeed(): void {
 	try {
 		execSync('npx tsx database/seed.ts', { stdio: 'inherit', cwd: process.cwd() });
 		ok('Seed applied');
-	} catch (err) {
+	} catch {
 		console.error('\n');
 		fail('Seed failed. See output above.');
 	}

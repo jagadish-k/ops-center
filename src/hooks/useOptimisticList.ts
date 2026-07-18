@@ -67,9 +67,11 @@ export function useOptimisticList<T>({
 		}
 	}, [loader]);
 
+	/* eslint-disable react-hooks/set-state-in-effect */
 	useEffect(() => {
 		if (autoLoad) void reload();
 	}, [autoLoad, reload]);
+	/* eslint-enable react-hooks/set-state-in-effect */
 
 	const mutate = useCallback(
 		async (serverOp: () => Promise<unknown>, optimisticUpdate: (draft: T) => void): Promise<boolean> => {

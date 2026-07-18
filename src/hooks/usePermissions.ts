@@ -76,7 +76,7 @@ export function usePermissions(): PermissionHelpers {
 			isAuthenticated: !!claims,
 
 			scopedRoles: [],
-			hasScopedRole: (_role: SystemScopedRole) => false,
+			hasScopedRole: () => false,
 
 			tenantId,
 			hasTenant: (id: string) => tenantId === id,

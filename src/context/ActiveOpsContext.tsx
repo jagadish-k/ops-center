@@ -43,6 +43,7 @@ export function ActiveOpsProvider({
 }
 
 /** Access the live operational state. Must be used within an ActiveOpsProvider. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useActiveOps(): ActiveOpsContextValue {
 	const context = useContext(ActiveOpsContext);
 	if (!context) {

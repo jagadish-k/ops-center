@@ -143,8 +143,11 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 		};
 	}, [poll]);
 
-	// Keep the imperative mirror in sync for non-React consumers.
-	snapshotRef.current = { incidents, staff, dispatches, mapLayout, loading, connectionHealthy };
+	// Keep the imperative mirror in sync for non-React consumers (canvas rAF loop).
+	// Must be in useEffect — writing refs during render is disallowed by React 19.
+	useEffect(() => {
+		snapshotRef.current = { incidents, staff, dispatches, mapLayout, loading, connectionHealthy };
+	}, [incidents, staff, dispatches, mapLayout, loading, connectionHealthy]);
 
 	return { incidents, staff, dispatches, mapLayout, loading, connectionHealthy };
 }

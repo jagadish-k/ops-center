@@ -1,41 +1,19 @@
 /**
- * ThemeContext — three-state aesthetic toggle for the platform.
+ * ThemeProvider component — the ONLY export from this .tsx file.
  *
- * Modes:
- *   - 'flat-dark'  : Current dark theme (slate-950 bg, flat surfaces). Default.
- *   - 'neu-dark'   : Neumorphic dark (slate-800 bg, dual-shadow surfaces).
- *   - 'neu-light'  : Neumorphic light (#e0e8f6 bg, dual-shadow surfaces,
- *                    dark text on light background).
+ * All types, constants, the context object, and the useTheme hook live in
+ * theme-constants.ts (a .ts file, exempt from react-refresh rules).
  *
- * Architecture (ADR: grilling session decisions A3+B2+E3+F2):
- *   - React context holds the current theme + setter.
- *   - On change, writes data-theme="..." to <html> and toggles the
- *     `dark` class (Tailwind v4 dark: prefix).
- *   - Persists to localStorage so the choice survives refresh.
- *   - Components use useTheme() to get { theme, setTheme, cycleTheme }.
- *   - Neumorphic utility classes (.neu-raised etc.) are CSS-scoped to
- *     [data-theme] attributes — they activate/deactivate automatically.
+ * Architecture: A3+B2+E3+F2 (grilling session decisions).
  */
-import { createContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-
-export type ThemeMode = 'flat-dark' | 'neu-dark' | 'neu-light';
-
-const THEME_KEY = 'stadiumops_theme';
-const DEFAULT_THEME: ThemeMode = 'flat-dark';
-
-const THEME_ORDER: ThemeMode[] = ['flat-dark', 'neu-dark', 'neu-light'];
-
-interface ThemeContextValue {
-	theme: ThemeMode;
-	setTheme: (mode: ThemeMode) => void;
-	cycleTheme: () => void;
-	/** True when neumorphism is active (neu-dark or neu-light). */
-	isNeumorphic: boolean;
-	/** True when the background is dark (flat-dark or neu-dark). */
-	isDark: boolean;
-}
-
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
+import {
+	ThemeContext,
+	THEME_KEY,
+	DEFAULT_THEME,
+	THEME_ORDER,
+	type ThemeMode,
+} from './theme-constants';
 
 /** Apply the theme to the DOM (<html> element). */
 function applyThemeToDOM(theme: ThemeMode): void {
@@ -91,7 +69,7 @@ export function ThemeProvider({ children }: { children: ReactNode }): ReactNode 
 		});
 	}, []);
 
-	const value: ThemeContextValue = {
+	const value = {
 		theme,
 		setTheme,
 		cycleTheme,

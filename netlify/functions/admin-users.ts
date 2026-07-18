@@ -80,7 +80,7 @@ interface CreateBody {
 }
 
 async function createUser(claims: JwtClaims, body: CreateBody, targetTenantId?: string) {
-	const { tenantId, actor } = authorizeAdminOp(claims, 'staff:manage', targetTenantId);
+	const { tenantId } = authorizeAdminOp(claims, 'staff:manage', targetTenantId);
 
 	if (!body.phone || !body.fullName) {
 		throw new AdminHttpError(400, 'bad_request', 'phone and fullName are required.');

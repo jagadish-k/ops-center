@@ -153,7 +153,6 @@ async function main() {
 
 	if (process.env.JWT_PRIVATE_KEY && process.env.JWT_PUBLIC_KEY) {
 		await check('JWT sign + verify roundtrip', async () => {
-			const { generateKeyPairSync } = await import('node:crypto');
 			const { SignJWT, jwtVerify, importPKCS8, importSPKI } = await import('jose');
 
 			const privPem = process.env.JWT_PRIVATE_KEY!.replace(/\\n/g, '\n');
