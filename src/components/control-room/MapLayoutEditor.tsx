@@ -11,7 +11,7 @@
  *   - Save → POST /api/admin/tenants action=update_map_layout
  */
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Button, Input, Spinner, Modal } from '@heroui/react';
+import { Button, Input, Spinner, Modal, Label, Select, ListBox } from '@heroui/react';
 import {
 	adminUpdateMapLayout,
 	ApiError,
@@ -532,9 +532,26 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<div className={`rounded px-2 py-1 ${mode === 'poi' ? 'bg-blue-900/40' : ''}`}>
 							<button className={`flex w-full items-center gap-2 text-xs ${mode === 'poi' ? 'text-blue-300' : 'text-slate-400 hover:bg-slate-800/40'}`} onClick={() => setMode('poi')}>📍 Place POI</button>
 							{mode === 'poi' && (
-								<select className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[10px] text-slate-300" value={selectedPoiType} onChange={(e) => setSelectedPoiType(e.target.value as POIType)}>
-									{POI_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
-								</select>
+								<Select
+									className="mt-1 w-full"
+									selectedKey={selectedPoiType}
+									onSelectionChange={(k) => setSelectedPoiType(k as POIType)}
+								>
+									<Select.Trigger className="neu-pressed text-[10px]">
+										<Select.Value />
+										<Select.Indicator />
+									</Select.Trigger>
+									<Select.Popover>
+										<ListBox>
+											{POI_TYPES.map((pt) => (
+												<ListBox.Item key={pt.value} id={pt.value} textValue={pt.label}>
+													{pt.label}
+													<ListBox.ItemIndicator />
+												</ListBox.Item>
+											))}
+										</ListBox>
+									</Select.Popover>
+								</Select>
 							)}
 						</div>
 					</div>
@@ -544,8 +561,8 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<>
 							<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-500">Floor Details</h3>
 							<div className="space-y-2">
-								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={activeFloor.name} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, name: e.target.value }))} className="text-xs" /></div>
-								<div><label className="text-[9px] uppercase text-slate-600">Level</label><Input type="number" value={activeFloor.level} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(e.target.value) || 0 }))} className="text-xs" /></div>
+								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Name</Label><Input value={activeFloor.name} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, name: e.target.value }))} className="text-xs neu-pressed" /></div>
+								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Level</Label><Input type="number" value={activeFloor.level} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(e.target.value) || 0 }))} className="text-xs neu-pressed" /></div>
 							</div>
 						</>
 					)}
@@ -678,17 +695,17 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<div>
 							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Zone Properties</h3>
 							<div className="space-y-2">
-								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={singleZone.zone.name} onChange={(e) => updateZone(singleZone.floor.id, singleZone.zone.id, { name: e.target.value })} /></div>
-								<div><label className="text-[9px] uppercase text-slate-600">Shape</label><p className="text-xs text-slate-300 capitalize">{singleZone.zone.shape}</p></div>
+								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Name</Label><Input value={singleZone.zone.name} onChange={(e) => updateZone(singleZone.floor.id, singleZone.zone.id, { name: e.target.value })} className="neu-pressed" /></div>
+								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Shape</Label><p className="text-xs text-slate-700 dark:text-slate-300 capitalize">{singleZone.zone.shape}</p></div>
 								<div>
-									<label className="text-[9px] uppercase text-slate-600">Color</label>
+									<Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Color</Label>
 									<div className="flex flex-wrap gap-1">
 										{ZONE_COLORS.map((c) => (
-											<button key={c} className={`h-6 w-6 rounded border-2 ${singleZone.zone.color === c ? 'border-white' : 'border-transparent'}`} style={{ backgroundColor: c }} onClick={() => updateZone(singleZone.floor.id, singleZone.zone.id, { color: c })} />
+											<button key={c} className={`h-6 w-6 rounded border-2 ${singleZone.zone.color === c ? 'border-slate-800 dark:border-white' : 'border-transparent'}`} style={{ backgroundColor: c }} onClick={() => updateZone(singleZone.floor.id, singleZone.zone.id, { color: c })} />
 										))}
 									</div>
 								</div>
-								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set([`zone:${singleZone.floor.id}:${singleZone.zone.id}`]))}>Delete Zone</Button>
+								<Button size="sm" variant="ghost" className="text-red-600 w-full neu-raised-sm neu-hover neu-active dark:text-red-400" onPress={() => setDeleteConfirm(new Set([`zone:${singleZone.floor.id}:${singleZone.zone.id}`]))}>Delete Zone</Button>
 							</div>
 						</div>
 					)}
@@ -698,16 +715,33 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<div>
 							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">POI Properties</h3>
 							<div className="space-y-2">
-								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={singlePoi.poi.name} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { name: e.target.value })} /></div>
+								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Name</Label><Input value={singlePoi.poi.name} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { name: e.target.value })} className="neu-pressed" /></div>
 								<div>
-									<label className="text-[9px] uppercase text-slate-600">Type</label>
-									<select className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300" value={singlePoi.poi.type} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { type: e.target.value as POIType })}>
-										{POI_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
-									</select>
+									<Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Type</Label>
+									<Select
+										className="mt-1 w-full"
+										selectedKey={singlePoi.poi.type}
+										onSelectionChange={(k) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { type: k as POIType })}
+									>
+										<Select.Trigger className="neu-pressed text-xs">
+											<Select.Value />
+											<Select.Indicator />
+										</Select.Trigger>
+										<Select.Popover>
+											<ListBox>
+												{POI_TYPES.map((pt) => (
+													<ListBox.Item key={pt.value} id={pt.value} textValue={pt.label}>
+														{pt.label}
+														<ListBox.ItemIndicator />
+													</ListBox.Item>
+												))}
+											</ListBox>
+										</Select.Popover>
+									</Select>
 								</div>
-								<div><label className="text-[9px] uppercase text-slate-600">Notes</label><Input value={singlePoi.poi.notes ?? ''} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { notes: e.target.value })} /></div>
-								<div className="text-[10px] text-slate-500">Position: ({singlePoi.poi.x}, {singlePoi.poi.y})</div>
-								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set([`poi:${singlePoi.floor.id}:${singlePoi.poi.id}`]))}>Delete POI</Button>
+								<div><Label className="text-[9px] uppercase text-slate-600 dark:text-slate-500">Notes</Label><Input value={singlePoi.poi.notes ?? ''} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { notes: e.target.value })} className="neu-pressed" /></div>
+								<div className="text-[10px] text-slate-600 dark:text-slate-500">Position: ({singlePoi.poi.x}, {singlePoi.poi.y})</div>
+								<Button size="sm" variant="ghost" className="text-red-600 w-full neu-raised-sm neu-hover neu-active dark:text-red-400" onPress={() => setDeleteConfirm(new Set([`poi:${singlePoi.floor.id}:${singlePoi.poi.id}`]))}>Delete POI</Button>
 							</div>
 						</div>
 					)}

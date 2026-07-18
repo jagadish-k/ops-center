@@ -1,13 +1,10 @@
 /**
  * TenantsTab — superadmin tenant management (M9.5, redesigned).
  *
- * Scrollable table layout instead of card grid. Handles any number of
- * tenants without layout issues. Each row shows:
+ * Scrollable HeroUI Table layout. Each row shows:
  *   - Organization name + status badge
  *   - Tenant ID (monospace)
  *   - Creation date
- *   - Floors count (from mapLayout)
- *   - Zone + POI counts (from mapLayout)
  *   - Actions: Edit Map
  *
  * Requires the `tenant:switch` permission (superadmin only).
@@ -15,7 +12,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Spinner, Drawer } from '@heroui/react';
+import { Button, Input, Spinner, Modal, Table, Label } from '@heroui/react';
 import {
 	adminListTenants,
 	adminCreateTenant,
@@ -37,80 +34,120 @@ export function TenantsTab() {
 		initial: null,
 	});
 
+	const count = tenants?.length ?? 0;
+
 	return (
 		<div className="flex h-full flex-col gap-4 p-4">
 			<header className="flex items-center gap-3">
-				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">Tenants</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-					{tenants?.length ?? 0} tenant{(tenants?.length ?? 0) === 1 ? '' : 's'}
+				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+					Tenants
+				</h2>
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+					{count} tenant{count === 1 ? '' : 's'}
 				</span>
 				<div className="ml-auto">
-					<Button size="sm" variant="secondary" onPress={() => setCreateOpen(true)}>+ New Tenant</Button>
+					<Button
+						size="sm"
+						variant="secondary"
+						onPress={() => setCreateOpen(true)}
+						className="neu-raised-sm neu-hover neu-active"
+					>
+						+ New Tenant
+					</Button>
 				</div>
 			</header>
 
 			{error && (
-				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300">
+				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300 dark:text-red-300">
 					{error}
-					<Button size="sm" variant="ghost" onPress={() => void reload()} className="ml-3">Retry</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						onPress={() => void reload()}
+						className="ml-3 neu-raised-sm neu-hover neu-active"
+					>
+						Retry
+					</Button>
 				</div>
 			)}
 
 			{loading && tenants === null ? (
 				<CardGridSkeleton cards={3} />
 			) : (
-				<div className="flex-1 overflow-auto rounded border border-slate-800 bg-slate-900/40">
-					<table className="w-full text-left text-xs">
-						<thead className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 font-mono uppercase tracking-widest text-slate-500 backdrop-blur">
-							<tr>
-								<th className="px-3 py-2">Organization</th>
-								<th className="px-3 py-2">Tenant ID</th>
-								<th className="px-3 py-2">Status</th>
-								<th className="px-3 py-2">Created</th>
-								<th className="px-3 py-2 text-right">Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{tenants?.map((t) => (
-								<tr key={t.id} className="border-b border-slate-800/60 hover:bg-slate-800/30">
-									<td className="px-3 py-3">
-										<div className="font-bold text-slate-100">{t.orgName}</div>
-									</td>
-									<td className="px-3 py-3">
-										<code className="text-[10px] text-slate-500">{t.id}</code>
-									</td>
-									<td className="px-3 py-3">
-										{t.status === 'ACTIVE' ? (
-											<span className="rounded bg-emerald-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-emerald-300">active</span>
-										) : (
-											<span className="rounded bg-red-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-red-300">suspended</span>
-										)}
-									</td>
-									<td className="px-3 py-3 text-slate-400">
-										{new Date(t.createdAt).toLocaleDateString()}
-									</td>
-									<td className="px-3 py-3 text-right">
-										<Button
-											size="sm"
-											variant="secondary"
-											onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: null })}
-										>
-											🗺 Edit Map
-										</Button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-					{tenants?.length === 0 && (
-						<div className="p-8 text-center text-xs text-slate-500">
-							No tenants yet. Click "+ New Tenant" to create one.
-						</div>
-					)}
+				<div className="flex-1 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+					<Table>
+						<Table.ScrollContainer className="h-full">
+							<Table.Content
+								aria-label="Tenants"
+								className="min-w-[640px]"
+							>
+								<Table.Header className="bg-slate-100 dark:bg-slate-900/95">
+									<Table.Column isRowHeader className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
+										Organization
+									</Table.Column>
+									<Table.Column className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
+										Tenant ID
+									</Table.Column>
+									<Table.Column className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
+										Status
+									</Table.Column>
+									<Table.Column className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
+										Created
+									</Table.Column>
+									<Table.Column className="text-end font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
+										Actions
+									</Table.Column>
+								</Table.Header>
+								<Table.Body
+									items={tenants ?? []}
+									renderEmptyState={() => (
+										<div className="p-8 text-center text-xs text-slate-500 dark:text-slate-500">
+											No tenants yet. Click &quot;+ New Tenant&quot; to create one.
+										</div>
+									)}
+								>
+									{(t) => (
+										<Table.Row id={t.id} className="hover:bg-slate-100/70 dark:hover:bg-slate-800/30">
+											<Table.Cell className="font-bold text-slate-800 dark:text-slate-100">
+												{t.orgName}
+											</Table.Cell>
+											<Table.Cell>
+												<code className="text-[10px] text-slate-500 dark:text-slate-500">{t.id}</code>
+											</Table.Cell>
+											<Table.Cell>
+												{t.status === 'ACTIVE' ? (
+													<span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[9px] uppercase text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+														active
+													</span>
+												) : (
+													<span className="rounded bg-red-100 px-1.5 py-0.5 font-mono text-[9px] uppercase text-red-700 dark:bg-red-900/50 dark:text-red-300">
+														suspended
+													</span>
+												)}
+											</Table.Cell>
+											<Table.Cell className="text-slate-600 dark:text-slate-400">
+												{new Date(t.createdAt).toLocaleDateString()}
+											</Table.Cell>
+											<Table.Cell className="text-end">
+												<Button
+													size="sm"
+													variant="secondary"
+													onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: null })}
+													className="neu-raised-sm neu-hover neu-active"
+												>
+													🗺 Edit Map
+												</Button>
+											</Table.Cell>
+										</Table.Row>
+									)}
+								</Table.Body>
+							</Table.Content>
+						</Table.ScrollContainer>
+					</Table>
 				</div>
 			)}
 
-			<CreateTenantDrawer
+			<CreateTenantModal
 				isOpen={createOpen}
 				onClose={() => setCreateOpen(false)}
 				onCreated={async (newTenant) => {
@@ -131,9 +168,9 @@ export function TenantsTab() {
 	);
 }
 
-// ─── Create Tenant drawer ────────────────────────────────────────────────────
+// ─── Create Tenant modal ────────────────────────────────────────────────────
 
-function CreateTenantDrawer({
+function CreateTenantModal({
 	isOpen,
 	onClose,
 	onCreated,
@@ -178,61 +215,100 @@ function CreateTenantDrawer({
 	};
 
 	return (
-		<Drawer isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">New Tenant</h3>
+		<Modal>
+			<Modal.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
+				<Modal.Container>
+					<Modal.Dialog className="sm:max-w-lg neu-raised rounded-2xl">
+						<Modal.CloseTrigger />
+						<Modal.Header>
+							<Modal.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+								New Tenant
+							</Modal.Heading>
+						</Modal.Header>
+						<Modal.Body>
+							<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+								<div className="flex flex-col gap-1.5">
+									<Label
+										htmlFor="tenantId"
+										className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400"
+									>
+										Tenant ID
+									</Label>
+									<Input
+										id="tenantId"
+										placeholder="tenant_metlife_ops"
+										isInvalid={!!form.formState.errors.tenantId}
+										errorMessage={form.formState.errors.tenantId?.message}
+										className="neu-pressed"
+										{...form.register('tenantId')}
+									/>
+								</div>
 
-				<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-					<div>
-						<label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Tenant ID</label>
-						<Input
-							placeholder="tenant_metlife_ops"
-							isInvalid={!!form.formState.errors.tenantId}
-							errorMessage={form.formState.errors.tenantId?.message}
-							{...form.register('tenantId')}
-						/>
-					</div>
+								<div className="flex flex-col gap-1.5">
+									<Label
+										htmlFor="orgName"
+										className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400"
+									>
+										Organization Name
+									</Label>
+									<Input
+										id="orgName"
+										placeholder="MetLife Stadium Ops Core"
+										isInvalid={!!form.formState.errors.orgName}
+										errorMessage={form.formState.errors.orgName?.message}
+										className="neu-pressed"
+										{...form.register('orgName')}
+									/>
+								</div>
 
-					<div>
-						<label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Organization Name</label>
-						<Input
-							placeholder="MetLife Stadium Ops Core"
-							isInvalid={!!form.formState.errors.orgName}
-							errorMessage={form.formState.errors.orgName?.message}
-							{...form.register('orgName')}
-						/>
-					</div>
+								<details className="rounded border border-slate-300 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+									<summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest">
+										Optional: GPS bounding box
+									</summary>
+									<p className="mt-2">
+										Used for GPS-to-grid projection. If omitted, defaults to a small box around
+										the first coordinate reported by a staff member.
+									</p>
+									<div className="mt-2 grid grid-cols-2 gap-2">
+										<Input type="number" step="0.0001" placeholder="min lat" className="neu-pressed" {...form.register('bboxMinLat', { valueAsNumber: true })} />
+										<Input type="number" step="0.0001" placeholder="max lat" className="neu-pressed" {...form.register('bboxMaxLat', { valueAsNumber: true })} />
+										<Input type="number" step="0.0001" placeholder="min lng" className="neu-pressed" {...form.register('bboxMinLng', { valueAsNumber: true })} />
+										<Input type="number" step="0.0001" placeholder="max lng" className="neu-pressed" {...form.register('bboxMaxLng', { valueAsNumber: true })} />
+									</div>
+								</details>
 
-					<details className="rounded border border-slate-800 bg-slate-900/40 p-3 text-xs text-slate-400">
-						<summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest">
-							Optional: GPS bounding box
-						</summary>
-						<p className="mt-2">
-							Used for GPS-to-grid projection. If omitted, defaults to a small box around
-							the first coordinate reported by a staff member.
-						</p>
-						<div className="mt-2 grid grid-cols-2 gap-2">
-							<Input type="number" step="0.0001" placeholder="min lat" {...form.register('bboxMinLat', { valueAsNumber: true })} />
-							<Input type="number" step="0.0001" placeholder="max lat" {...form.register('bboxMaxLat', { valueAsNumber: true })} />
-							<Input type="number" step="0.0001" placeholder="min lng" {...form.register('bboxMinLng', { valueAsNumber: true })} />
-							<Input type="number" step="0.0001" placeholder="max lng" {...form.register('bboxMaxLng', { valueAsNumber: true })} />
-						</div>
-					</details>
-
-					{submitError && (
-						<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
-							{submitError}
-						</div>
-					)}
-
-					<div className="flex justify-end gap-2">
-						<Button type="button" size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
-						<Button type="submit" size="sm" variant="primary" disabled={submitting}>
-							{submitting ? <Spinner size="sm" /> : 'Create'}
-						</Button>
-					</div>
-				</form>
-			</div>
-		</Drawer>
+								{submitError && (
+									<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
+										{submitError}
+									</div>
+								)}
+							</form>
+						</Modal.Body>
+						<Modal.Footer>
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								onPress={onClose}
+								isDisabled={submitting}
+								className="neu-raised-sm neu-hover neu-active"
+							>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								size="sm"
+								variant="primary"
+								isDisabled={submitting}
+								onPress={form.handleSubmit(onSubmit)}
+								className="neu-raised-sm neu-hover neu-active"
+							>
+								{submitting ? <Spinner size="sm" /> : 'Create'}
+							</Button>
+						</Modal.Footer>
+					</Modal.Dialog>
+				</Modal.Container>
+			</Modal.Backdrop>
+		</Modal>
 	);
 }

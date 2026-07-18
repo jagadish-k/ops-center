@@ -7,9 +7,9 @@
  * Requires the `tenant:manage` permission (superadmin only per ADR-0011).
  */
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Spinner, Drawer, Modal } from '@heroui/react';
+import { Button, Input, Spinner, Drawer, Modal, Label, Checkbox, TextArea } from '@heroui/react';
 import {
 	adminListRoles,
 	adminCreateRole,
@@ -43,24 +43,38 @@ export function RolesTab() {
 		initial: null,
 	});
 
+	const count = roles?.length ?? 0;
+
 	return (
 		<div className="flex h-full flex-col gap-4 p-4">
 			<header className="flex items-center gap-3">
-				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">Roles</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-					{roles?.length ?? 0} role{(roles?.length ?? 0) === 1 ? '' : 's'}
+				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Roles</h2>
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+					{count} role{count === 1 ? '' : 's'}
 				</span>
 				<div className="ml-auto">
-					<Button size="sm" variant="secondary" onPress={() => setCreateOpen(true)}>
+					<Button
+						size="sm"
+						variant="secondary"
+						onPress={() => setCreateOpen(true)}
+						className="neu-raised-sm neu-hover neu-active"
+					>
 						+ New Role
 					</Button>
 				</div>
 			</header>
 
 			{error && (
-				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300">
+				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300 dark:text-red-300">
 					{error}
-					<Button size="sm" variant="ghost" onPress={() => void reload()} className="ml-3">Retry</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						onPress={() => void reload()}
+						className="ml-3 neu-raised-sm neu-hover neu-active"
+					>
+						Retry
+					</Button>
 				</div>
 			)}
 
@@ -132,24 +146,27 @@ function RoleCard({
 	};
 
 	return (
-		<div className="rounded border border-slate-800 bg-slate-900/40 p-4">
+		<div className="neu-raised rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
 			<div className="flex items-center gap-2">
-				<h3 className="font-mono text-sm font-bold text-slate-100">{role.name}</h3>
+				<h3 className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100">{role.name}</h3>
 				{role.isSystem && (
-					<span className="rounded bg-blue-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-blue-300">
+					<span className="rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
 						system
 					</span>
 				)}
 			</div>
-			<p className="mt-1 text-xs text-slate-400">{role.description}</p>
+			<p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{role.description}</p>
 
 			<div className="mt-3">
-				<p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+				<p className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
 					{role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'}
 				</p>
 				<div className="mt-1 flex flex-wrap gap-1">
 					{role.permissions.map((p) => (
-						<span key={p} className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300">
+						<span
+							key={p}
+							className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[10px] text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+						>
 							{p}
 						</span>
 					))}
@@ -157,12 +174,19 @@ function RoleCard({
 			</div>
 
 			<div className="mt-4 flex justify-end gap-2">
-				<Button size="sm" variant="ghost" onPress={onEdit}>Edit Permissions</Button>
+				<Button
+					size="sm"
+					variant="ghost"
+					onPress={onEdit}
+					className="neu-raised-sm neu-hover neu-active"
+				>
+					Edit Permissions
+				</Button>
 				{!role.isSystem && (
 					<Button
 						size="sm"
 						variant="ghost"
-						className="text-red-400"
+						className="text-red-600 neu-raised-sm neu-hover neu-active dark:text-red-400"
 						isDisabled={deleting}
 						onPress={handleDelete}
 					>
@@ -171,7 +195,7 @@ function RoleCard({
 				)}
 			</div>
 
-			{deleteError && <p className="mt-2 text-xs text-red-300">{deleteError}</p>}
+			{deleteError && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{deleteError}</p>}
 		</div>
 	);
 }
@@ -194,6 +218,9 @@ function CreateRoleDrawer({
 		resolver: zodResolver(createRoleSchema),
 		defaultValues: { name: '', description: '', permissions: [] },
 	});
+
+	// useWatch avoids the React Compiler warning that `form.watch` triggers.
+	const selectedPerms = useWatch({ control: form.control, name: 'permissions' }) ?? [];
 
 	const onSubmit = async (values: CreateRoleForm) => {
 		setSubmitting(true);
@@ -221,75 +248,113 @@ function CreateRoleDrawer({
 	};
 
 	return (
-		<Drawer isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">New Custom Role</h3>
+		<Drawer>
+			<Drawer.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
+				<Drawer.Container>
+					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+						<Drawer.CloseTrigger />
+						<Drawer.Header>
+							<Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+								New Custom Role
+							</Drawer.Heading>
+						</Drawer.Header>
+						<Drawer.Body>
+							<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+								<div className="flex flex-col gap-1.5">
+									<Label htmlFor="role-name" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+										Name
+									</Label>
+									<Input
+										id="role-name"
+										placeholder="auditor"
+										isInvalid={!!form.formState.errors.name}
+										errorMessage={form.formState.errors.name?.message}
+										className="neu-pressed"
+										{...form.register('name')}
+									/>
+								</div>
 
-				<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-					<div>
-						<label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Name</label>
-						<Input
-							placeholder="auditor"
-							isInvalid={!!form.formState.errors.name}
-							errorMessage={form.formState.errors.name?.message}
-							{...form.register('name')}
-						/>
-					</div>
+								<div className="flex flex-col gap-1.5">
+									<Label htmlFor="role-desc" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+										Description
+									</Label>
+									<Input
+										id="role-desc"
+										placeholder="Read-only compliance auditor"
+										isInvalid={!!form.formState.errors.description}
+										errorMessage={form.formState.errors.description?.message}
+										className="neu-pressed"
+										{...form.register('description')}
+									/>
+								</div>
 
-					<div>
-						<label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Description</label>
-						<Input
-							placeholder="Read-only compliance auditor"
-							isInvalid={!!form.formState.errors.description}
-							errorMessage={form.formState.errors.description?.message}
-							{...form.register('description')}
-						/>
-					</div>
+								<div>
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+										Permissions ({selectedPerms.length} selected)
+									</Label>
+									<div className="mt-1 max-h-60 overflow-auto rounded border border-slate-300 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/60">
+										{ALL_PERMISSIONS.map((p) => {
+											const isSelected = selectedPerms.includes(p);
+											return (
+												<Checkbox
+													key={p}
+													value={p}
+													isSelected={isSelected}
+													onChange={() => {
+														const current = form.getValues('permissions');
+														form.setValue(
+															'permissions',
+															isSelected ? current.filter((x) => x !== p) : [...current, p],
+														);
+													}}
+												>
+													<Checkbox.Content>
+														<Checkbox.Control>
+															<Checkbox.Indicator />
+														</Checkbox.Control>
+														<span className="font-mono text-xs">{p}</span>
+													</Checkbox.Content>
+												</Checkbox>
+											);
+										})}
+									</div>
+									{form.formState.errors.permissions && (
+										<p className="mt-1 text-xs text-red-600 dark:text-red-300">{form.formState.errors.permissions.message}</p>
+									)}
+								</div>
 
-					<div>
-						<label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
-							Permissions ({form.watch('permissions').length} selected)
-						</label>
-						<div className="mt-1 max-h-60 overflow-auto rounded border border-slate-800 bg-slate-900/60 p-2">
-							{ALL_PERMISSIONS.map((p) => {
-								const selected = form.watch('permissions').includes(p);
-								return (
-									<label key={p} className="flex items-center gap-2 py-0.5 text-xs text-slate-200">
-										<input
-											type="checkbox"
-											checked={selected}
-											onChange={() => {
-												const current = form.getValues('permissions');
-												form.setValue(
-													'permissions',
-													selected ? current.filter((x) => x !== p) : [...current, p],
-												);
-											}}
-										/>
-										<span className="font-mono">{p}</span>
-									</label>
-								);
-							})}
-						</div>
-						{form.formState.errors.permissions && (
-							<p className="mt-1 text-xs text-red-300">{form.formState.errors.permissions.message}</p>
-						)}
-					</div>
-
-					{submitError && (
-						<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
-							{submitError}
-						</div>
-					)}
-
-					<div className="flex justify-end gap-2">
-						<Button type="button" size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
-						<Button type="submit" size="sm" variant="primary" disabled={submitting}>
-							{submitting ? <Spinner size="sm" /> : 'Create'}
-						</Button>
-					</div>
-				</form>
-			</div>
+								{submitError && (
+									<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
+										{submitError}
+									</div>
+								)}
+							</form>
+						</Drawer.Body>
+						<Drawer.Footer>
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								onPress={onClose}
+								isDisabled={submitting}
+								className="neu-raised-sm neu-hover neu-active"
+							>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								size="sm"
+								variant="primary"
+								isDisabled={submitting}
+								onPress={form.handleSubmit(onSubmit)}
+								className="neu-raised-sm neu-hover neu-active"
+							>
+								{submitting ? <Spinner size="sm" /> : 'Create'}
+							</Button>
+						</Drawer.Footer>
+					</Drawer.Dialog>
+				</Drawer.Container>
+			</Drawer.Backdrop>
 		</Drawer>
 	);
 }
@@ -340,61 +405,78 @@ function EditRoleDrawer({
 	};
 
 	return (
-		<Drawer isOpen={true} onOpenChange={(o) => !o && onClose()}>
-			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">
-					{role.name} — Permissions
-				</h3>
+		<Drawer>
+			<Drawer.Backdrop isOpen={true} onOpenChange={(o) => !o && onClose()}>
+				<Drawer.Container>
+					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+						<Drawer.CloseTrigger />
+						<Drawer.Header>
+							<Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+								{role.name} — Permissions
+							</Drawer.Heading>
+						</Drawer.Header>
+						<Drawer.Body>
+							<div className="max-h-96 overflow-auto rounded border border-slate-300 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/60">
+								{ALL_PERMISSIONS.map((p) => {
+									const has = selected.has(p);
+									const wasOriginal = originalSet.has(p);
+									const changed = wasOriginal !== has;
+									return (
+										<Checkbox
+											key={p}
+											isSelected={has}
+											onChange={() => togglePerm(p)}
+											className={
+												changed
+													? (has
+														? 'text-emerald-700 dark:text-emerald-300'
+														: 'text-red-700 line-through dark:text-red-300')
+													: 'text-slate-800 dark:text-slate-200'
+											}
+										>
+											<Checkbox.Content>
+												<Checkbox.Control>
+													<Checkbox.Indicator />
+												</Checkbox.Control>
+												<span className="font-mono text-xs">{p}</span>
+												{changed && (
+													<span className="ml-auto text-[9px] uppercase tracking-widest">
+														{has ? 'added' : 'removed'}
+													</span>
+												)}
+											</Checkbox.Content>
+										</Checkbox>
+									);
+								})}
+							</div>
 
-				<div className="max-h-96 overflow-auto rounded border border-slate-800 bg-slate-900/60 p-2">
-					{ALL_PERMISSIONS.map((p) => {
-						const has = selected.has(p);
-						const wasOriginal = originalSet.has(p);
-						const changed = wasOriginal !== has;
-						return (
-							<label
-								key={p}
-								className={`flex items-center gap-2 py-0.5 text-xs ${
-									changed ? (has ? 'text-emerald-300' : 'text-red-300 line-through') : 'text-slate-200'
-								}`}
-							>
-								<input type="checkbox" checked={has} onChange={() => togglePerm(p)} />
-								<span className="font-mono">{p}</span>
-								{changed && (
-									<span className="ml-auto text-[9px] uppercase tracking-widest">
-										{has ? 'added' : 'removed'}
-									</span>
-								)}
-							</label>
-						);
-					})}
-				</div>
+							{affectedUsers !== null && affectedUsers > 0 && (
+								<div className="mt-3 rounded border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-700 dark:text-amber-300">
+									Permissions updated. <strong>{affectedUsers}</strong> user(s) held this role and
+									their <code>perms_version</code> was bumped — their next request will trigger a refresh.
+								</div>
+							)}
 
-				{affectedUsers !== null && affectedUsers > 0 && (
-					<div className="rounded border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-300">
-						Permissions updated. <strong>{affectedUsers}</strong> user(s) held this role and
-						their <code>perms_version</code> was bumped — their next request will trigger a refresh.
-					</div>
-				)}
-
-				{error && (
-					<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
-						{error}
-					</div>
-				)}
-
-				<div className="flex justify-end gap-2">
-					<Button size="sm" variant="ghost" onPress={onClose} disabled={saving}>Close</Button>
-					<Button size="sm" variant="primary" onPress={save} disabled={saving}>
-						{saving ? <Spinner size="sm" /> : 'Save Changes'}
-					</Button>
-				</div>
-			</div>
+							{error && (
+								<div className="mt-3 rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
+									{error}
+								</div>
+							)}
+						</Drawer.Body>
+						<Drawer.Footer>
+							<Button size="sm" variant="ghost" onPress={onClose} isDisabled={saving} className="neu-raised-sm neu-hover neu-active">Close</Button>
+							<Button size="sm" variant="primary" onPress={save} isDisabled={saving} className="neu-raised-sm neu-hover neu-active">
+								{saving ? <Spinner size="sm" /> : 'Save Changes'}
+							</Button>
+						</Drawer.Footer>
+					</Drawer.Dialog>
+				</Drawer.Container>
+			</Drawer.Backdrop>
 		</Drawer>
 	);
 }
 
-// Cascade-revoke modal (unchanged from previous — included for completeness)
+// Cascade-revoke modal (kept for future cascade wiring).
 function CascadeRevokeModal({
 	roleName,
 	permission,
@@ -429,33 +511,34 @@ function CascadeRevokeModal({
 		<Modal>
 			<Modal.Backdrop isOpen={true} onOpenChange={() => onClose()}>
 				<Modal.Container>
-					<Modal.Dialog className="sm:max-w-lg">
+					<Modal.Dialog className="sm:max-w-lg neu-raised rounded-2xl">
 						<Modal.CloseTrigger />
 						<Modal.Header>
-							<Modal.Heading className="font-mono text-sm uppercase tracking-widest">
+							<Modal.Heading className="font-mono text-sm uppercase tracking-widest text-slate-800 dark:text-slate-100">
 								Cascade Revoke — {permission}
 							</Modal.Heading>
 						</Modal.Header>
 						<Modal.Body>
-							<p className="text-xs text-slate-400">
+							<p className="text-xs text-slate-600 dark:text-slate-400">
 								Paste UUIDs of users who held <strong>{roleName}</strong> and had a per-user grant of{' '}
 								<code>{permission}</code>. Max 100 per batch.
 							</p>
-							<textarea
-								className="mt-2 h-32 w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-xs text-slate-200"
+							<TextArea
+								aria-label="User UUIDs"
+								className="mt-2 h-32 w-full neu-pressed font-mono text-xs"
 								placeholder="paste UUIDs separated by newlines or commas"
 								value={userIds}
 								onChange={(e) => setUserIds(e.target.value)}
 							/>
-							{error && <p className="text-xs text-red-300">{error}</p>}
-							{result !== null && <p className="text-xs text-emerald-300">✓ Revoked from {result} user(s).</p>}
+							{error && <p className="text-xs text-red-600 dark:text-red-300">{error}</p>}
+							{result !== null && <p className="text-xs text-emerald-700 dark:text-emerald-300">✓ Revoked from {result} user(s).</p>}
 						</Modal.Body>
 						<Modal.Footer>
-							<Button size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
-							<Button size="sm" variant="primary" onPress={submit} disabled={submitting || result !== null}>
+							<Button size="sm" variant="ghost" onPress={onClose} isDisabled={submitting} className="neu-raised-sm neu-hover neu-active">Cancel</Button>
+							<Button size="sm" variant="primary" onPress={submit} isDisabled={submitting || result !== null} className="neu-raised-sm neu-hover neu-active">
 								{submitting ? <Spinner size="sm" /> : `Revoke from ${userIds.split(/[\s,]+/).filter(Boolean).length} user(s)`}
 							</Button>
-							{result !== null && <Button size="sm" variant="secondary" onPress={onClose}>Done</Button>}
+							{result !== null && <Button size="sm" variant="secondary" onPress={onClose} className="neu-raised-sm neu-hover neu-active">Done</Button>}
 						</Modal.Footer>
 					</Modal.Dialog>
 				</Modal.Container>

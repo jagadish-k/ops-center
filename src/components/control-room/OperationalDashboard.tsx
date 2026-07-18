@@ -80,19 +80,19 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 	};
 
 	return (
-		<div className="flex h-screen flex-col bg-slate-950 text-slate-100">
+		<div className="flex h-screen flex-col bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
 			{/* ── Header bar ─────────────────────────────────────────────── */}
-			<header className="flex items-center gap-4 border-b border-slate-800 bg-slate-900/60 px-4 py-2.5">
+			<header className="flex items-center gap-4 border-b border-slate-300 bg-white/80 px-4 py-2.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/60">
 				<div className="flex items-baseline gap-2">
-					<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">Stadium Ops</h1>
-					<span className="font-mono text-[10px] uppercase tracking-widest text-blue-400">// Command Room</span>
+					<h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Stadium Ops</h1>
+					<span className="font-mono text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400">// Command Room</span>
 				</div>
 
-				<div className="mx-2 hidden h-5 w-px bg-slate-800 sm:block" />
+				<div className="mx-2 hidden h-5 w-px bg-slate-300 sm:block dark:bg-slate-800" />
 
 				<div className="hidden items-center gap-2 sm:flex">
 					<span className={`h-2 w-2 rounded-full ${connectionHealthy ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">{tenantName}</span>
+					<span className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">{tenantName}</span>
 				</div>
 
 				<div className="ml-auto flex items-center gap-2">
@@ -111,7 +111,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 							size="sm"
 							variant="secondary"
 							onPress={() => setAuditOpen(true)}
-							className="font-bold uppercase tracking-widest">
+							className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest">
 							Compliance Log
 						</Button>
 					)}
@@ -120,22 +120,24 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 						size="sm"
 						variant="ghost"
 						onPress={() => startTabTour(activeTab)}
-						className="font-bold uppercase tracking-widest">
+						className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest">
 						? Help
 					</Button>
-					<button
-						onClick={cycleTheme}
+					<Button
+						size="sm"
+						variant="ghost"
+						onPress={cycleTheme}
 						title={`Theme: ${THEME_LABELS[theme]} (click to cycle)`}
-						className="rounded-lg border border-slate-700 bg-slate-800/60 px-2 py-1 text-xs text-slate-300 transition-colors hover:bg-slate-700/60"
+						className="neu-raised-sm neu-hover neu-active"
 					>
 						<span className="mr-1">{THEME_ICONS[theme]}</span>
 						<span className="font-mono text-[9px] uppercase tracking-widest">{THEME_LABELS[theme]}</span>
-					</button>
+					</Button>
 					<Button
 						size="sm"
 						variant="secondary"
 						onPress={signOut}
-						className="font-bold uppercase tracking-widest">
+						className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest">
 						Sign Out
 					</Button>
 				</div>
@@ -143,8 +145,8 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 
 			{/* ── Operator identity (footprint) ─────────────────────────── */}
 			{(phone || fullName) && (
-				<div className="border-b border-slate-800/60 bg-slate-950 px-4 py-1">
-					<p className="font-mono text-[9px] uppercase tracking-widest text-slate-600">
+				<div className="border-b border-slate-300 bg-slate-50 px-4 py-1 dark:border-slate-800/60 dark:bg-slate-950">
+					<p className="font-mono text-[9px] uppercase tracking-widest text-slate-500 dark:text-slate-600">
 						Operator {fullName ?? phone} · {isSuperadmin ? 'superadmin' : 'member'}
 						{claims?.tenant_id ? ` · ${claims.tenant_id}` : ''}
 					</p>
@@ -152,7 +154,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			)}
 
 			{/* ── Tab nav (M9.5) ────────────────────────────────────────── */}
-			<nav data-tour="tab-nav" className="border-b border-slate-800 bg-slate-900/30 px-4">
+			<nav data-tour="tab-nav" className="border-b border-slate-300 bg-white/60 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/30">
 				<Tabs
 					selectedKey={activeTab}
 					onSelectionChange={(k) => setActiveTab(k as TabId)}
@@ -173,8 +175,8 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 			<main className="min-h-0 flex-1 overflow-hidden">
 				{/* Tour prompt banner — shown once per tab until dismissed */}
 				{tour.showBanner && (
-					<div className="flex items-center gap-3 border-b border-blue-800/40 bg-blue-950/30 px-4 py-2">
-						<span className="text-xs text-blue-300">
+					<div className="flex items-center gap-3 border-b border-blue-300 bg-blue-50 px-4 py-2 dark:border-blue-800/40 dark:bg-blue-950/30">
+						<span className="text-xs text-blue-700 dark:text-blue-300">
 							First time on the <strong className="capitalize">{activeTab}</strong> tab?
 						</span>
 						<button
@@ -185,7 +187,7 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 						</button>
 						<button
 							onClick={tour.dismissBanner}
-							className="ml-auto text-[10px] text-slate-500 hover:text-slate-300"
+							className="ml-auto text-[10px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
 						>
 							✕ Dismiss
 						</button>
@@ -203,14 +205,14 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 							/>
 							</section>
 							<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
-								<div data-tour="incident-queue" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+								<div data-tour="incident-queue" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
 									<IncidentQueue
 										incidents={incidents}
 										selectedId={selectedId}
 										onSelect={handleSelect}
 									/>
 								</div>
-								<div data-tour="incident-inspector" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+								<div data-tour="incident-inspector" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
 									<IncidentInspector incident={selected} />
 								</div>
 							</aside>

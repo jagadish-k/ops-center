@@ -15,9 +15,20 @@
  * Requires the `staff:manage` permission (admin + superadmin).
  */
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Drawer, Spinner, Checkbox, CheckboxGroup, Label } from '@heroui/react';
+import {
+	Button,
+	Input,
+	Drawer,
+	Spinner,
+	Checkbox,
+	CheckboxGroup,
+	Label,
+	Select,
+	ListBox,
+	Table,
+} from '@heroui/react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOptimisticList } from '@/hooks/useOptimisticList';
 import {
@@ -58,70 +69,93 @@ export function TeamTab() {
 		initial: null,
 	});
 
+	const count = users?.length ?? 0;
+
 	return (
 		<div className="flex h-full flex-col gap-4 p-4">
 			<header className="flex items-center gap-3">
-				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">Team</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-					{users?.length ?? 0} member{(users?.length ?? 0) === 1 ? '' : 's'}
+				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Team</h2>
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
+					{count} member{count === 1 ? '' : 's'}
 				</span>
 				<div className="ml-auto" data-tour="team-add">
-					<Button size="sm" variant="secondary" onPress={() => setCreateOpen(true)}>
+					<Button
+						size="sm"
+						variant="secondary"
+						onPress={() => setCreateOpen(true)}
+						className="neu-raised-sm neu-hover neu-active"
+					>
 						+ Add Staff
 					</Button>
 				</div>
 			</header>
 
 			{error && (
-				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300">
+				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300 dark:text-red-300">
 					{error}
-					<Button size="sm" variant="ghost" onPress={() => void reload()} className="ml-3">Retry</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						onPress={() => void reload()}
+						className="ml-3 neu-raised-sm neu-hover neu-active"
+					>
+						Retry
+					</Button>
 				</div>
 			)}
 
 			{loading && users === null ? (
 				<TableSkeleton rows={5} cols={5} />
 			) : (
-				<div data-tour="team-table" className="overflow-auto rounded border border-slate-800 bg-slate-900/40">
-					<table className="w-full text-left text-xs">
-						<thead className="border-b border-slate-800 bg-slate-900/60 font-mono uppercase tracking-widest text-slate-500">
-							<tr>
-								<th className="px-3 py-2">Phone</th>
-								<th className="px-3 py-2">Name</th>
-								<th className="px-3 py-2">Roles</th>
-								<th className="px-3 py-2">Status</th>
-								<th className="px-3 py-2 text-right">Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{users?.map((u) => (
-								<tr key={u.userId} className="border-b border-slate-800/60 hover:bg-slate-800/30">
-									<td className="px-3 py-2 font-mono text-slate-300">{u.phone}</td>
-									<td className="px-3 py-2 text-slate-100">{u.fullName}</td>
-									<td className="px-3 py-2">
-										<div className="flex flex-wrap gap-1">
-											{u.roles.map((r) => (
-												<span key={r} className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] uppercase text-slate-300">
-													{r}
-												</span>
-											))}
-										</div>
-									</td>
-									<td className="px-3 py-2">
-										{u.status === 'active' ? (
-											<span className="text-emerald-400">● active</span>
-										) : (
-											<span className="text-red-400">● disabled</span>
-										)}
-									</td>
-									<td className="px-3 py-2 text-right">
-										<Button size="sm" variant="ghost" onPress={() => setEditingUser(u)}>Edit</Button>
-										<Button size="sm" variant="ghost" onPress={() => setPermsUser(u)}>Perms</Button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
+				<div data-tour="team-table" className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+					<Table>
+						<Table.ScrollContainer>
+							<Table.Content aria-label="Team members" className="min-w-[640px]">
+								<Table.Header className="bg-slate-100 dark:bg-slate-900/60">
+									<Table.Column isRowHeader className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Phone</Table.Column>
+									<Table.Column className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Name</Table.Column>
+									<Table.Column className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Roles</Table.Column>
+									<Table.Column className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Status</Table.Column>
+									<Table.Column className="text-end font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Actions</Table.Column>
+								</Table.Header>
+								<Table.Body items={users ?? []} renderEmptyState={() => (
+									<div className="p-8 text-center text-xs text-slate-500 dark:text-slate-500">
+										No team members yet.
+									</div>
+								)}>
+									{(u) => (
+										<Table.Row id={u.userId} className="hover:bg-slate-100/70 dark:hover:bg-slate-800/30">
+											<Table.Cell className="font-mono text-slate-700 dark:text-slate-300">{u.phone}</Table.Cell>
+											<Table.Cell className="text-slate-800 dark:text-slate-100">{u.fullName}</Table.Cell>
+											<Table.Cell>
+												<div className="flex flex-wrap gap-1">
+													{u.roles.map((r) => (
+														<span
+															key={r}
+															className="rounded bg-slate-200 px-2 py-0.5 font-mono text-[10px] uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+														>
+															{r}
+														</span>
+													))}
+												</div>
+											</Table.Cell>
+											<Table.Cell>
+												{u.status === 'active' ? (
+													<span className="text-emerald-600 dark:text-emerald-400">● active</span>
+												) : (
+													<span className="text-red-600 dark:text-red-400">● disabled</span>
+												)}
+											</Table.Cell>
+											<Table.Cell className="text-end">
+												<Button size="sm" variant="ghost" onPress={() => setEditingUser(u)} className="neu-raised-sm neu-hover neu-active">Edit</Button>{' '}
+												<Button size="sm" variant="ghost" onPress={() => setPermsUser(u)} className="neu-raised-sm neu-hover neu-active">Perms</Button>
+											</Table.Cell>
+										</Table.Row>
+									)}
+								</Table.Body>
+							</Table.Content>
+						</Table.ScrollContainer>
+					</Table>
 				</div>
 			)}
 
@@ -185,6 +219,11 @@ function CreateStaffDrawer({
 		},
 	});
 
+	// useWatch avoids the React Compiler warning that `form.watch` triggers.
+	const rolesValue = useWatch({ control: form.control, name: 'roles' }) ?? [];
+	const specialtyValue = useWatch({ control: form.control, name: 'specialty' }) ?? 'security';
+	const zoneValue = useWatch({ control: form.control, name: 'assignedZone' }) ?? 'ZONE-A';
+
 	const onSubmit = async (values: CreateStaffForm) => {
 		setSubmitting(true);
 		setSubmitError(null);
@@ -219,95 +258,153 @@ function CreateStaffDrawer({
 	const assignableRoles = isSuperadmin ? SYSTEM_ROLES : ['staff', 'manager'];
 
 	return (
-		<Drawer isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">Add Staff Member</h3>
+		<Drawer>
+			<Drawer.Backdrop isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
+				<Drawer.Container>
+					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+						<Drawer.CloseTrigger />
+						<Drawer.Header>
+							<Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+								Add Staff Member
+							</Drawer.Heading>
+						</Drawer.Header>
+						<Drawer.Body>
+							<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+								<div className="flex flex-col gap-1.5">
+									<Label htmlFor="phone" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+										Phone (E.164)
+									</Label>
+									<Input
+										id="phone"
+										placeholder="+14155550000"
+										isInvalid={!!form.formState.errors.phone}
+										errorMessage={form.formState.errors.phone?.message}
+										className="neu-pressed"
+										{...form.register('phone')}
+									/>
+								</div>
 
-				<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-					<div>
-						<Label htmlFor="phone" className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
-							Phone (E.164)
-						</Label>
-						<Input
-							id="phone"
-							placeholder="+14155550000"
-							isInvalid={!!form.formState.errors.phone}
-							errorMessage={form.formState.errors.phone?.message}
-							{...form.register('phone')}
-						/>
-					</div>
+								<div className="flex flex-col gap-1.5">
+									<Label htmlFor="fullName" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+										Full Name
+									</Label>
+									<Input
+										id="fullName"
+										placeholder="Jane Doe"
+										isInvalid={!!form.formState.errors.fullName}
+										errorMessage={form.formState.errors.fullName?.message}
+										className="neu-pressed"
+										{...form.register('fullName')}
+									/>
+								</div>
 
-					<div>
-						<Label htmlFor="fullName" className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
-							Full Name
-						</Label>
-						<Input
-							id="fullName"
-							placeholder="Jane Doe"
-							isInvalid={!!form.formState.errors.fullName}
-							errorMessage={form.formState.errors.fullName?.message}
-							{...form.register('fullName')}
-						/>
-					</div>
+								<div className="grid grid-cols-2 gap-3">
+									<div className="flex flex-col gap-1.5">
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Specialty</Label>
+										<Select
+											className="w-full"
+											selectedKey={specialtyValue}
+											onSelectionChange={(k) => form.setValue('specialty', k as CreateStaffForm['specialty'])}
+										>
+											<Select.Trigger className="neu-pressed">
+												<Select.Value />
+												<Select.Indicator />
+											</Select.Trigger>
+											<Select.Popover>
+												<ListBox>
+													{STAFF_SPECIALTIES.map((s) => (
+														<ListBox.Item key={s} id={s} textValue={s}>
+															{s}
+															<ListBox.ItemIndicator />
+														</ListBox.Item>
+													))}
+												</ListBox>
+											</Select.Popover>
+										</Select>
+									</div>
+									<div className="flex flex-col gap-1.5">
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Zone</Label>
+										<Select
+											className="w-full"
+											selectedKey={zoneValue}
+											onSelectionChange={(k) => form.setValue('assignedZone', k as CreateStaffForm['assignedZone'])}
+										>
+											<Select.Trigger className="neu-pressed">
+												<Select.Value />
+												<Select.Indicator />
+											</Select.Trigger>
+											<Select.Popover>
+												<ListBox>
+													{STAFF_ZONES.map((z) => (
+														<ListBox.Item key={z} id={z} textValue={z}>
+															{z}
+															<ListBox.ItemIndicator />
+														</ListBox.Item>
+													))}
+												</ListBox>
+											</Select.Popover>
+										</Select>
+									</div>
+								</div>
 
-					<div className="grid grid-cols-2 gap-3">
-						<div>
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Specialty</Label>
-							<select
-								className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
-								{...form.register('specialty')}
+								<div>
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Roles</Label>
+									<CheckboxGroup
+										value={rolesValue}
+										onChange={(v) => form.setValue('roles', v)}
+									>
+										<div className="mt-1 flex flex-col gap-1">
+											{assignableRoles.map((r) => (
+												<Checkbox key={r} value={r}>
+													<Checkbox.Content>
+														<Checkbox.Control>
+															<Checkbox.Indicator />
+														</Checkbox.Control>
+														{r}
+													</Checkbox.Content>
+												</Checkbox>
+											))}
+										</div>
+									</CheckboxGroup>
+									{!isSuperadmin && (
+										<p className="mt-1 text-[10px] text-slate-500 dark:text-slate-500">
+											Only superadmins can assign the admin role.
+										</p>
+									)}
+								</div>
+
+								{submitError && (
+									<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
+										{submitError}
+									</div>
+								)}
+							</form>
+						</Drawer.Body>
+						<Drawer.Footer>
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								onPress={onClose}
+								isDisabled={submitting}
+								className="neu-raised-sm neu-hover neu-active"
 							>
-								{STAFF_SPECIALTIES.map((s) => (
-									<option key={s} value={s}>{s}</option>
-								))}
-							</select>
-						</div>
-						<div>
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Zone</Label>
-							<select
-								className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
-								{...form.register('assignedZone')}
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								size="sm"
+								variant="primary"
+								isDisabled={submitting}
+								onPress={form.handleSubmit(onSubmit)}
+								className="neu-raised-sm neu-hover neu-active"
 							>
-								{STAFF_ZONES.map((z) => (
-									<option key={z} value={z}>{z}</option>
-								))}
-							</select>
-						</div>
-					</div>
-
-					<div>
-						<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Roles</Label>
-						<CheckboxGroup
-							value={form.watch('roles')}
-							onValueChange={(v) => form.setValue('roles', v)}
-						>
-							<div className="flex flex-col gap-1">
-								{assignableRoles.map((r) => (
-									<Checkbox key={r} value={r}>{r}</Checkbox>
-								))}
-							</div>
-						</CheckboxGroup>
-						{!isSuperadmin && (
-							<p className="mt-1 text-[10px] text-slate-500">
-								Only superadmins can assign the admin role.
-							</p>
-						)}
-					</div>
-
-					{submitError && (
-						<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
-							{submitError}
-						</div>
-					)}
-
-					<div className="flex justify-end gap-2 pt-2">
-						<Button type="button" size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
-						<Button type="submit" size="sm" variant="primary" disabled={submitting}>
-							{submitting ? <Spinner size="sm" /> : 'Create'}
-						</Button>
-					</div>
-				</form>
-			</div>
+								{submitting ? <Spinner size="sm" /> : 'Create'}
+							</Button>
+						</Drawer.Footer>
+					</Drawer.Dialog>
+				</Drawer.Container>
+			</Drawer.Backdrop>
 		</Drawer>
 	);
 }
@@ -379,65 +476,94 @@ function EditUserDrawer({
 	const currentRoles = user.roles;
 
 	return (
-		<Drawer isOpen={true} onOpenChange={(o) => !o && onClose()}>
-			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">Edit User</h3>
+		<Drawer>
+			<Drawer.Backdrop isOpen={true} onOpenChange={(o) => !o && onClose()}>
+				<Drawer.Container>
+					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+						<Drawer.CloseTrigger />
+						<Drawer.Header>
+							<Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+								Edit User
+							</Drawer.Heading>
+						</Drawer.Header>
+						<Drawer.Body>
+							<div className="flex flex-col gap-4">
+								<div className="flex flex-col gap-1.5">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Full Name</Label>
+									<Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="neu-pressed" />
+								</div>
 
-				<div>
-					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Full Name</Label>
-					<Input value={fullName} onValueChange={setFullName} />
-				</div>
+								<div className="flex flex-col gap-1.5">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Status</Label>
+									<Select
+										className="w-full"
+										selectedKey={status}
+										onSelectionChange={(k) => setStatus(k as 'active' | 'disabled')}
+									>
+										<Select.Trigger className="neu-pressed">
+											<Select.Value />
+											<Select.Indicator />
+										</Select.Trigger>
+										<Select.Popover>
+											<ListBox>
+												<ListBox.Item id="active" textValue="active">
+													active
+													<ListBox.ItemIndicator />
+												</ListBox.Item>
+												<ListBox.Item id="disabled" textValue="disabled">
+													disabled
+													<ListBox.ItemIndicator />
+												</ListBox.Item>
+											</ListBox>
+										</Select.Popover>
+									</Select>
+								</div>
 
-				<div>
-					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Status</Label>
-					<select
-						className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
-						value={status}
-						onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}
-					>
-						<option value="active">active</option>
-						<option value="disabled">disabled</option>
-					</select>
-				</div>
+								<div>
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Roles in this tenant</Label>
+									<div className="mt-1 flex flex-col gap-1">
+										{assignableRoles.map((r) => {
+											const has = currentRoles.includes(r);
+											return (
+												<Checkbox
+													key={r}
+													isSelected={has}
+													isDisabled={submitting}
+													onChange={() => void toggleRole(r, has)}
+												>
+													<Checkbox.Content>
+														<Checkbox.Control>
+															<Checkbox.Indicator />
+														</Checkbox.Control>
+														{r}
+													</Checkbox.Content>
+												</Checkbox>
+											);
+										})}
+									</div>
+									{!isSuperadmin && (
+										<p className="mt-1 text-[10px] text-slate-500 dark:text-slate-500">
+											Only superadmins can promote/demote the admin role.
+										</p>
+									)}
+								</div>
 
-				<div>
-					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Roles in this tenant</Label>
-					<div className="mt-1 flex flex-col gap-1">
-						{assignableRoles.map((r) => {
-							const has = currentRoles.includes(r);
-							return (
-								<label key={r} className="flex items-center gap-2 text-sm text-slate-200">
-									<input
-										type="checkbox"
-										checked={has}
-										disabled={submitting}
-										onChange={() => void toggleRole(r, has)}
-									/>
-									<span>{r}</span>
-								</label>
-							);
-						})}
-					</div>
-					{!isSuperadmin && (
-						<p className="mt-1 text-[10px] text-slate-500">
-							Only superadmins can promote/demote the admin role.
-						</p>
-					)}
-				</div>
-
-				{error && (
-					<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
-						{error}
-					</div>
-				)}
-
-				<div className="flex justify-end gap-2 pt-2">
-					<Button size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Close</Button>
-					<Button size="sm" variant="primary" onPress={saveProfile} disabled={submitting}>
-						{submitting ? <Spinner size="sm" /> : 'Save Profile'}
-					</Button>
-				</div>
-			</div>
+								{error && (
+									<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
+										{error}
+									</div>
+								)}
+							</div>
+						</Drawer.Body>
+						<Drawer.Footer>
+							<Button size="sm" variant="ghost" onPress={onClose} isDisabled={submitting} className="neu-raised-sm neu-hover neu-active">Close</Button>
+							<Button size="sm" variant="primary" onPress={saveProfile} isDisabled={submitting} className="neu-raised-sm neu-hover neu-active">
+								{submitting ? <Spinner size="sm" /> : 'Save Profile'}
+							</Button>
+						</Drawer.Footer>
+					</Drawer.Dialog>
+				</Drawer.Container>
+			</Drawer.Backdrop>
 		</Drawer>
 	);
 }
@@ -475,44 +601,56 @@ function UserPermissionsDrawer({
 	};
 
 	return (
-		<Drawer isOpen={true} onOpenChange={(o) => !o && onClose()}>
-			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">
-					Grants — {user.fullName}
-				</h3>
-				<p className="text-xs text-slate-400">
-					Per-user permission grants (ADR-0011 P1). Additive only — they grant
-					capabilities on top of the user's role. Use sparingly for one-off exceptions.
-				</p>
+		<Drawer>
+			<Drawer.Backdrop isOpen={true} onOpenChange={(o) => !o && onClose()}>
+				<Drawer.Container>
+					<Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+						<Drawer.CloseTrigger />
+						<Drawer.Header>
+							<Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
+								Grants — {user.fullName}
+							</Drawer.Heading>
+						</Drawer.Header>
+						<Drawer.Body>
+							<p className="text-xs text-slate-600 dark:text-slate-400">
+								Per-user permission grants (ADR-0011 P1). Additive only — they grant
+								capabilities on top of the user&apos;s role. Use sparingly for one-off exceptions.
+							</p>
 
-				<div className="flex flex-col gap-1">
-					{ALL_PERMISSIONS.map((p) => {
-						const has = granted.has(p);
-						return (
-							<label key={p} className="flex items-center gap-2 text-sm text-slate-200">
-								<input
-									type="checkbox"
-									checked={has}
-									disabled={busy !== null}
-									onChange={() => void toggle(p)}
-								/>
-								<span className="font-mono text-xs">{p}</span>
-								{busy === p && <Spinner size="sm" />}
-							</label>
-						);
-					})}
-				</div>
+							<div className="mt-3 flex flex-col gap-1">
+								{ALL_PERMISSIONS.map((p) => {
+									const has = granted.has(p);
+									return (
+										<Checkbox
+											key={p}
+											isSelected={has}
+											isDisabled={busy !== null}
+											onChange={() => void toggle(p)}
+										>
+											<Checkbox.Content>
+												<Checkbox.Control>
+													<Checkbox.Indicator />
+												</Checkbox.Control>
+												<span className="font-mono text-xs">{p}</span>
+												{busy === p && <Spinner size="sm" />}
+											</Checkbox.Content>
+										</Checkbox>
+									);
+								})}
+							</div>
 
-				{error && (
-					<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
-						{error}
-					</div>
-				)}
-
-				<div className="flex justify-end pt-2">
-					<Button size="sm" variant="ghost" onPress={onClose}>Close</Button>
-				</div>
-			</div>
+							{error && (
+								<div className="rounded border border-red-500/40 bg-red-950/30 p-2 text-xs text-red-300">
+									{error}
+								</div>
+							)}
+						</Drawer.Body>
+						<Drawer.Footer>
+							<Button size="sm" variant="ghost" onPress={onClose} className="neu-raised-sm neu-hover neu-active">Close</Button>
+						</Drawer.Footer>
+					</Drawer.Dialog>
+				</Drawer.Container>
+			</Drawer.Backdrop>
 		</Drawer>
 	);
 }

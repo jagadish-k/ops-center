@@ -9,7 +9,7 @@
  * Submit button in the lower thumb zone for one-handed mobile operation.
  */
 import { useState, type FormEvent } from 'react';
-import { Input, Button, Spinner } from '@heroui/react';
+import { Input, Button, Spinner, Label } from '@heroui/react';
 import { useAuth, isApiError } from '@/context/AuthContext';
 
 type Step = 'phone' | 'code';
@@ -75,28 +75,28 @@ export function OtpGateway() {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 font-sans">
-			<div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+		<div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 font-sans dark:bg-slate-950">
+			<div className="neu-raised w-full max-w-sm rounded-2xl border border-slate-300 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
 				{/* Header */}
 				<div className="mb-6 text-center">
-					<h1 className="text-xl font-black uppercase tracking-wider text-slate-100">
+					<h1 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
 						Stadium Ops
 					</h1>
-					<p className="mt-1 font-mono text-xs text-slate-400">
+					<p className="mt-1 font-mono text-xs text-slate-600 dark:text-slate-400">
 						{step === 'phone' ? 'Identity Verification' : 'Enter Access Code'}
 					</p>
 				</div>
 
 				{/* Error banner */}
 				{error && (
-					<div className="mb-4 rounded-lg border border-red-900/50 bg-red-950/30 p-2.5 text-center font-mono text-xs font-bold uppercase text-red-500">
+					<div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-2.5 text-center font-mono text-xs font-bold uppercase text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-500">
 						{error}
 					</div>
 				)}
 
 				{/* Dev mode code hint */}
 				{devCode && (
-					<div className="mb-4 rounded-lg border border-amber-900/50 bg-amber-950/30 p-2.5 text-center font-mono text-xs text-amber-400">
+					<div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-center font-mono text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
 						Dev mode — code: <span className="font-bold tracking-widest">{devCode}</span>
 					</div>
 				)}
@@ -104,11 +104,11 @@ export function OtpGateway() {
 				{step === 'phone' ? (
 					<form onSubmit={handlePhoneSubmit} className="space-y-4">
 						<div className="flex flex-col gap-2">
-							<label
+							<Label
 								htmlFor="phone-input"
-								className="font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
+								className="font-mono text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400">
 								E.164 Phone Number
-							</label>
+							</Label>
 							<Input
 								id="phone-input"
 								type="tel"
@@ -117,7 +117,7 @@ export function OtpGateway() {
 								onChange={(e) => setPhoneNumber(e.target.value)}
 								disabled={isPending}
 								fullWidth
-								className="rounded-xl border border-slate-800 bg-slate-950 font-mono text-sm text-slate-100 placeholder-slate-700 focus:border-blue-500"
+								className="neu-pressed rounded-xl border border-slate-300 bg-white font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-700"
 							/>
 						</div>
 						<Button
@@ -126,7 +126,7 @@ export function OtpGateway() {
 							size="lg"
 							isDisabled={isPending || !phoneNumber}
 							isPending={isPending}
-							className="font-bold uppercase tracking-widest">
+							className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest">
 							{({ isPending: pending }) => (
 								<>
 									{pending ? <Spinner color="current" size="sm" /> : null}
@@ -138,11 +138,11 @@ export function OtpGateway() {
 				) : (
 					<form onSubmit={handleCodeSubmit} className="space-y-4">
 						<div className="flex flex-col gap-2">
-							<label
+							<Label
 								htmlFor="code-input"
-								className="font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
+								className="font-mono text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400">
 								6-Digit Code
-							</label>
+							</Label>
 							<Input
 								id="code-input"
 								type="text"
@@ -153,7 +153,7 @@ export function OtpGateway() {
 								onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
 								disabled={isPending}
 								fullWidth
-								className="rounded-xl border border-slate-800 bg-slate-950 text-center font-mono text-lg tracking-widest text-slate-100 placeholder-slate-700 focus:border-blue-500"
+								className="neu-pressed rounded-xl border border-slate-300 bg-white text-center font-mono text-lg tracking-widest text-slate-800 placeholder-slate-400 focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-700"
 							/>
 						</div>
 						<Button
@@ -162,7 +162,7 @@ export function OtpGateway() {
 							size="lg"
 							isDisabled={isPending || code.length !== 6}
 							isPending={isPending}
-							className="font-bold uppercase tracking-widest">
+							className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest">
 							{({ isPending: pending }) => (
 								<>
 									{pending ? <Spinner color="current" size="sm" /> : null}
@@ -174,7 +174,7 @@ export function OtpGateway() {
 							type="button"
 							onClick={handleBack}
 							disabled={isPending}
-							className="w-full pt-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-30">
+							className="w-full pt-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-300">
 							← Back to phone
 						</button>
 					</form>

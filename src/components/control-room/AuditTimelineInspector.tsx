@@ -49,8 +49,11 @@ export function AuditTimelineInspector({ isOpen, onClose }: AuditTimelineInspect
 		}
 	}, []);
 
-	// Fetch when the drawer opens.
+	// Fetch when the drawer opens. Data-fetching on visibility change is a
+	// legitimate effect use-case (React docs:
+	// https://react.dev/learn/you-might-not-need-an-effect).
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		if (isOpen) void fetchAuditData();
 	}, [isOpen, fetchAuditData]);
 

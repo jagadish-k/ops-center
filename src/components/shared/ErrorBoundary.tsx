@@ -30,22 +30,22 @@ export function ErrorFallback({
 	return (
 		<div
 			role="alert"
-			className="flex flex-col items-center justify-center gap-3 rounded border border-red-500/40 bg-red-950/20 p-6 text-center"
+			className="flex flex-col items-center justify-center gap-3 rounded border border-red-500/40 bg-red-50 p-6 text-center dark:bg-red-950/20"
 		>
 			<div className="text-2xl">⚠️</div>
-			<h3 className="font-mono text-sm font-bold uppercase tracking-widest text-red-300">
+			<h3 className="font-mono text-sm font-bold uppercase tracking-widest text-red-700 dark:text-red-300">
 				{hint ?? 'Something broke'}
 			</h3>
-			<p className="max-w-md text-xs text-slate-400">
+			<p className="max-w-md text-xs text-slate-600 dark:text-slate-400">
 				{error.message || 'An unexpected error occurred while rendering this section.'}
 			</p>
 			{process.env.NODE_ENV !== 'production' && (
-				<details className="max-w-md text-left text-[10px] text-slate-500">
+				<details className="max-w-md text-left text-[10px] text-slate-500 dark:text-slate-500">
 					<summary className="cursor-pointer">Stack trace</summary>
 					<pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap">{error.stack}</pre>
 				</details>
 			)}
-			<Button size="sm" variant="secondary" onPress={resetErrorBoundary}>
+			<Button size="sm" variant="secondary" onPress={resetErrorBoundary} className="neu-raised-sm neu-hover neu-active">
 				{retryLabel}
 			</Button>
 		</div>

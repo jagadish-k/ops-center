@@ -196,15 +196,10 @@ export function useTabTourBanner(tabId: string): {
 	startTour: () => void;
 	dismissBanner: () => void;
 } {
-	const [showBanner, setShowBanner] = useState(false);
-
-	useEffect(() => {
-		// Show banner only if this tab hasn't been toured.
-		setShowBanner(!hasTabBeenToured(tabId));
-	}, [tabId]);
+	// Derive banner visibility from tabId — avoids setState-in-effect.
+	const showBanner = !hasTabBeenToured(tabId);
 
 	const startTour = useCallback(() => {
-		setShowBanner(false);
 		startTabTour(tabId);
 	}, [tabId]);
 
@@ -221,18 +216,17 @@ export function useTabTourBanner(tabId: string): {
 const FIELD_TOUR_KEY = 'stadiumops_field_tour_v3';
 
 export function useAutoFieldClientTour(shouldShow: boolean): void {
-	const [started, setStarted] = useState(false);
+	// Lazy initial state reads localStorage once on mount — no effect needed.
+	const [started, setStarted] = useState(() => {
+		try {
+			return localStorage.getItem(FIELD_TOUR_KEY) === 'true';
+		} catch {
+			return false;
+		}
+	});
 
 	useEffect(() => {
 		if (!shouldShow || started) return;
-		try {
-			if (localStorage.getItem(FIELD_TOUR_KEY) === 'true') {
-				setStarted(true);
-				return;
-			}
-		} catch {
-			// No-op.
-		}
 
 		const timer = setTimeout(() => {
 			const steps: DriveStep[] = [

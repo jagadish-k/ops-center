@@ -21,7 +21,7 @@ import { useState } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
-import { Button, Spinner, Drawer, Input, Label } from '@heroui/react';
+import { Button, Spinner, Drawer, Input, Label, TextArea } from '@heroui/react';
 import {
 	adminListPolicies,
 	adminCreatePolicy,
@@ -73,19 +73,19 @@ export function PoliciesTab() {
 	return (
 		<div className="flex h-full flex-col gap-3 p-4">
 			<header className="flex items-center gap-3">
-				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-100">Policies</h2>
-				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+				<h2 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">Policies</h2>
+				<span className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500">
 					{policies?.length ?? 0} polic{policies?.length === 1 ? 'y' : 'ies'}
 				</span>
 				<div className="ml-auto">
-					<Button size="sm" variant="secondary" onPress={() => setCreateOpen(true)}>+ New Policy</Button>
+					<Button size="sm" variant="secondary" onPress={() => setCreateOpen(true)} className="neu-raised-sm neu-hover neu-active">+ New Policy</Button>
 				</div>
 			</header>
 
 			{error && (
 				<div className="rounded border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300">
 					{error}
-					<Button size="sm" variant="ghost" onPress={() => void reload()} className="ml-3">Retry</Button>
+					<Button size="sm" variant="ghost" onPress={() => void reload()} className="ml-3 neu-raised-sm neu-hover neu-active">Retry</Button>
 				</div>
 			)}
 
@@ -103,19 +103,19 @@ export function PoliciesTab() {
 									onClick={() => setSelected(p)}
 								>
 									<div className="flex items-center gap-2">
-										<span className="font-mono text-sm font-bold text-slate-100">{p.name}</span>
+										<span className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100">{p.name}</span>
 										{p.isSystem && (
-											<span className="rounded bg-blue-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-blue-300">
+											<span className="rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[9px] uppercase text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
 												system
 											</span>
 										)}
 										{!p.enabled && (
-											<span className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-[9px] uppercase text-slate-300">
+											<span className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[9px] uppercase text-slate-700 dark:bg-slate-700 dark:text-slate-300">
 												disabled
 											</span>
 										)}
 									</div>
-									<p className="mt-1 truncate text-xs text-slate-400">{p.description}</p>
+									<p className="mt-1 truncate text-xs text-slate-600 dark:text-slate-400">{p.description}</p>
 								</li>
 							))}
 						</ul>
@@ -127,7 +127,7 @@ export function PoliciesTab() {
 					{selected ? (
 						<PolicyEditor key={selected.name} policy={selected} mutate={mutate} />
 					) : (
-						<div className="flex h-full items-center justify-center rounded border border-slate-800 bg-slate-900/40 text-xs text-slate-500">
+						<div className="flex h-full items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-500">
 							Select a policy to edit, or create a new one.
 						</div>
 					)}
@@ -220,34 +220,35 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3">
 			<header className="flex items-center gap-3">
-				<h3 className="font-mono text-sm font-bold text-slate-100">{policy.name}</h3>
+				<h3 className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100">{policy.name}</h3>
 				{readOnly && (
-					<span className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-[9px] uppercase text-slate-300">
+					<span className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[9px] uppercase text-slate-700 dark:bg-slate-700 dark:text-slate-300">
 						read-only
 					</span>
 				)}
-				<span className="ml-auto font-mono text-[10px] text-slate-500">
+				<span className="ml-auto font-mono text-[10px] text-slate-500 dark:text-slate-500">
 					{source.length} chars
-					{dirty && <span className="ml-2 text-amber-400">● unsaved</span>}
+					{dirty && <span className="ml-2 text-amber-600 dark:text-amber-400">● unsaved</span>}
 				</span>
 				{!readOnly && (
-					<Button
-						size="sm"
-						variant="primary"
-						onPress={save}
-						isDisabled={saving || !dirty}
-					>
-						{saving ? <Spinner size="sm" /> : 'Save'}
-					</Button>
-				)}
-				{!readOnly && (
-					<Button size="sm" variant="ghost" className="text-red-400" onPress={remove}>
-						Delete
-					</Button>
-				)}
-			</header>
+			<Button
+					size="sm"
+					variant="primary"
+					onPress={save}
+					isDisabled={saving || !dirty}
+					className="neu-raised-sm neu-hover neu-active"
+				>
+					{saving ? <Spinner size="sm" /> : 'Save'}
+				</Button>
+			)}
+			{!readOnly && (
+				<Button size="sm" variant="ghost" className="text-red-600 neu-raised-sm neu-hover neu-active dark:text-red-400" onPress={remove}>
+					Delete
+				</Button>
+			)}
+		</header>
 
-			<p className="text-xs text-slate-400">{policy.description}</p>
+			<p className="text-xs text-slate-600 dark:text-slate-400">{policy.description}</p>
 
 			<div className="min-h-[300px] flex-1 overflow-hidden rounded border border-slate-800">
 				<CodeMirror
@@ -269,24 +270,25 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 
 			{/* Test runner */}
 			<details className="rounded border border-slate-800 bg-slate-900/40" open>
-				<summary className="cursor-pointer p-3 font-mono text-[10px] uppercase tracking-widest text-slate-300">
-					Test runner (opa eval)
-				</summary>
+			<summary className="cursor-pointer p-3 font-mono text-[10px] uppercase tracking-widest text-slate-700 dark:text-slate-300">
+				Test runner (opa eval)
+			</summary>
 				<div className="flex flex-col gap-2 border-t border-slate-800 p-3">
-					<label className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
 						Input JSON
-					</label>
-					<textarea
-						className="h-32 w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-xs text-slate-200"
+					</Label>
+					<TextArea
+						aria-label="Policy test input JSON"
+						className="h-32 w-full neu-pressed font-mono text-xs"
 						value={testInput}
 						onChange={(e) => setTestInput(e.target.value)}
 						spellCheck={false}
 					/>
 					<div className="flex items-center gap-2">
-						<Button size="sm" variant="secondary" onPress={runTest} isDisabled={testing}>
+						<Button size="sm" variant="secondary" onPress={runTest} isDisabled={testing} className="neu-raised-sm neu-hover neu-active">
 							{testing ? <Spinner size="sm" /> : 'Run test'}
 						</Button>
-						<span className="font-mono text-[10px] text-slate-500">
+						<span className="font-mono text-[10px] text-slate-500 dark:text-slate-500">
 							Evaluates <code>data.stadium.authz.allow</code> with the input above
 						</span>
 					</div>
@@ -308,7 +310,7 @@ function PolicyEditor({ policy, mutate }: { policy: AdminPolicy; mutate: MutateF
 							) : (
 								<div>
 									<strong>Decision: {testResult.allowed ? 'ALLOW' : 'DENY'}</strong>
-									<span className="ml-3 text-slate-400">({testResult.elapsedMs}ms)</span>
+									<span className="ml-3 text-slate-600 dark:text-slate-400">({testResult.elapsedMs}ms)</span>
 								</div>
 							)}
 						</div>
@@ -364,25 +366,29 @@ function CreatePolicyDrawer({
 	return (
 		<Drawer isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
 			<div className="flex h-full flex-col gap-4 p-6">
-				<h3 className="font-mono text-sm font-black uppercase tracking-widest">New Policy</h3>
+				<h3 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">New Policy</h3>
 
 				<div>
-					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
+					<Label htmlFor="policy-name" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
 						Name (use slashes for namespacing)
 					</Label>
 					<Input
+						id="policy-name"
 						placeholder="stadium/custom"
 						value={name}
-						onValueChange={setName}
+						onChange={(e) => setName(e.target.value)}
+						className="neu-pressed"
 					/>
 				</div>
 
 				<div>
-					<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Description</Label>
+					<Label htmlFor="policy-desc" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">Description</Label>
 					<Input
+						id="policy-desc"
 						placeholder="Custom audit policy"
 						value={description}
-						onValueChange={setDescription}
+						onChange={(e) => setDescription(e.target.value)}
+						className="neu-pressed"
 					/>
 				</div>
 
@@ -402,12 +408,12 @@ function CreatePolicyDrawer({
 					</div>
 				)}
 
-				<div className="flex justify-end gap-2">
-					<Button size="sm" variant="ghost" onPress={onClose} disabled={submitting}>Cancel</Button>
-					<Button size="sm" variant="primary" onPress={submit} disabled={submitting || !name || !description}>
-						{submitting ? <Spinner size="sm" /> : 'Create'}
-					</Button>
-				</div>
+			<div className="flex justify-end gap-2">
+				<Button size="sm" variant="ghost" onPress={onClose} isDisabled={submitting} className="neu-raised-sm neu-hover neu-active">Cancel</Button>
+				<Button size="sm" variant="primary" onPress={submit} isDisabled={submitting || !name || !description} className="neu-raised-sm neu-hover neu-active">
+					{submitting ? <Spinner size="sm" /> : 'Create'}
+				</Button>
+			</div>
 			</div>
 		</Drawer>
 	);

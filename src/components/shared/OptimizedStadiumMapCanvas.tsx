@@ -19,6 +19,7 @@
  *      avoid a re-render storm at 60fps.
  */
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { Checkbox } from '@heroui/react';
 import type {
 	IncidentReport,
 	WhitelistUser,
@@ -848,15 +849,15 @@ export function OptimizedStadiumMapCanvas({
 
 			{/* Floor selector — switch between multi-floor layouts */}
 			{floors.length > 1 && (
-				<div className="absolute left-3 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-800 bg-slate-950/90 p-1.5 backdrop-blur">
+				<div className="absolute left-3 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-300 bg-white/90 p-1.5 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
 					{floors.map((floor) => (
 						<button
 							key={floor.id}
 							onClick={() => setSelectedFloorId(floor.id)}
 							className={`rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
 								effectiveFloorId === floor.id
-									? 'bg-blue-600 text-white'
-									: 'text-slate-400 hover:bg-slate-800'
+									? 'neu-pressed-sm bg-blue-600 text-white'
+									: 'neu-raised-sm text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'
 							}`}
 						>
 							{floor.name}
@@ -866,75 +867,81 @@ export function OptimizedStadiumMapCanvas({
 			)}
 
 			{/* Legend with toggles */}
-			<div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-800 bg-slate-950/90 p-3 backdrop-blur">
-				<p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-slate-500">Legend</p>
+			<div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-300 bg-white/90 p-3 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
+				<p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-slate-600 dark:text-slate-500">Legend</p>
 
 				{/* Specialty filters */}
 				<div className="space-y-1">
-					<p className="text-[9px] uppercase text-slate-600">Specialty</p>
+					<p className="text-[9px] uppercase text-slate-500 dark:text-slate-600">Specialty</p>
 					{([
 						['security', '#3b82f6'],
 						['medical', '#22c55e'],
 						['cleaning', '#eab308'],
 						['supervisor', '#a855f7'],
 					] as const).map(([spec, color]) => (
-						<label key={spec} className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-300">
-							<input
-								type="checkbox"
-								checked={filters.specialties.has(spec)}
-								onChange={() => {
-									setFilters((prev) => {
-										const next = new Set(prev.specialties);
-										if (next.has(spec)) next.delete(spec);
-										else next.add(spec);
-										return { ...prev, specialties: next };
-									});
-								}}
-								className="h-3 w-3"
-							/>
-							<span
-								className="inline-block h-2 w-2 rounded-full"
-								style={{ backgroundColor: color }}
-							/>
-							<span className="capitalize">{spec}</span>
-						</label>
+						<Checkbox
+							key={spec}
+							isSelected={filters.specialties.has(spec)}
+							onChange={() => {
+								setFilters((prev) => {
+									const next = new Set(prev.specialties);
+									if (next.has(spec)) next.delete(spec);
+									else next.add(spec);
+									return { ...prev, specialties: next };
+								});
+							}}
+						>
+							<Checkbox.Content className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
+								<Checkbox.Control>
+									<Checkbox.Indicator />
+								</Checkbox.Control>
+								<span
+									className="inline-block h-2 w-2 rounded-full"
+									style={{ backgroundColor: color }}
+								/>
+								<span className="capitalize">{spec}</span>
+							</Checkbox.Content>
+						</Checkbox>
 					))}
 				</div>
 
 				{/* Status filters */}
 				<div className="mt-2 space-y-1">
-					<p className="text-[9px] uppercase text-slate-600">Status</p>
+					<p className="text-[9px] uppercase text-slate-500 dark:text-slate-600">Status</p>
 					{([
 						['AVAILABLE', '#22c55e'],
 						['DISPATCHED', '#f59e0b'],
 						['OFF_DUTY', '#64748b'],
 					] as const).map(([status, color]) => (
-						<label key={status} className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-300">
-							<input
-								type="checkbox"
-								checked={filters.statuses.has(status)}
-								onChange={() => {
-									setFilters((prev) => {
-										const next = new Set(prev.statuses);
-										if (next.has(status)) next.delete(status);
-										else next.add(status);
-										return { ...prev, statuses: next };
-									});
-								}}
-								className="h-3 w-3"
-							/>
-							<span
-								className="inline-block h-2 w-2 rounded-full"
-								style={{ backgroundColor: color }}
-							/>
-							<span>{status.replace('_', ' ')}</span>
-						</label>
+						<Checkbox
+							key={status}
+							isSelected={filters.statuses.has(status)}
+							onChange={() => {
+								setFilters((prev) => {
+									const next = new Set(prev.statuses);
+									if (next.has(status)) next.delete(status);
+									else next.add(status);
+									return { ...prev, statuses: next };
+								});
+							}}
+						>
+							<Checkbox.Content className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
+								<Checkbox.Control>
+									<Checkbox.Indicator />
+								</Checkbox.Control>
+								<span
+									className="inline-block h-2 w-2 rounded-full"
+									style={{ backgroundColor: color }}
+								/>
+								<span>{status.replace('_', ' ')}</span>
+							</Checkbox.Content>
+						</Checkbox>
 					))}
 				</div>
 
 				{/* Incident tier legend (informational, not toggleable) */}
 				<div className="mt-2 space-y-1">
-					<p className="text-[9px] uppercase text-slate-600">Incidents</p>
+					<p className="text-[9px] uppercase text-slate-500 dark:text-slate-600">Incidents</p>
 					{([
 						['T1 Life', '#ef4444'],
 						['T2 Urgent', '#f97316'],
@@ -942,9 +949,9 @@ export function OptimizedStadiumMapCanvas({
 						['T4 Advisory', '#3b82f6'],
 						['T5 Info', '#64748b'],
 					] as const).map(([label, color]) => (
-						<div key={label} className="flex items-center gap-1.5 text-[10px] text-slate-400">
+						<div key={label} className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
 							<span
-								className="inline-block h-2 w-2 rounded-full ring-1 ring-slate-600"
+								className="inline-block h-2 w-2 rounded-full ring-1 ring-slate-400 dark:ring-slate-600"
 								style={{ backgroundColor: color }}
 							/>
 							<span>{label}</span>
