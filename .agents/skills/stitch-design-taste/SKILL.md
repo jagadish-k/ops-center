@@ -75,7 +75,7 @@ For each component type, describe shape, color, shadow depth, and interaction be
 - The generic "3 equal cards horizontally" feature row is BANNED — use 2-column Zig-Zag, asymmetric grid, or horizontal scroll
 - CSS Grid over Flexbox math — never use `calc()` percentage hacks
 - Contain layouts using max-width constraints (e.g., 1400px centered)
-- Full-height sections must use `min-h-[100dvh]` — never `h-screen` (iOS Safari catastrophic jump)
+- Full-height sections must use `min-h-dvh` — never `h-screen` (iOS Safari catastrophic jump)
 
 ### 7. Define Responsive Rules
 Every design must work across all viewports:

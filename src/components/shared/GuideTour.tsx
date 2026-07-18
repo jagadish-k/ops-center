@@ -164,10 +164,10 @@ function runDriver(steps: DriveStep[], tabId: string): void {
 		doneBtnText: 'Done',
 		allowClose: true,
 		onPopoverRender: (popover) => {
-			popover.wrapper?.classList.add('!bg-slate-100 dark:bg-slate-900', '!border-slate-300 dark:border-slate-700', '!text-slate-800 dark:text-slate-100');
-			popover.title?.classList.add('!text-slate-800 dark:text-slate-100', '!font-mono', '!text-sm', '!uppercase', '!tracking-widest');
-			popover.description?.classList.add('!text-slate-500 dark:text-slate-400', '!text-xs');
-			popover.footer?.classList.add('!bg-slate-100 dark:bg-slate-900');
+			popover.wrapper?.classList.add('bg-slate-100! dark:bg-slate-900', 'border-slate-300! dark:border-slate-700', 'text-slate-800! dark:text-slate-100');
+			popover.title?.classList.add('text-slate-800! dark:text-slate-100', 'font-mono!', 'text-sm!', 'uppercase!', 'tracking-widest!');
+			popover.description?.classList.add('text-slate-500! dark:text-slate-400', 'text-xs!');
+			popover.footer?.classList.add('bg-slate-100! dark:bg-slate-900');
 		},
 	});
 
@@ -273,9 +273,9 @@ export function useAutoFieldClientTour(shouldShow: boolean): void {
 				doneBtnText: 'Done',
 				allowClose: true,
 				onPopoverRender: (popover) => {
-					popover.wrapper?.classList.add('!bg-slate-100 dark:bg-slate-900', '!border-slate-300 dark:border-slate-700', '!text-slate-800 dark:text-slate-100');
-					popover.title?.classList.add('!text-slate-800 dark:text-slate-100', '!font-mono', '!text-sm', '!uppercase', '!tracking-widest');
-					popover.description?.classList.add('!text-slate-500 dark:text-slate-400', '!text-xs');
+					popover.wrapper?.classList.add('bg-slate-100! dark:bg-slate-900', 'border-slate-300! dark:border-slate-700', 'text-slate-800! dark:text-slate-100');
+					popover.title?.classList.add('text-slate-800! dark:text-slate-100', 'font-mono!', 'text-sm!', 'uppercase!', 'tracking-widest!');
+					popover.description?.classList.add('text-slate-500! dark:text-slate-400', 'text-xs!');
 				},
 			});
 

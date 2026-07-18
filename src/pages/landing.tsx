@@ -64,12 +64,12 @@ export default function LandingPage() {
 			{/* Hero Section */}
 			<main className="flex-1">
 				<section className="relative overflow-hidden pt-32 pb-24 lg:pt-48 lg:pb-32">
-					<div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-50/0 to-slate-50/0 dark:from-blue-600/10 dark:via-slate-950/0 dark:to-slate-950/0"></div>
+					<div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-blue-900/20 via-slate-50/0 to-slate-50/0 dark:from-blue-600/10 dark:via-slate-950/0 dark:to-slate-950/0"></div>
 					
 					<div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
 						<h1 className="mx-auto max-w-4xl font-mono text-5xl font-black uppercase tracking-tight sm:text-7xl lg:text-8xl">
 							<span className="block text-slate-900 dark:text-slate-100">Command The</span>
-							<span className="block bg-gradient-to-r from-blue-600 to-indigo-400 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">Unpredictable.</span>
+							<span className="block bg-linear-to-r from-blue-600 to-indigo-400 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">Unpredictable.</span>
 						</h1>
 						
 						<p className="mx-auto mt-8 max-w-2xl text-lg text-slate-600 sm:text-xl dark:text-slate-400">
@@ -101,7 +101,7 @@ export default function LandingPage() {
 					{/* Abstract Grid Graphic */}
 					<div className="mt-20 flex justify-center">
 						<div className="relative h-64 w-full max-w-4xl overflow-hidden rounded-t-3xl border border-b-0 border-slate-300 bg-white/50 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/50">
-							<div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:40px_40px] opacity-60 dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)]"></div>
+							<div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-size-[40px_40px] opacity-60 dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)]"></div>
 							{/* Faux radar sweeping effect */}
 							<div className="absolute left-1/2 top-full h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 animate-[spin_4s_linear_infinite] rounded-full border border-blue-500/30 bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(59,130,246,0.3)_360deg)]"></div>
 						</div>

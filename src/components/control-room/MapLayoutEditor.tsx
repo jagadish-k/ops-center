@@ -833,7 +833,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 								</Modal.Body>
 								<Modal.Footer>
 									<Button size="sm" variant="ghost" onPress={() => setDeleteConfirm(null)}>Cancel</Button>
-									<Button size="sm" variant="primary" className="!bg-red-600" onPress={confirmDelete}>Delete</Button>
+									<Button size="sm" variant="primary" className="bg-red-600!" onPress={confirmDelete}>Delete</Button>
 								</Modal.Footer>
 							</Modal.Dialog>
 						</Modal.Container>

@@ -117,5 +117,5 @@ Every screen must work flawlessly across all viewports. **Responsive is not opti
 - No broken Unsplash links — use `picsum.photos/seed/{id}/800/600` or SVG UI Avatars
 - No generic `shadcn/ui` defaults — customize radii, colors, shadows to match this system
 - No `z-index` spam — use only for Navbar, Modal, Overlay layer contexts
-- No `h-screen` — always `min-h-[100dvh]`
+- No `h-screen` — always `min-h-dvh`
 - No circular loading spinners — skeletal shimmer only

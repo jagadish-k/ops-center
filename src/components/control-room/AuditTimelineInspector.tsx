@@ -124,7 +124,7 @@ export function AuditTimelineInspector({ isOpen, onClose }: AuditTimelineInspect
 								<ol className="relative border-l border-slate-300 dark:border-slate-800 pl-5">
 									{entries.map((entry) => (
 										<li key={entry.eventId} className="mb-5 last:mb-0">
-											<span className="absolute -left-[5px] mt-1 h-2.5 w-2.5 rounded-full border border-slate-400 dark:border-slate-600 bg-slate-700" />
+											<span className="absolute left-[-5px] mt-1 h-2.5 w-2.5 rounded-full border border-slate-400 dark:border-slate-600 bg-slate-700" />
 											<div className="mb-1 flex items-center gap-2">
 												<span className="font-mono text-[10px] font-bold uppercase tracking-widest text-blue-400">
 													{entry.action.replace(/_/g, ' ')}
