@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, TextField, Spinner, Drawer, Modal, Label, Checkbox, TextArea } from '@heroui/react';
+import { Button, TextField, Input, FieldError, Spinner, Drawer, Modal, Label, Checkbox, TextArea } from '@heroui/react';
 import {
 	adminListRoles,
 	adminCreateRole,
@@ -261,31 +261,37 @@ function CreateRoleDrawer({
 						<Drawer.Body>
 							<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
 								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="role-name" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
-										Name
-									</Label>
 									<TextField
-										id="role-name"
 										isInvalid={!!form.formState.errors.name}
-										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
-										errorMessage={form.formState.errors.name?.message}
-										className="neu-pressed"
-										{...form.register('name')}
-									/>
+									>
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+											Name
+										</Label>
+										<Input
+											className="neu-pressed w-full"
+											{...form.register('name')}
+										/>
+										<FieldError className="text-xs text-red-500">
+											{form.formState.errors.name?.message}
+										</FieldError>
+									</TextField>
 								</div>
 
 								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="role-desc" className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
-										Description
-									</Label>
 									<TextField
-										id="role-desc"
 										isInvalid={!!form.formState.errors.description}
-										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
-										errorMessage={form.formState.errors.description?.message}
-										className="neu-pressed"
-										{...form.register('description')}
-									/>
+									>
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+											Description
+										</Label>
+										<Input
+											className="neu-pressed w-full"
+											{...form.register('description')}
+										/>
+										<FieldError className="text-xs text-red-500">
+											{form.formState.errors.description?.message}
+										</FieldError>
+									</TextField>
 								</div>
 
 								<div>

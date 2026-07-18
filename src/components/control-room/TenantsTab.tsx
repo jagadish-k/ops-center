@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, TextField, Spinner, Modal, Table, Label } from '@heroui/react';
+import { Button, Input, TextField, FieldError, Spinner, Modal, Table, Label } from '@heroui/react';
 import {
 	adminListTenants,
 	adminCreateTenant,
@@ -228,37 +228,37 @@ function CreateTenantModal({
 						<Modal.Body>
 							<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
 								<div className="flex flex-col gap-1.5">
-									<Label
-										htmlFor="tenantId"
-										className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400"
-									>
-										Tenant ID
-									</Label>
 									<TextField
-										id="tenantId"
 										isInvalid={!!form.formState.errors.tenantId}
-										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
-										errorMessage={form.formState.errors.tenantId?.message}
-										className="neu-pressed"
-										{...form.register('tenantId')}
-									/>
+									>
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+											Tenant ID
+										</Label>
+										<Input
+											className="neu-pressed w-full"
+											{...form.register('tenantId')}
+										/>
+										<FieldError className="text-xs text-red-500">
+											{form.formState.errors.tenantId?.message}
+										</FieldError>
+									</TextField>
 								</div>
 
 								<div className="flex flex-col gap-1.5">
-									<Label
-										htmlFor="orgName"
-										className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400"
-									>
-										Organization Name
-									</Label>
 									<TextField
-										id="orgName"
 										isInvalid={!!form.formState.errors.orgName}
-										// @ts-expect-error - errorMessage typing is missing in HeroUI v3
-										errorMessage={form.formState.errors.orgName?.message}
-										className="neu-pressed"
-										{...form.register('orgName')}
-									/>
+									>
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
+											Organization Name
+										</Label>
+										<Input
+											className="neu-pressed w-full"
+											{...form.register('orgName')}
+										/>
+										<FieldError className="text-xs text-red-500">
+											{form.formState.errors.orgName?.message}
+										</FieldError>
+									</TextField>
 								</div>
 
 								<details className="rounded border border-slate-300 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
