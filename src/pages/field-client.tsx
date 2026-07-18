@@ -17,34 +17,41 @@ import { FieldShell } from '@/components/mobile/FieldShell';
 import { useAutoFieldClientTour } from '@/components/shared/GuideTour';
 
 export default function FieldClient() {
-	const { claims, loading, signOut } = useAuth();
-	const { can } = usePermissions();
+  const { claims, loading, signOut } = useAuth();
+  const { can } = usePermissions();
 
-	// Auto-trigger Field Client tour on first login.
-	useAutoFieldClientTour(!!claims && can('surface:field-client'));
+  // Auto-trigger Field Client tour on first login.
+  useAutoFieldClientTour(!!claims && can('surface:field-client'));
 
-	if (loading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400">
-				<p className="font-mono text-xs uppercase tracking-widest">Authorizing…</p>
-			</div>
-		);
-	}
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400">
+        <p className="font-mono text-xs uppercase tracking-widest">
+          Authorizing…
+        </p>
+      </div>
+    );
+  }
 
-	if (!claims || !can('surface:field-client')) {
-		return <Navigate to="/" replace />;
-	}
+  if (!claims || !can('surface:field-client')) {
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
 
-	const staffPhone = claims.phone ?? 'unknown';
-	const tenantId = claims.tenant_id;
+  const staffPhone = claims.phone ?? 'unknown';
+  const tenantId = claims.tenant_id;
 
-	return (
-		<ActiveOpsProvider tenantId={tenantId}>
-			<FieldShell
-				staffPhone={staffPhone}
-				tenantId={tenantId}
-				onDisconnect={signOut}
-			/>
-		</ActiveOpsProvider>
-	);
+  return (
+    <ActiveOpsProvider tenantId={tenantId}>
+      <FieldShell
+        staffPhone={staffPhone}
+        tenantId={tenantId}
+        onDisconnect={signOut}
+      />
+    </ActiveOpsProvider>
+  );
 }

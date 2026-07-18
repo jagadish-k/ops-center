@@ -8,48 +8,50 @@
  * the JWT claims.
  */
 import { createContext, useContext, type ReactNode } from 'react';
-import type {
-	IncidentReport,
-	WhitelistUser,
-	DispatchDirective,
-} from '@/types';
+import type { IncidentReport, WhitelistUser, DispatchDirective } from '@/types';
 import { usePollingState, type PollingState } from '@/hooks/usePollingState';
 
 interface ActiveOpsContextValue extends PollingState {
-	activeTenantId: string;
+  activeTenantId: string;
 }
 
-const ActiveOpsContext = createContext<ActiveOpsContextValue | undefined>(undefined);
+const ActiveOpsContext = createContext<ActiveOpsContextValue | undefined>(
+  undefined,
+);
 
 interface ActiveOpsProviderProps {
-	/** Tenant isolation boundary from JWT claims. When the JWT is re-minted
-	 * (e.g., via switchTenant), this prop changes, triggering a re-poll. */
-	tenantId: string;
-	children: ReactNode;
+  /** Tenant isolation boundary from JWT claims. When the JWT is re-minted
+   * (e.g., via switchTenant), this prop changes, triggering a re-poll. */
+  tenantId: string;
+  children: ReactNode;
 }
 
 export function ActiveOpsProvider({
-	tenantId,
-	children,
+  tenantId,
+  children,
 }: ActiveOpsProviderProps): ReactNode {
-	const polling = usePollingState(tenantId);
+  const polling = usePollingState(tenantId);
 
-	const value: ActiveOpsContextValue = {
-		...polling,
-		activeTenantId: tenantId,
-	};
+  const value: ActiveOpsContextValue = {
+    ...polling,
+    activeTenantId: tenantId,
+  };
 
-	return <ActiveOpsContext.Provider value={value}>{children}</ActiveOpsContext.Provider>;
+  return (
+    <ActiveOpsContext.Provider value={value}>
+      {children}
+    </ActiveOpsContext.Provider>
+  );
 }
 
 /** Access the live operational state. Must be used within an ActiveOpsProvider. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useActiveOps(): ActiveOpsContextValue {
-	const context = useContext(ActiveOpsContext);
-	if (!context) {
-		throw new Error('useActiveOps must be used within an ActiveOpsProvider.');
-	}
-	return context;
+  const context = useContext(ActiveOpsContext);
+  if (!context) {
+    throw new Error('useActiveOps must be used within an ActiveOpsProvider.');
+  }
+  return context;
 }
 
 // Re-export the value types for downstream convenience.

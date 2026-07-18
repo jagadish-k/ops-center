@@ -21,47 +21,47 @@
  */
 
 export type Permission =
-	// ── Incidents ──
-	| 'incident:create' // file new incidents (voice / manual triage)
-	| 'incident:transition' // change incident status (acknowledge / resolve)
-	| 'incident:read' // view incident queue + details
-	// ── Dispatches ──
-	| 'dispatch:create' // push dispatch directives to staff
-	| 'dispatch:update' // update dispatch status (ack / on-scene / resolve)
-	| 'dispatch:read' // view dispatch directives
-	// ── Tenancy ──
-	| 'tenant:switch' // switch active tenant context (superadmin only)
-	| 'tenant:manage' // create / suspend tenants + manage roles
-	// ── Staff ──
-	| 'staff:manage' // manage staff roster (add / remove / import)
-	| 'staff:reassign' // change zone/dispatch assignments (manager+)
-	// ── Roles ──
-	| 'role:assign-admin' // promote/demote admins (superadmin only)
-	// ── Audit ──
-	| 'audit:view' // view compliance / forensic log
-	// ── Surfaces ──
-	| 'surface:control-room' // access control room dashboard
-	| 'surface:field-client' // access field client
-	// ── System ──
-	| 'config:manage'; // change operational window / system config
+  // ── Incidents ──
+  | 'incident:create' // file new incidents (voice / manual triage)
+  | 'incident:transition' // change incident status (acknowledge / resolve)
+  | 'incident:read' // view incident queue + details
+  // ── Dispatches ──
+  | 'dispatch:create' // push dispatch directives to staff
+  | 'dispatch:update' // update dispatch status (ack / on-scene / resolve)
+  | 'dispatch:read' // view dispatch directives
+  // ── Tenancy ──
+  | 'tenant:switch' // switch active tenant context (superadmin only)
+  | 'tenant:manage' // create / suspend tenants + manage roles
+  // ── Staff ──
+  | 'staff:manage' // manage staff roster (add / remove / import)
+  | 'staff:reassign' // change zone/dispatch assignments (manager+)
+  // ── Roles ──
+  | 'role:assign-admin' // promote/demote admins (superadmin only)
+  // ── Audit ──
+  | 'audit:view' // view compliance / forensic log
+  // ── Surfaces ──
+  | 'surface:control-room' // access control room dashboard
+  | 'surface:field-client' // access field client
+  // ── System ──
+  | 'config:manage'; // change operational window / system config
 
 /** The full set, useful for migrations and for superadmin wildcard grants. */
 export const ALL_PERMISSIONS: readonly Permission[] = [
-	'incident:create',
-	'incident:transition',
-	'incident:read',
-	'dispatch:create',
-	'dispatch:update',
-	'dispatch:read',
-	'tenant:switch',
-	'tenant:manage',
-	'staff:manage',
-	'staff:reassign',
-	'role:assign-admin',
-	'audit:view',
-	'surface:control-room',
-	'surface:field-client',
-	'config:manage',
+  'incident:create',
+  'incident:transition',
+  'incident:read',
+  'dispatch:create',
+  'dispatch:update',
+  'dispatch:read',
+  'tenant:switch',
+  'tenant:manage',
+  'staff:manage',
+  'staff:reassign',
+  'role:assign-admin',
+  'audit:view',
+  'surface:control-room',
+  'surface:field-client',
+  'config:manage',
 ] as const;
 
 /**
@@ -72,13 +72,14 @@ export const ALL_PERMISSIONS: readonly Permission[] = [
  * The other 10 permissions are flat booleans: presence in `claims.permissions`
  * is sufficient.
  */
-export const ABAC_SCOPED_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
-	'incident:transition', // tier-gated (manager: 4-5; admin: any)
-	'incident:read', // tenant-gated (already enforced via claims.tenant_id)
-	'dispatch:create', // zone-gated for managers
-	'dispatch:update', // self-or-admin (or target staff)
-	'staff:reassign', // zone-gated for managers
-]);
+export const ABAC_SCOPED_PERMISSIONS: ReadonlySet<Permission> =
+  new Set<Permission>([
+    'incident:transition', // tier-gated (manager: 4-5; admin: any)
+    'incident:read', // tenant-gated (already enforced via claims.tenant_id)
+    'dispatch:create', // zone-gated for managers
+    'dispatch:update', // self-or-admin (or target staff)
+    'staff:reassign', // zone-gated for managers
+  ]);
 
 /**
  * Default-resolver for client-side `usePermissions()`. Accepts the JWT
@@ -86,8 +87,8 @@ export const ABAC_SCOPED_PERMISSIONS: ReadonlySet<Permission> = new Set<Permissi
  * time (ADR-0011 §Permission Resolution); the client trusts the JWT.
  */
 export function permissionsForClaim(
-	permissions: Permission[] | readonly Permission[] | null | undefined,
+  permissions: Permission[] | readonly Permission[] | null | undefined,
 ): Set<Permission> {
-	if (!permissions) return new Set();
-	return new Set(permissions);
+  if (!permissions) return new Set();
+  return new Set(permissions);
 }

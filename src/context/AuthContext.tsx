@@ -6,132 +6,145 @@
  * vs Field Client). Every server-side API call re-verifies the JWT signature —
  * these client-decoded claims are never trusted for authorization.
  */
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import type { JwtClaims } from '@/types';
 import {
-	getAuthToken,
-	setAuthToken,
-	clearAuthToken,
-	decodeClaims,
-	requestOtp,
-	verifyOtp,
-	type ApiError,
-	type RequestOtpResponse,
+  getAuthToken,
+  setAuthToken,
+  clearAuthToken,
+  decodeClaims,
+  requestOtp,
+  verifyOtp,
+  type ApiError,
+  type RequestOtpResponse,
 } from '@/services/api';
 
 interface AuthContextValue {
-	/** The raw JWT string, or null if signed out. */
-	token: string | null;
-	/** Decoded claims (UI rendering only — NOT verified client-side). */
-	claims: JwtClaims | null;
-	/** True while the initial session load is in progress. */
-	loading: boolean;
-	/** Requests an OTP code to be sent to the phone number. */
-	sendOtp: (phoneNumber: string) => Promise<RequestOtpResponse>;
-	/** Verifies the OTP code, stores the JWT, and sets claims. */
-	signInWithOtp: (phoneNumber: string, code: string) => Promise<void>;
-	/** Clears the token and claims. */
-	signOut: () => void;
-	/** Switches the active tenant context. Calls /api/auth/switch-tenant, gets
-	 * a new JWT, and updates claims. The new tenant_id propagates to all
-	 * downstream consumers (ActiveOpsProvider re-polls, etc.). */
-	switchTenant: (tenantId: string) => Promise<void>;
+  /** The raw JWT string, or null if signed out. */
+  token: string | null;
+  /** Decoded claims (UI rendering only — NOT verified client-side). */
+  claims: JwtClaims | null;
+  /** True while the initial session load is in progress. */
+  loading: boolean;
+  /** Requests an OTP code to be sent to the phone number. */
+  sendOtp: (phoneNumber: string) => Promise<RequestOtpResponse>;
+  /** Verifies the OTP code, stores the JWT, and sets claims. */
+  signInWithOtp: (phoneNumber: string, code: string) => Promise<void>;
+  /** Clears the token and claims. */
+  signOut: () => void;
+  /** Switches the active tenant context. Calls /api/auth/switch-tenant, gets
+   * a new JWT, and updates claims. The new tenant_id propagates to all
+   * downstream consumers (ActiveOpsProvider re-polls, etc.). */
+  switchTenant: (tenantId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
-	const [token, setToken] = useState<string | null>(null);
-	const [claims, setClaims] = useState<JwtClaims | null>(null);
-	const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [claims, setClaims] = useState<JwtClaims | null>(null);
+  const [loading, setLoading] = useState(true);
 
-	// On mount: hydrate from localStorage if a valid (non-expired) token exists.
-	/* eslint-disable react-hooks/set-state-in-effect */
-	useEffect(() => {
-		const stored = getAuthToken();
-		if (stored) {
-			const decoded = decodeClaims(stored);
-			// Check expiry (exp is in seconds). If expired, clear it.
-			if (decoded && decoded.exp * 1000 > Date.now()) {
-				setToken(stored);
-				setClaims(decoded);
-			} else {
-				clearAuthToken();
-			}
-		}
-		setLoading(false);
-	}, []);
-	/* eslint-enable react-hooks/set-state-in-effect */
+  // On mount: hydrate from localStorage if a valid (non-expired) token exists.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const stored = getAuthToken();
+    if (stored) {
+      const decoded = decodeClaims(stored);
+      // Check expiry (exp is in seconds). If expired, clear it.
+      if (decoded && decoded.exp * 1000 > Date.now()) {
+        setToken(stored);
+        setClaims(decoded);
+      } else {
+        clearAuthToken();
+      }
+    }
+    setLoading(false);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-	const sendOtp = useCallback(async (phoneNumber: string): Promise<RequestOtpResponse> => {
-		return requestOtp(phoneNumber);
-	}, []);
+  const sendOtp = useCallback(
+    async (phoneNumber: string): Promise<RequestOtpResponse> => {
+      return requestOtp(phoneNumber);
+    },
+    [],
+  );
 
-	const signInWithOtp = useCallback(
-		async (phoneNumber: string, code: string): Promise<void> => {
-			const { token: jwt, claims: decoded } = await verifyOtp(phoneNumber, code);
-			setAuthToken(jwt);
-			setToken(jwt);
-			setClaims(decoded);
-		},
-		[],
-	);
+  const signInWithOtp = useCallback(
+    async (phoneNumber: string, code: string): Promise<void> => {
+      const { token: jwt, claims: decoded } = await verifyOtp(
+        phoneNumber,
+        code,
+      );
+      setAuthToken(jwt);
+      setToken(jwt);
+      setClaims(decoded);
+    },
+    [],
+  );
 
-	const signOut = useCallback(() => {
-		clearAuthToken();
-		setToken(null);
-		setClaims(null);
-	}, []);
+  const signOut = useCallback(() => {
+    clearAuthToken();
+    setToken(null);
+    setClaims(null);
+  }, []);
 
-	const switchTenant = useCallback(async (tenantId: string): Promise<void> => {
-		const currentToken = getAuthToken();
-		if (!currentToken) return;
-		const resp = await fetch('/api/auth/switch-tenant', {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${currentToken}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({ tenantId }),
-		});
-		if (!resp.ok) {
-			const body = await resp.json().catch(() => ({ error: 'Switch failed' }));
-			throw new Error(body.error ?? `Switch failed (${resp.status})`);
-		}
-		const { token: newToken, claims: newClaims } = (await resp.json()) as {
-			token: string;
-			claims: JwtClaims;
-		};
-		setAuthToken(newToken);
-		setToken(newToken);
-		setClaims(newClaims);
-	}, []);
+  const switchTenant = useCallback(async (tenantId: string): Promise<void> => {
+    const currentToken = getAuthToken();
+    if (!currentToken) return;
+    const resp = await fetch('/api/auth/switch-tenant', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ tenantId }),
+    });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({ error: 'Switch failed' }));
+      throw new Error(body.error ?? `Switch failed (${resp.status})`);
+    }
+    const { token: newToken, claims: newClaims } = (await resp.json()) as {
+      token: string;
+      claims: JwtClaims;
+    };
+    setAuthToken(newToken);
+    setToken(newToken);
+    setClaims(newClaims);
+  }, []);
 
-	const value: AuthContextValue = {
-		token,
-		claims,
-		loading,
-		sendOtp,
-		signInWithOtp,
-		signOut,
-		switchTenant,
-	};
+  const value: AuthContextValue = {
+    token,
+    claims,
+    loading,
+    sendOtp,
+    signInWithOtp,
+    signOut,
+    switchTenant,
+  };
 
-	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /** Hook to access the auth context. Must be used within an AuthProvider. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
-	const context = useContext(AuthContext);
-	if (!context) {
-		throw new Error('useAuth must be used within an AuthProvider.');
-	}
-	return context;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider.');
+  }
+  return context;
 }
 
 /** Type guard for ApiError thrown by the API service. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function isApiError(err: unknown): err is ApiError {
-	return err instanceof Error && err.name === 'ApiError';
+  return err instanceof Error && err.name === 'ApiError';
 }

@@ -15,91 +15,93 @@
 
 /* ─── CSS variable defaults (flat-dark — no overrides needed) ─────────────── */
 :root {
-	--neu-bg: transparent;
-	--neu-shadow-dark: transparent;
-	--neu-shadow-light: transparent;
+  --neu-bg: transparent;
+  --neu-shadow-dark: transparent;
+  --neu-shadow-light: transparent;
 }
 
 /* ─── neu-dark palette ────────────────────────────────────────────────────── */
-[data-theme="neu-dark"] {
-	/* Shift the darkest slates to the neumorphic baseline (#1e293b). */
-	/* Crucial for neumorphism: panels and backgrounds MUST perfectly blend */
-	--color-slate-950: #1e293b;
-	--color-slate-900: #1e293b;
-	--color-slate-800: #1e293b;
-	
-	--neu-bg: #1e293b;
-	--neu-shadow-dark: #0f172a;
-	--neu-shadow-light: #334155;
+[data-theme='neu-dark'] {
+  /* Shift the darkest slates to the neumorphic baseline (#1e293b). */
+  /* Crucial for neumorphism: panels and backgrounds MUST perfectly blend */
+  --color-slate-950: #1e293b;
+  --color-slate-900: #1e293b;
+  --color-slate-800: #1e293b;
+
+  --neu-bg: #1e293b;
+  --neu-shadow-dark: #0f172a;
+  --neu-shadow-light: #334155;
 }
 
 /* ─── neu-light palette ───────────────────────────────────────────────────── */
-[data-theme="neu-light"] {
-	/* 
+[data-theme='neu-light'] {
+  /* 
 	 * NEUMORPHISM RULE #1: Monochromatic Baseline.
 	 * Flatten light backgrounds to the soft, cool grey neumorphic baseline.
 	 * Components using bg-slate-50 or bg-slate-100 will blend perfectly.
 	 */
-	--color-slate-50: #e0e8f6;
-	--color-slate-100: #e0e8f6;
-	
-	/* Shadows */
-	--neu-bg: #e0e8f6;
-	--neu-shadow-dark: #c8d2e6;
-	--neu-shadow-light: #ffffff;
+  --color-slate-50: #e0e8f6;
+  --color-slate-100: #e0e8f6;
+
+  /* Shadows */
+  --neu-bg: #e0e8f6;
+  --neu-shadow-dark: #c8d2e6;
+  --neu-shadow-light: #ffffff;
 }
 
 /* ─── Neumorphic utility classes ──────────────────────────────────────────── */
 
 .neu-raised {
-	background-color: var(--neu-bg);
-	box-shadow:
-		9px 9px 16px var(--neu-shadow-dark),
-		-9px -9px 16px var(--neu-shadow-light);
+  background-color: var(--neu-bg);
+  box-shadow:
+    9px 9px 16px var(--neu-shadow-dark),
+    -9px -9px 16px var(--neu-shadow-light);
 }
 
 .neu-raised-sm {
-	background-color: var(--neu-bg);
-	box-shadow:
-		4px 4px 8px var(--neu-shadow-dark),
-		-4px -4px 8px var(--neu-shadow-light);
+  background-color: var(--neu-bg);
+  box-shadow:
+    4px 4px 8px var(--neu-shadow-dark),
+    -4px -4px 8px var(--neu-shadow-light);
 }
 
 .neu-pressed {
-	background-color: var(--neu-bg);
-	box-shadow:
-		inset 9px 9px 16px var(--neu-shadow-dark),
-		inset -9px -9px 16px var(--neu-shadow-light);
+  background-color: var(--neu-bg);
+  box-shadow:
+    inset 9px 9px 16px var(--neu-shadow-dark),
+    inset -9px -9px 16px var(--neu-shadow-light);
 }
 
 .neu-pressed-sm {
-	background-color: var(--neu-bg);
-	box-shadow:
-		inset 4px 4px 8px var(--neu-shadow-dark),
-		inset -4px -4px 8px var(--neu-shadow-light);
+  background-color: var(--neu-bg);
+  box-shadow:
+    inset 4px 4px 8px var(--neu-shadow-dark),
+    inset -4px -4px 8px var(--neu-shadow-light);
 }
 
 .neu-hover {
-	transition: box-shadow 200ms ease-in-out, background-color 200ms ease-in-out;
+  transition:
+    box-shadow 200ms ease-in-out,
+    background-color 200ms ease-in-out;
 }
 
 .neu-hover:hover {
-	box-shadow:
-		6px 6px 12px var(--neu-shadow-dark),
-		-6px -6px 12px var(--neu-shadow-light);
+  box-shadow:
+    6px 6px 12px var(--neu-shadow-dark),
+    -6px -6px 12px var(--neu-shadow-light);
 }
 
 .neu-active:active {
-	box-shadow:
-		inset 4px 4px 8px var(--neu-shadow-dark),
-		inset -4px -4px 8px var(--neu-shadow-light);
+  box-shadow:
+    inset 4px 4px 8px var(--neu-shadow-dark),
+    inset -4px -4px 8px var(--neu-shadow-light);
 }
 
 /* ─── flat-dark: neu-* classes are no-ops ─────────────────────────────────── */
-[data-theme="flat-dark"] .neu-raised,
-[data-theme="flat-dark"] .neu-raised-sm,
-[data-theme="flat-dark"] .neu-pressed,
-[data-theme="flat-dark"] .neu-pressed-sm {
-	box-shadow: none;
-	background-color: transparent;
+[data-theme='flat-dark'] .neu-raised,
+[data-theme='flat-dark'] .neu-raised-sm,
+[data-theme='flat-dark'] .neu-pressed,
+[data-theme='flat-dark'] .neu-pressed-sm {
+  box-shadow: none;
+  background-color: transparent;
 }
