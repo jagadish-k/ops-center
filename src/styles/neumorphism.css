@@ -1,45 +1,65 @@
 /**
- * Neumorphic utility classes.
+ * Neumorphic utility classes + theme palette overrides.
  *
- * Activated by data-theme="neu-dark" or data-theme="neu-light" on <html>.
- * When the theme is "flat-dark", these classes are no-ops (no shadows).
+ * HOW IT WORKS:
+ * Tailwind v4 defines slate colors as CSS custom properties on :root
+ * (e.g., --color-slate-900). By overriding these under [data-theme],
+ * EVERY class that uses slate colors (bg-slate-900, text-slate-100,
+ * border-slate-800, etc.) automatically picks up the new values.
+ * This means we don't need to add dark: prefixes to 146 class instances.
  *
- * Usage in components:
- *   <div className="neu-raised rounded-2xl ...">  // raised card
- *   <input className="neu-pressed rounded-xl ..." // inset input
- *   <button className="neu-raised-sm active:neu-pressed-sm ...">  // button
- *
- * The utility classes use CSS custom properties so the same class works
- * for both neu-dark and neu-light — the shadow colors change via the
- * [data-theme] selector below.
+ * THREE MODES:
+ *   flat-dark  : Default. No overrides — Tailwind's original slate palette.
+ *   neu-dark   : Slate-950 shifted to slate-800 for neumorphic baseline.
+ *                Shadows: dark #0f172a, light #334155.
+ *   neu-light  : Full palette inversion. Dark backgrounds → light.
+ *                Dark text → light text. Shadows: dark #c8d2e6, light #fff.
  */
 
-/* ─── CSS variable defaults (flat-dark — no shadows) ──────────────────────── */
+/* ─── CSS variable defaults (flat-dark — no overrides needed) ─────────────── */
 :root {
 	--neu-bg: transparent;
 	--neu-shadow-dark: transparent;
 	--neu-shadow-light: transparent;
-	--neu-blur: 0px;
-	--neu-spread: 0px;
 }
 
-/* ─── neu-dark palette (slate-800 baseline) ───────────────────────────────── */
+/* ─── neu-dark palette ────────────────────────────────────────────────────── */
 [data-theme="neu-dark"] {
+	/* Shift the darkest slates to the neumorphic baseline (#1e293b). */
+	--color-slate-950: oklch(37% 0.041 260.031);   /* ≈ #1e293b (slate-800) */
+	--color-slate-900: oklch(37% 0.041 260.031);   /* ≈ #1e293b */
 	--neu-bg: #1e293b;
 	--neu-shadow-dark: #0f172a;
 	--neu-shadow-light: #334155;
 }
 
-/* ─── neu-light palette (#e0e8f6 baseline) ────────────────────────────────── */
+/* ─── neu-light palette (FULL INVERSION) ──────────────────────────────────── */
 [data-theme="neu-light"] {
+	/* Dark backgrounds → light equivalents */
+	--color-slate-950: oklch(93% 0.015 250);       /* ≈ #e0e8f6 */
+	--color-slate-900: oklch(93% 0.015 250);       /* ≈ #e0e8f6 */
+	--color-slate-800: oklch(88% 0.015 250);       /* ≈ #d0dae8 */
+	--color-slate-700: oklch(83% 0.015 250);       /* ≈ #c8d2e6 */
+
+	/* Light text → dark text */
+	--color-slate-50:  oklch(25% 0.042 265);       /* ≈ #1e293b */
+	--color-slate-100: oklch(25% 0.042 265);       /* ≈ #1e293b */
+	--color-slate-200: oklch(33% 0.041 260);       /* ≈ #334155 */
+	--color-slate-300: oklch(42% 0.040 255);       /* ≈ #475569 */
+	--color-slate-400: oklch(50% 0.038 250);       /* ≈ #64748b */
+
+	/* Medium slates stay roughly the same (they work on both light and dark) */
+	--color-slate-500: oklch(50% 0.038 250);       /* ≈ #64748b */
+	--color-slate-600: oklch(45% 0.040 255);       /* ≈ #475569 */
+
 	--neu-bg: #e0e8f6;
 	--neu-shadow-dark: #c8d2e6;
 	--neu-shadow-light: #ffffff;
 }
 
-/* ─── Utility classes ─────────────────────────────────────────────────────── */
+/* ─── Neumorphic utility classes ──────────────────────────────────────────── */
+/* These are no-ops in flat-dark mode (variables are transparent). */
 
-/* Raised / extruded surface (light from top-left). */
 .neu-raised {
 	background-color: var(--neu-bg);
 	box-shadow:
@@ -54,7 +74,6 @@
 		-4px -4px 8px var(--neu-shadow-light);
 }
 
-/* Pressed / inset surface (for inputs, active buttons, selected tabs). */
 .neu-pressed {
 	background-color: var(--neu-bg);
 	box-shadow:
@@ -69,7 +88,6 @@
 		inset -4px -4px 8px var(--neu-shadow-light);
 }
 
-/* Hover transition (raised → slightly less raised). */
 .neu-hover {
 	transition: box-shadow 200ms ease-in-out, background-color 200ms ease-in-out;
 }
@@ -80,7 +98,6 @@
 		-6px -6px 12px var(--neu-shadow-light);
 }
 
-/* Active (raised → pressed on click). */
 .neu-active:active {
 	box-shadow:
 		inset 4px 4px 8px var(--neu-shadow-dark),
