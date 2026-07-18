@@ -26,10 +26,13 @@ import type {
 	StaffSpecialty,
 	MapCoordinates,
 } from '@/types';
+import type { MapLayout, MapZone, MapPOI, POIType } from '@/lib/map-layout';
+import { POI_ICONS, POI_COLORS } from '@/lib/map-layout';
 
 interface OptimizedStadiumMapCanvasProps {
 	incidents: IncidentReport[];
 	staffMembers: WhitelistUser[];
+	mapLayout?: unknown;
 	onIncidentSelect: (incident: IncidentReport) => void;
 }
 
@@ -80,13 +83,14 @@ interface PointerSample {
 export function OptimizedStadiumMapCanvas({
 	incidents,
 	staffMembers,
+	mapLayout,
 	onIncidentSelect,
 }: OptimizedStadiumMapCanvasProps): React.JSX.Element {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
 	// ── Imperative refs (read by the rAF loop WITHOUT restarting it) ────────────
-	const propsRef = useRef({ incidents, staffMembers, onIncidentSelect });
+	const propsRef = useRef({ incidents, staffMembers, onIncidentSelect, mapLayout });
 	const viewportRef = useRef<Viewport>({ zoom: 1, offsetX: 0, offsetY: 0 });
 	const dimsRef = useRef<Dimensions>({ cssWidth: 0, cssHeight: 0, dpr: 1 });
 	const bgDirtyRef = useRef(true); // forces a background re-render
@@ -151,8 +155,10 @@ export function OptimizedStadiumMapCanvas({
 
 	// ── Sync props into the ref WITHOUT touching the rAF loop deps ──────────────
 	useEffect(() => {
-		propsRef.current = { incidents, staffMembers, onIncidentSelect };
-	}, [incidents, staffMembers, onIncidentSelect]);
+		propsRef.current = { incidents, staffMembers, onIncidentSelect, mapLayout };
+		// Re-render the background when mapLayout changes (new zones/POIs).
+		bgDirtyRef.current = true;
+	}, [incidents, staffMembers, onIncidentSelect, mapLayout]);
 
 	// ── Forward / inverse transforms (grid ↔ CSS pixel) ─────────────────────────
 	const baseScale = (cssMin: number): number => (cssMin * 0.92) / 1000;
@@ -253,6 +259,77 @@ export function OptimizedStadiumMapCanvas({
 		for (const sec of sectors) {
 			const p = gridToBg(sec.coord);
 			ctx.fillText(sec.label, p.x, p.y);
+		}
+
+		// ── Render zones + POIs from tenant mapLayout ────────────────────────
+		// These replace the hardcoded rings/sectors above when a layout exists.
+		const layoutData = propsRef.current.mapLayout as MapLayout | null | undefined;
+		if (layoutData?.floors?.length) {
+			// Use the default floor (or first floor).
+			const floor = layoutData.floors.find((f) => f.id === layoutData.defaultFloorId) ?? layoutData.floors[0];
+			if (floor) {
+				// Draw zones.
+				for (const zone of floor.zones) {
+					ctx.fillStyle = zone.color + '30'; // hex + alpha
+					ctx.strokeStyle = zone.color;
+					ctx.lineWidth = 1.5;
+
+					if (zone.shape === 'circle' && zone.circle) {
+						const center = gridToBg(zone.circle.center);
+						const r = zone.circle.radius * s;
+						ctx.beginPath();
+						ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.stroke();
+					} else if (zone.shape === 'polygon' && zone.polygon.length >= 3) {
+						ctx.beginPath();
+						zone.polygon.forEach((pt, i) => {
+							const p = gridToBg(pt);
+							if (i === 0) ctx.moveTo(p.x, p.y);
+							else ctx.lineTo(p.x, p.y);
+						});
+						ctx.closePath();
+						ctx.fill();
+						ctx.stroke();
+					} else if (zone.polygon.length >= 2) {
+						// Rect (bounding box of polygon).
+						const xs = zone.polygon.map((p) => p.x);
+						const ys = zone.polygon.map((p) => p.y);
+						const minX = Math.min(...xs), maxX = Math.max(...xs);
+						const minY = Math.min(...ys), maxY = Math.max(...ys);
+						const tl = gridToBg({ x: minX, y: minY });
+						const br = gridToBg({ x: maxX, y: maxY });
+						ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+						ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+					}
+
+					// Zone label.
+					const anchor = gridToBg(zone.anchor);
+					ctx.fillStyle = zone.color;
+					ctx.font = '700 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+					ctx.textAlign = 'center';
+					ctx.fillText(zone.name, anchor.x, anchor.y);
+				}
+
+				// Draw POIs.
+				for (const poi of floor.pois) {
+					const p = gridToBg({ x: poi.x, y: poi.y });
+					const color = POI_COLORS[poi.type] ?? '#64748b';
+					ctx.fillStyle = color;
+					ctx.beginPath();
+					ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+					ctx.lineWidth = 1;
+					ctx.stroke();
+
+					// POI label (small, below the dot).
+					ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+					ctx.font = '600 8px ui-monospace, monospace';
+					ctx.textAlign = 'center';
+					ctx.fillText(poi.name, p.x, p.y + 12);
+				}
+			}
 		}
 
 		bgDirtyRef.current = false;

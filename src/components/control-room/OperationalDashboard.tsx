@@ -39,7 +39,7 @@ interface OperationalDashboardProps {
 export function OperationalDashboard({ onTenantChange }: OperationalDashboardProps) {
 	const { signOut, claims } = useAuth();
 	const { can, phone, fullName, isSuperadmin } = usePermissions();
-	const { incidents, staff, activeTenantId, connectionHealthy } = useActiveOps();
+	const { incidents, staff, activeTenantId, connectionHealthy, mapLayout } = useActiveOps();
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [auditOpen, setAuditOpen] = useState(false);
@@ -183,11 +183,12 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 					<ErrorBoundary name="Operations tab">
 						<div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">
 							<section data-tour="map-canvas" className="min-h-[320px] lg:col-span-2 lg:min-h-0">
-								<OptimizedStadiumMapCanvas
-									incidents={incidents}
-									staffMembers={staff}
-									onIncidentSelect={handleSelect}
-								/>
+							<OptimizedStadiumMapCanvas
+								incidents={incidents}
+								staffMembers={staff}
+								mapLayout={mapLayout}
+								onIncidentSelect={handleSelect}
+							/>
 							</section>
 							<aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
 								<div data-tour="incident-queue" className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">

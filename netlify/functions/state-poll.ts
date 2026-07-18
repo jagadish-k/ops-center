@@ -23,6 +23,7 @@ import {
 	dispatchesTable,
 	usersTable,
 	tenantMembershipsTable,
+	tenantsTable,
 } from '../../database/schema.ts';
 import { eq, and, ne, asc, desc } from 'drizzle-orm';
 import { mapIncident, mapStaff, mapDispatch } from '../lib/mappers.ts';
@@ -126,15 +127,25 @@ export default async (request: Request): Promise<Response> => {
 			.limit(200)
 			.execute();
 
-		// 5. Map rows to domain types.
+		// 5. Fetch the tenant's map layout (zones + POIs for canvas rendering).
+		const tenantRows = await db
+			.select({ mapLayout: tenantsTable.mapLayout })
+			.from(tenantsTable)
+			.where(eq(tenantsTable.id, tenantId))
+			.limit(1)
+			.execute();
+
+		// 6. Map rows to domain types.
 		const incidents = incidentRows.map((row) => mapIncident(row as never));
 		const staff = staffRows.map((row) => mapStaff(row as never));
 		const dispatches = dispatchRows.map((row) => mapDispatch(row as never));
+		const mapLayout = tenantRows[0]?.mapLayout ?? null;
 
 		return jsonResponse({
 			incidents,
 			staff,
 			dispatches,
+			mapLayout,
 			serverTimestamp: Date.now(),
 		});
 	} catch (err) {

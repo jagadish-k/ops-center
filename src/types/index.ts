@@ -255,5 +255,6 @@ export interface StatePollDiff {
 	incidents: IncidentReport[];
 	staff: WhitelistUser[];
 	dispatches: DispatchDirective[];
+	mapLayout?: unknown;
 	serverTimestamp: number;
 }

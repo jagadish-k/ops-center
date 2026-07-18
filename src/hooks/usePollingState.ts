@@ -27,6 +27,7 @@ export interface PollingState {
 	incidents: IncidentReport[];
 	staff: WhitelistUser[];
 	dispatches: DispatchDirective[];
+	mapLayout: unknown;
 	loading: boolean;
 	/** False when the last poll failed (endpoint unreachable / errored). */
 	connectionHealthy: boolean;
@@ -43,6 +44,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 	const [incidents, setIncidents] = useState<IncidentReport[]>([]);
 	const [staff, setStaff] = useState<WhitelistUser[]>([]);
 	const [dispatches, setDispatches] = useState<DispatchDirective[]>([]);
+	const [mapLayout, setMapLayout] = useState<unknown>(null);
 	const [loading, setLoading] = useState(true);
 	const [connectionHealthy, setConnectionHealthy] = useState(true);
 
@@ -51,6 +53,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 		incidents: [],
 		staff: [],
 		dispatches: [],
+		mapLayout: null,
 		loading: true,
 		connectionHealthy: true,
 	});
@@ -90,6 +93,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 			setIncidents(diff.incidents ?? []);
 			setStaff(diff.staff ?? []);
 			setDispatches(diff.dispatches ?? []);
+			setMapLayout(diff.mapLayout ?? null);
 			setConnectionHealthy(true);
 			setLoading(false);
 			backoffRef.current = BASE_INTERVAL_MS;
@@ -140,7 +144,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
 	}, [poll]);
 
 	// Keep the imperative mirror in sync for non-React consumers.
-	snapshotRef.current = { incidents, staff, dispatches, loading, connectionHealthy };
+	snapshotRef.current = { incidents, staff, dispatches, mapLayout, loading, connectionHealthy };
 
-	return { incidents, staff, dispatches, loading, connectionHealthy };
+	return { incidents, staff, dispatches, mapLayout, loading, connectionHealthy };
 }
