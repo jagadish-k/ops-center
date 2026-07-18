@@ -45,8 +45,25 @@ export default async (request: Request): Promise<Response> => {
 
 	try {
 		// 2. Query active incidents (non-resolved) for this tenant.
+		// Use explicit snake_case aliases to match the mapper's IncidentRow interface.
 		const incidentRows = await db
-			.select()
+			.select({
+				id: incidentsTable.id,
+				tenant_id: incidentsTable.tenantId,
+				source: incidentsTable.source,
+				tier: incidentsTable.tier,
+				status: incidentsTable.status,
+				raw_text: incidentsTable.rawText,
+				category: incidentsTable.category,
+				severity: incidentsTable.severity,
+				location_sector: incidentsTable.locationSector,
+				action_required: incidentsTable.actionRequired,
+				coord_x: incidentsTable.coordX,
+				coord_y: incidentsTable.coordY,
+				reported_by: incidentsTable.reportedBy,
+				created_at: incidentsTable.createdAt,
+				updated_at: incidentsTable.updatedAt,
+			})
 			.from(incidentsTable)
 			.where(
 				and(

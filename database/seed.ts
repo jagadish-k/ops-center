@@ -132,7 +132,7 @@ const DEV_USERS = [
 	{ phone: '+14155552028', fullName: 'Mixed Role Morgan' },
 	{ phone: '+14155550001', fullName: 'Alpha Security Lead' },
 	{ phone: '+14155550002', fullName: 'Beta Medical Triage' },
-	// Additional staff for realistic map density
+	// MetLife additional staff
 	{ phone: '+14155550003', fullName: 'Gamma Security' },
 	{ phone: '+14155550004', fullName: 'Delta Medical' },
 	{ phone: '+14155550005', fullName: 'Echo Cleaning' },
@@ -140,6 +140,17 @@ const DEV_USERS = [
 	{ phone: '+14155550007', fullName: 'Golf Security' },
 	{ phone: '+14155550008', fullName: 'Hotel Medical' },
 	{ phone: '+14155550009', fullName: 'India Cleaning' },
+	// SoFi Stadium staff
+	{ phone: '+14155560001', fullName: 'Sierra Security' },
+	{ phone: '+14155560002', fullName: 'Tango Medical' },
+	{ phone: '+14155560003', fullName: 'Uniform Cleaning' },
+	{ phone: '+14155560004', fullName: 'Victor Supervisor' },
+	{ phone: '+14155560005', fullName: 'Whiskey Security' },
+	// Hard Rock Stadium staff
+	{ phone: '+14155570001', fullName: 'Zulu Security' },
+	{ phone: '+14155570002', fullName: 'Avocado Medical' },
+	{ phone: '+14155570003', fullName: 'Bravo Cleaning' },
+	{ phone: '+14155570004', fullName: 'Charlie Supervisor' },
 ];
 
 // ─── Memberships (expanded) ──────────────────────────────────────────────────
@@ -158,6 +169,18 @@ const DEV_MEMBERSHIPS = [
 	{ phone: '+14155550007', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
 	{ phone: '+14155550008', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
 	{ phone: '+14155550009', tenantId: 'tenant_metlife_ops', roles: ['staff'] },
+	// SoFi Stadium staff (different roster, different zones)
+	{ phone: '+14155552028', tenantId: 'tenant_sofi_ops', roles: ['manager'] }, // Morgan also manages SoFi
+	{ phone: '+14155560001', tenantId: 'tenant_sofi_ops', roles: ['staff'] },
+	{ phone: '+14155560002', tenantId: 'tenant_sofi_ops', roles: ['staff'] },
+	{ phone: '+14155560003', tenantId: 'tenant_sofi_ops', roles: ['staff'] },
+	{ phone: '+14155560004', tenantId: 'tenant_sofi_ops', roles: ['staff'] },
+	{ phone: '+14155560005', tenantId: 'tenant_sofi_ops', roles: ['staff'] },
+	// Hard Rock Stadium staff
+	{ phone: '+14155570001', tenantId: 'tenant_hardrock_ops', roles: ['staff'] },
+	{ phone: '+14155570002', tenantId: 'tenant_hardrock_ops', roles: ['staff'] },
+	{ phone: '+14155570003', tenantId: 'tenant_hardrock_ops', roles: ['staff'] },
+	{ phone: '+14155570004', tenantId: 'tenant_hardrock_ops', roles: ['staff'] },
 ];
 
 // ─── Staff roster with positions (spread across the 0–1000 grid) ──────────────
@@ -165,7 +188,7 @@ const DEV_MEMBERSHIPS = [
 // (within the tenant's bounding box). status varies for realistic map display.
 
 const DEV_ROSTER = [
-	// Existing 3 (kept for backwards compat with tests) + expanded to 9 active
+	// ── MetLife (10 staff, spread across 6 zones) ──
 	{ phone: '+14155552028', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'DISPATCHED', coordX: 380, coordY: 310, lat: 40.8135, lng: -74.0740 },
 	{ phone: '+14155550001', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 320, coordY: 280, lat: 40.8130, lng: -74.0745 },
 	{ phone: '+14155550002', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 610, coordY: 420, lat: 40.8120, lng: -74.0735 },
@@ -176,6 +199,17 @@ const DEV_ROSTER = [
 	{ phone: '+14155550007', tenantId: 'tenant_metlife_ops', specialty: 'security', assignedZone: 'ZONE-B', status: 'OFF_DUTY', coordX: 580, coordY: 380, lat: 40.8122, lng: -74.0738 },
 	{ phone: '+14155550008', tenantId: 'tenant_metlife_ops', specialty: 'medical', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 280, coordY: 540, lat: 40.8118, lng: -74.0748 },
 	{ phone: '+14155550009', tenantId: 'tenant_metlife_ops', specialty: 'cleaning', assignedZone: 'ZONE-D', status: 'AVAILABLE', coordX: 500, coordY: 700, lat: 40.8113, lng: -74.0755 },
+	// ── SoFi Stadium (5 staff, different layout) ──
+	{ phone: '+14155560001', tenantId: 'tenant_sofi_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 200, coordY: 300, lat: 33.9530, lng: -118.3390 },
+	{ phone: '+14155560002', tenantId: 'tenant_sofi_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'DISPATCHED', coordX: 650, coordY: 500, lat: 33.9545, lng: -118.3385 },
+	{ phone: '+14155560003', tenantId: 'tenant_sofi_ops', specialty: 'cleaning', assignedZone: 'ZONE-C', status: 'AVAILABLE', coordX: 800, coordY: 200, lat: 33.9550, lng: -118.3380 },
+	{ phone: '+14155560004', tenantId: 'tenant_sofi_ops', specialty: 'supervisor', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 400, coordY: 600, lat: 33.9535, lng: -118.3395 },
+	{ phone: '+14155560005', tenantId: 'tenant_sofi_ops', specialty: 'security', assignedZone: 'ZONE-B', status: 'OFF_DUTY', coordX: 550, coordY: 350, lat: 33.9540, lng: -118.3388 },
+	// ── Hard Rock Stadium (4 staff) ──
+	{ phone: '+14155570001', tenantId: 'tenant_hardrock_ops', specialty: 'security', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 300, coordY: 400, lat: 25.9580, lng: -80.2380 },
+	{ phone: '+14155570002', tenantId: 'tenant_hardrock_ops', specialty: 'medical', assignedZone: 'ZONE-B', status: 'AVAILABLE', coordX: 700, coordY: 300, lat: 25.9590, lng: -80.2375 },
+	{ phone: '+14155570003', tenantId: 'tenant_hardrock_ops', specialty: 'cleaning', assignedZone: 'ZONE-C', status: 'DISPATCHED', coordX: 500, coordY: 700, lat: 25.9595, lng: -80.2370 },
+	{ phone: '+14155570004', tenantId: 'tenant_hardrock_ops', specialty: 'supervisor', assignedZone: 'ZONE-A', status: 'AVAILABLE', coordX: 600, coordY: 500, lat: 25.9585, lng: -80.2385 },
 ];
 
 // ─── Per-user grants (demonstrates P1 override mechanism) ─────────────────────
@@ -270,6 +304,56 @@ const DEV_INCIDENTS = [
 		rawText: 'Structural crack observed in railing at Section 112 upper level. Immediate evacuation risk.',
 		category: 'FACILITIES', severity: 'CRITICAL', locationSector: 'ZONE-A',
 		coordX: 380, coordY: 310, actionRequired: 'Evacuate Section 112 upper. Engineering assessment.',
+	},
+	// ── SoFi Stadium incidents ──
+	{
+		id: 'inc_sofi_001', tenantId: 'tenant_sofi_ops',
+		tier: 2, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155560001', // Sierra Security
+		rawText: 'Unauthorized access attempt at VIP entrance. Individual detained.',
+		category: 'SECURITY', severity: 'HIGH', locationSector: 'ZONE-A',
+		coordX: 200, coordY: 300, actionRequired: 'Security backup to VIP entrance.',
+	},
+	{
+		id: 'inc_sofi_002', tenantId: 'tenant_sofi_ops',
+		tier: 3, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155560002', // Tango Medical (DISPATCHED)
+		rawText: 'Patron experiencing heat exhaustion in Section 215. requesting medical.',
+		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-B',
+		coordX: 650, coordY: 500, actionRequired: 'Tango Medical dispatched with water + cooling.',
+	},
+	{
+		id: 'inc_sofi_003', tenantId: 'tenant_sofi_ops',
+		tier: 4, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155560003', // Uniform Cleaning
+		rawText: 'Restroom out of paper towels near Section 200.',
+		category: 'FACILITIES', severity: 'LOW', locationSector: 'ZONE-C',
+		coordX: 800, coordY: 200, actionRequired: 'Restock paper towels.',
+	},
+	// ── Hard Rock Stadium incidents ──
+	{
+		id: 'inc_hr_001', tenantId: 'tenant_hardrock_ops',
+		tier: 1, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155570001', // Zulu Security
+		rawText: 'Fight in parking lot Section D. Multiple individuals. PD requested.',
+		category: 'SECURITY', severity: 'CRITICAL', locationSector: 'ZONE-A',
+		coordX: 300, coordY: 400, actionRequired: 'Police dispatched. Secure perimeter.',
+	},
+	{
+		id: 'inc_hr_002', tenantId: 'tenant_hardrock_ops',
+		tier: 3, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155570002', // Avocado Medical
+		rawText: 'Allergic reaction at concession stand. EpiPen administered.',
+		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-B',
+		coordX: 700, coordY: 300, actionRequired: 'Monitor patron. Transport if needed.',
+	},
+	{
+		id: 'inc_hr_003', tenantId: 'tenant_hardrock_ops',
+		tier: 5, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155570004', // Charlie Supervisor
+		rawText: 'Light rain starting. Slippery surfaces advisory.',
+		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-A',
+		coordX: 600, coordY: 500, actionRequired: 'Deploy wet-floor signage at entrances.',
 	},
 ];
 
