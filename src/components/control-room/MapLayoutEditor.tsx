@@ -25,7 +25,6 @@ import {
 	type GridPoint,
 	POI_ICONS,
 	POI_COLORS,
-	METLIFE_MAP_LAYOUT,
 } from '@/lib/map-layout';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -545,8 +544,8 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<>
 							<h3 className="mb-2 mt-4 font-mono text-[10px] uppercase tracking-widest text-slate-500">Floor Details</h3>
 							<div className="space-y-2">
-								<div><label className="text-[9px] uppercase text-slate-600">Name</label><input type="text" value={activeFloor.name} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, name: e.target.value }))} className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100" /></div>
-								<div><label className="text-[9px] uppercase text-slate-600">Level</label><input type="number" value={activeFloor.level} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(e.target.value) || 0 }))} className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100" /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={activeFloor.name} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, name: e.target.value }))} className="text-xs" /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Level</label><Input type="number" value={activeFloor.level} onChange={(e) => updateFloor(activeFloor.id, (f) => ({ ...f, level: Number(e.target.value) || 0 }))} className="text-xs" /></div>
 							</div>
 						</>
 					)}
@@ -679,7 +678,7 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<div>
 							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Zone Properties</h3>
 							<div className="space-y-2">
-								<div><label className="text-[9px] uppercase text-slate-600">Name</label><input type="text" value={singleZone.zone.name} onChange={(e) => updateZone(singleZone.floor.id, singleZone.zone.id, { name: e.target.value })} className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100" /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={singleZone.zone.name} onChange={(e) => updateZone(singleZone.floor.id, singleZone.zone.id, { name: e.target.value })} /></div>
 								<div><label className="text-[9px] uppercase text-slate-600">Shape</label><p className="text-xs text-slate-300 capitalize">{singleZone.zone.shape}</p></div>
 								<div>
 									<label className="text-[9px] uppercase text-slate-600">Color</label>
@@ -699,14 +698,14 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 						<div>
 							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">POI Properties</h3>
 							<div className="space-y-2">
-								<div><label className="text-[9px] uppercase text-slate-600">Name</label><input type="text" value={singlePoi.poi.name} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { name: e.target.value })} className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100" /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Name</label><Input value={singlePoi.poi.name} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { name: e.target.value })} /></div>
 								<div>
 									<label className="text-[9px] uppercase text-slate-600">Type</label>
 									<select className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300" value={singlePoi.poi.type} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { type: e.target.value as POIType })}>
 										{POI_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
 									</select>
 								</div>
-								<div><label className="text-[9px] uppercase text-slate-600">Notes</label><input type="text" value={singlePoi.poi.notes ?? ''} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { notes: e.target.value })} className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100" /></div>
+								<div><label className="text-[9px] uppercase text-slate-600">Notes</label><Input value={singlePoi.poi.notes ?? ''} onChange={(e) => updatePoi(singlePoi.floor.id, singlePoi.poi.id, { notes: e.target.value })} /></div>
 								<div className="text-[10px] text-slate-500">Position: ({singlePoi.poi.x}, {singlePoi.poi.y})</div>
 								<Button size="sm" variant="ghost" className="text-red-400 w-full" onPress={() => setDeleteConfirm(new Set([`poi:${singlePoi.floor.id}:${singlePoi.poi.id}`]))}>Delete POI</Button>
 							</div>

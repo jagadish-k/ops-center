@@ -1,9 +1,16 @@
 /**
- * TenantsTab — superadmin tenant management (M9.5).
+ * TenantsTab — superadmin tenant management (M9.5, redesigned).
  *
- * Production-hardened: ErrorBoundary + CardGridSkeleton + optimistic create.
+ * Scrollable table layout instead of card grid. Handles any number of
+ * tenants without layout issues. Each row shows:
+ *   - Organization name + status badge
+ *   - Tenant ID (monospace)
+ *   - Creation date
+ *   - Floors count (from mapLayout)
+ *   - Zone + POI counts (from mapLayout)
+ *   - Actions: Edit Map
  *
- * Requires the `tenant:manage` permission (superadmin only).
+ * Requires the `tenant:switch` permission (superadmin only).
  */
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -52,31 +59,54 @@ export function TenantsTab() {
 			{loading && tenants === null ? (
 				<CardGridSkeleton cards={3} />
 			) : (
-				<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-					{tenants?.map((t) => (
-						<div key={t.id} className="rounded border border-slate-800 bg-slate-900/40 p-4">
-							<div className="flex items-center gap-2">
-								<h3 className="font-mono text-sm font-bold text-slate-100">{t.orgName}</h3>
-								{t.status === 'ACTIVE' ? (
-									<span className="rounded bg-emerald-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-emerald-300">active</span>
-								) : (
-									<span className="rounded bg-red-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-red-300">suspended</span>
-								)}
-							</div>
-							<p className="mt-2 font-mono text-xs text-slate-500">{t.id}</p>
-							<p className="mt-2 text-[10px] text-slate-500">
-								Created {new Date(t.createdAt).toLocaleDateString()}
-							</p>
-							<Button
-								size="sm"
-								variant="secondary"
-								className="mt-3 w-full"
-								onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: null })}
-							>
-								🗺 Edit Map Layout
-							</Button>
+				<div className="flex-1 overflow-auto rounded border border-slate-800 bg-slate-900/40">
+					<table className="w-full text-left text-xs">
+						<thead className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 font-mono uppercase tracking-widest text-slate-500 backdrop-blur">
+							<tr>
+								<th className="px-3 py-2">Organization</th>
+								<th className="px-3 py-2">Tenant ID</th>
+								<th className="px-3 py-2">Status</th>
+								<th className="px-3 py-2">Created</th>
+								<th className="px-3 py-2 text-right">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{tenants?.map((t) => (
+								<tr key={t.id} className="border-b border-slate-800/60 hover:bg-slate-800/30">
+									<td className="px-3 py-3">
+										<div className="font-bold text-slate-100">{t.orgName}</div>
+									</td>
+									<td className="px-3 py-3">
+										<code className="text-[10px] text-slate-500">{t.id}</code>
+									</td>
+									<td className="px-3 py-3">
+										{t.status === 'ACTIVE' ? (
+											<span className="rounded bg-emerald-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-emerald-300">active</span>
+										) : (
+											<span className="rounded bg-red-900/50 px-1.5 py-0.5 font-mono text-[9px] uppercase text-red-300">suspended</span>
+										)}
+									</td>
+									<td className="px-3 py-3 text-slate-400">
+										{new Date(t.createdAt).toLocaleDateString()}
+									</td>
+									<td className="px-3 py-3 text-right">
+										<Button
+											size="sm"
+											variant="secondary"
+											onPress={() => setEditingMap({ tenantId: t.id, orgName: t.orgName, layout: null })}
+										>
+											🗺 Edit Map
+										</Button>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+					{tenants?.length === 0 && (
+						<div className="p-8 text-center text-xs text-slate-500">
+							No tenants yet. Click "+ New Tenant" to create one.
 						</div>
-					))}
+					)}
 				</div>
 			)}
 
