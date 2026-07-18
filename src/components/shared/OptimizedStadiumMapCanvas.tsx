@@ -499,6 +499,10 @@ export function OptimizedStadiumMapCanvas({
 			viewportRef.current.offsetY += dy;
 			dragRef.current.lastX = p.x;
 			dragRef.current.lastY = p.y;
+			// Re-render the background grid so it pans WITH the dots.
+			// Without this, the grid stays static while dots shift — making it
+			// look like the personnel are changing position.
+			bgDirtyRef.current = true;
 		}
 	};
 
@@ -654,7 +658,12 @@ export function OptimizedStadiumMapCanvas({
 			)}
 
 			{/* Staff info panel (shown on click) */}
-			{selectedStaff && (
+			{selectedStaff && (() => {
+				// Filter incidents reported by this staff member.
+				const staffIncidents = incidents.filter(
+					(inc) => inc.reportedBy === selectedStaff.userId || inc.reportedBy === selectedStaff.id,
+				);
+				return (
 				<div className="absolute bottom-3 right-3 z-20 w-72 rounded-xl border border-slate-700 bg-slate-900/95 p-4 text-xs shadow-xl backdrop-blur">
 					<div className="flex items-center justify-between">
 						<h4 className="font-bold text-slate-100">{selectedStaff.fullName}</h4>
@@ -677,11 +686,58 @@ export function OptimizedStadiumMapCanvas({
 							<p>Roles: <span className="text-slate-300">{selectedStaff.roles.join(', ')}</span></p>
 						)}
 					</div>
-					<div className="mt-3 border-t border-slate-700 pt-2">
-						<p className="text-[10px] text-slate-500">Click an incident marker on the map to view its details.</p>
-					</div>
+
+					{/* Reports filed by this person */}
+					{staffIncidents.length > 0 && (
+						<div className="mt-3 border-t border-slate-700 pt-2">
+							<p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+								Reports filed ({staffIncidents.length})
+							</p>
+							<div className="max-h-32 space-y-1 overflow-auto">
+								{staffIncidents.map((inc) => (
+									<button
+										key={inc.id}
+										onClick={() => {
+											onIncidentSelect(inc);
+											setSelectedStaff(null);
+										}}
+										className="block w-full rounded px-2 py-1 text-left hover:bg-slate-800"
+									>
+										<div className="flex items-center gap-1.5">
+											<span
+												className="inline-block h-1.5 w-1.5 rounded-full"
+												style={{
+													backgroundColor:
+														inc.tier === 1 ? '#ef4444' :
+														inc.tier === 2 ? '#f97316' :
+														inc.tier === 3 ? '#f59e0b' :
+														inc.tier === 4 ? '#3b82f6' : '#64748b',
+												}}
+											/>
+											<span className="text-[10px] text-slate-300">
+												T{inc.tier} · {inc.extractedMetadata.category}
+											</span>
+											<span className="ml-auto text-[9px] text-slate-600">
+												{inc.status}
+											</span>
+										</div>
+										<p className="mt-0.5 truncate text-[10px] text-slate-500">
+											{inc.rawText}
+										</p>
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
+					{staffIncidents.length === 0 && (
+						<div className="mt-3 border-t border-slate-700 pt-2">
+							<p className="text-[10px] text-slate-600">No reports filed by this person.</p>
+						</div>
+					)}
 				</div>
-			)}
+				);
+			})()}
 
 			{/* Legend with toggles */}
 			<div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-800 bg-slate-950/90 p-3 backdrop-blur">

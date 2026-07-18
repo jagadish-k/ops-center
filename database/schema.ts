@@ -189,6 +189,8 @@ export const incidentsTable = pgTable('incidents', {
 	actionRequired: text('action_required'),
 	coordX: integer('coord_x'),
 	coordY: integer('coord_y'),
+	/** UUID of the staff member who reported this incident (FK to users.id). */
+	reportedBy: uuid('reported_by'),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({

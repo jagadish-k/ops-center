@@ -185,11 +185,15 @@ const DEV_GRANTS = [
 ];
 
 // ─── Seed incidents (various tiers + positions for map testing) ───────────────
+// Each incident is linked to the staff member who reported it via reportedBy.
+// The reportedBy field is populated during seeding by looking up the userId
+// from the phone number.
 
 const DEV_INCIDENTS = [
 	{
 		id: 'inc_seed_001', tenantId: 'tenant_metlife_ops',
 		tier: 1, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155550001', // Alpha Security Lead
 		rawText: 'Section 112 — crowd surge against the perimeter railing. Multiple patrons at risk of crush injury.',
 		category: 'CROWD', severity: 'CRITICAL', locationSector: 'ZONE-B',
 		coordX: 610, coordY: 410, actionRequired: 'Deploy riot line + triage team immediately.',
@@ -197,6 +201,7 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_seed_002', tenantId: 'tenant_metlife_ops',
 		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155550003', // Gamma Security
 		rawText: 'Physical altercation in upper deck, Section 308. Two individuals, no weapons observed.',
 		category: 'SECURITY', severity: 'HIGH', locationSector: 'ZONE-D',
 		coordX: 540, coordY: 630, actionRequired: 'Security team to SEC-308 to de-escalate.',
@@ -204,6 +209,7 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_seed_003', tenantId: 'tenant_metlife_ops',
 		tier: 3, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155550002', // Beta Medical Triage
 		rawText: 'Unresponsive male near Gate C, possible cardiac event. AED requested.',
 		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-A',
 		coordX: 330, coordY: 270, actionRequired: 'AED + paramedic to Gate C concourse.',
@@ -211,6 +217,7 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_seed_004', tenantId: 'tenant_metlife_ops',
 		tier: 4, status: 'ON_SCENE', source: 'field_staff',
+		reportedByPhone: '+14155550005', // Echo Cleaning
 		rawText: 'Overflowing restroom fixture causing standing water in corridor. Slip hazard.',
 		category: 'FACILITIES', severity: 'MEDIUM', locationSector: 'ZONE-E',
 		coordX: 720, coordY: 350, actionRequired: 'Facilities crew + wet-floor signage.',
@@ -218,9 +225,51 @@ const DEV_INCIDENTS = [
 	{
 		id: 'inc_seed_005', tenantId: 'tenant_metlife_ops',
 		tier: 5, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155550008', // Hotel Medical
 		rawText: 'Long concession queues at Section 200 causing congestion. Advisory only.',
 		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-C',
 		coordX: 750, coordY: 180, actionRequired: 'Monitor; open auxiliary point if congestion worsens.',
+	},
+	// Additional incidents for richer staff→report linkage
+	{
+		id: 'inc_seed_006', tenantId: 'tenant_metlife_ops',
+		tier: 3, status: 'RESOLVED', source: 'field_staff',
+		reportedByPhone: '+14155550001', // Alpha Security Lead
+		rawText: 'Intoxicated patron escorted from Section 105. No injuries.',
+		category: 'SECURITY', severity: 'MEDIUM', locationSector: 'ZONE-A',
+		coordX: 280, coordY: 540, actionRequired: 'Resolved — patron handed to PD.',
+	},
+	{
+		id: 'inc_seed_007', tenantId: 'tenant_metlife_ops',
+		tier: 2, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155550004', // Delta Medical (DISPATCHED)
+		rawText: 'Patron collapsed in vomitory Section 312. Delta Medical en route.',
+		category: 'MEDICAL', severity: 'HIGH', locationSector: 'ZONE-D',
+		coordX: 500, coordY: 700, actionRequired: 'Delta Medical dispatched. AED on standby.',
+	},
+	{
+		id: 'inc_seed_008', tenantId: 'tenant_metlife_ops',
+		tier: 4, status: 'OPEN', source: 'field_staff',
+		reportedByPhone: '+14155550009', // India Cleaning
+		rawText: 'Spilled beverages in concourse near Section 300. Multiple spill points.',
+		category: 'FACILITIES', severity: 'LOW', locationSector: 'ZONE-D',
+		coordX: 450, coordY: 680, actionRequired: 'Cleaning crew dispatched.',
+	},
+	{
+		id: 'inc_seed_009', tenantId: 'tenant_metlife_ops',
+		tier: 5, status: 'RESOLVED', source: 'field_staff',
+		reportedByPhone: '+14155550006', // Foxtrot Supervisor
+		rawText: 'Lost child reunited with family at Guest Services. No further action needed.',
+		category: 'ADVISORY', severity: 'LOW', locationSector: 'ZONE-F',
+		coordX: 850, coordY: 200, actionRequired: 'Resolved.',
+	},
+	{
+		id: 'inc_seed_010', tenantId: 'tenant_metlife_ops',
+		tier: 1, status: 'ACKNOWLEDGED', source: 'field_staff',
+		reportedByPhone: '+14155552028', // Mixed Role Morgan (DISPATCHED)
+		rawText: 'Structural crack observed in railing at Section 112 upper level. Immediate evacuation risk.',
+		category: 'FACILITIES', severity: 'CRITICAL', locationSector: 'ZONE-A',
+		coordX: 380, coordY: 310, actionRequired: 'Evacuate Section 112 upper. Engineering assessment.',
 	},
 ];
 
@@ -342,12 +391,19 @@ export async function seed(db: ReturnType<typeof drizzle>): Promise<void> {
 			.execute();
 	}
 
-	// 9. Seed incidents (for map visualization)
+	// 9. Seed incidents (for map visualization + staff→report linkage)
 	console.log('  → Seed incidents...');
 	for (const inc of DEV_INCIDENTS) {
+		const reportedBy = inc.reportedByPhone ? (phoneToId.get(inc.reportedByPhone) ?? null) : null;
+		// Strip the helper field before insert.
+		const { reportedByPhone, ...incData } = inc;
+		void reportedByPhone;
 		await db
 			.insert(incidentsTable)
-			.values(inc)
+			.values({
+				...incData,
+				reportedBy,
+			})
 			.onConflictDoNothing()
 			.execute();
 	}

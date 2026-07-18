@@ -186,6 +186,8 @@ export interface IncidentReport {
 	timestamp: number;
 	coordinates: MapCoordinates;
 	extractedMetadata: IncidentExtractedMetadata;
+	/** UUID of the staff member who reported this incident (null for social_media source). */
+	reportedBy?: string;
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────

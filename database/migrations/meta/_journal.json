@@ -15,6 +15,13 @@
       "when": 1784317885561,
       "tag": "0001_wild_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784349735867,
+      "tag": "0002_lyrical_changeling",
+      "breakpoints": true
     }
   ]
 }

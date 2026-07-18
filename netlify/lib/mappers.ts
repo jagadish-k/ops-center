@@ -38,6 +38,7 @@ interface IncidentRow {
 	action_required: string | null;
 	coord_x: number | null;
 	coord_y: number | null;
+	reported_by: string | null;
 	created_at: Date;
 	updated_at: Date;
 }
@@ -95,6 +96,7 @@ export function mapIncident(row: IncidentRow): IncidentReport {
 			locationSector: row.location_sector ?? 'UNKNOWN',
 			actionRequired: row.action_required ?? undefined,
 		},
+		reportedBy: row.reported_by ?? undefined,
 	};
 }
 
