@@ -143,11 +143,11 @@ export function MapLayoutEditor({ tenantId, tenantName, initialLayout, onClose }
 							: undefined,
 					};
 				}),
-				pois: floor.pois.map((poi) => {
+			pois: floor.pois.map((poi) => {
 					if (!keys.has(`poi:${floor.id}:${poi.id}`)) return poi;
 					return { ...poi, x: poi.x + dx, y: poi.y + dy };
 				}),
-			}),
+			})),
 		}));
 	}, []);
 
