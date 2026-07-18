@@ -39,7 +39,7 @@ export const LeafletMapBackground = forwardRef<LeafletMapRef, LeafletMapBackgrou
 	];
 
 	return (
-		<div className="absolute inset-0 z-0 pointer-events-none opacity-80 mix-blend-luminosity dark:mix-blend-overlay dark:opacity-60">
+		<div className="absolute inset-0 z-0 pointer-events-none opacity-80 mix-blend-luminosity dark:mix-blend-luminosity dark:invert dark:opacity-60">
 			<MapContainer 
 				bounds={initialBounds}
 				zoomControl={false}
