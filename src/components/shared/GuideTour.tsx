@@ -1,30 +1,23 @@
 /**
  * GuideTour — per-tab contextual walkthrough using driver.js.
  *
- * Design principles:
- *   - Each tab has its OWN mini-tour (2-5 steps) targeting elements that
- *     exist in that tab's DOM.
- *   - Tours auto-trigger ONLY on first visit to a tab (localStorage per tab).
- *   - Dismissing a tour marks it as seen — it won't auto-trigger again.
- *   - Clicking "? Help" replays the CURRENT tab's tour.
- *   - Tours never switch tabs or jump the user around.
- *
- * For the Field Client (staff surface), a separate 6-step tour covers
- * dispatches, voice reporting, and GPS tracking.
+ * Design:
+ *   - NO auto-trigger. Instead, a dismissible "Take a quick tour?" banner
+ *     appears at the top of each tab on first visit.
+ *   - User clicks "Start Tour" → tour begins for the current tab.
+ *   - User clicks "Dismiss" → tab marked as seen, banner never shows again.
+ *   - Clicking "? Help" in the header replays the current tab's tour.
+ *   - Tours never switch tabs — each targets only elements in its own DOM.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { driver, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
 
-const TAB_TOUR_KEY = 'stadiumops_tab_tour';
+const TAB_TOUR_KEY = 'stadiumops_tab_tour_v3';
 
 // ─── localStorage helpers ────────────────────────────────────────────────────
 
-interface TabTourState {
-	[key: string]: boolean;
-}
-
-function readTabTourState(): TabTourState {
+function readTabTourState(): Record<string, boolean> {
 	try {
 		return JSON.parse(localStorage.getItem(TAB_TOUR_KEY) ?? '{}');
 	} catch {
@@ -42,11 +35,10 @@ function markTabToured(tabId: string): void {
 		state[tabId] = true;
 		localStorage.setItem(TAB_TOUR_KEY, JSON.stringify(state));
 	} catch {
-		// localStorage unavailable — non-fatal.
+		// No-op.
 	}
 }
 
-/** Reset ALL tab tour flags so every tab auto-triggers again. */
 export function resetAllTours(): void {
 	try {
 		localStorage.removeItem(TAB_TOUR_KEY);
@@ -55,18 +47,10 @@ export function resetAllTours(): void {
 	}
 }
 
-// ─── Permission profile ──────────────────────────────────────────────────────
-
-export interface TourPermissions {
-	isSuperadmin: boolean;
-}
-
 // ─── Per-tab step definitions ────────────────────────────────────────────────
-// Each tab's steps only target elements inside that tab's rendered DOM.
-// If an element doesn't exist (e.g., permission-gated), the step is skipped.
 
-function operationsSteps(): DriveStep[] {
-	return [
+const TAB_STEPS: Record<string, () => DriveStep[]> = {
+	operations: () => [
 		{
 			element: '[data-tour="map-canvas"]',
 			popover: {
@@ -99,19 +83,8 @@ function operationsSteps(): DriveStep[] {
 				side: 'left',
 			},
 		},
-	];
-}
-
-function teamSteps(): DriveStep[] {
-	return [
-		{
-			popover: {
-				title: 'Team Tab',
-				description:
-					'Manage your staff roster here. Each row is a team member with ' +
-					'their roles and status.',
-			},
-		},
+	],
+	team: () => [
 		{
 			element: '[data-tour="team-table"]',
 			popover: {
@@ -132,85 +105,52 @@ function teamSteps(): DriveStep[] {
 				align: 'end',
 			},
 		},
-	];
-}
-
-function rolesSteps(): DriveStep[] {
-	return [
-		{
-			popover: {
-				title: 'Roles Tab',
-				description:
-					'Define what each role can do. System roles (admin, manager, staff) ' +
-					'are preseeded. You can create custom roles too.',
-			},
-		},
+	],
+	roles: () => [
 		{
 			element: '[data-tour="roles-grid"]',
 			popover: {
 				title: 'Role Cards',
 				description:
 					'Each card shows a role + its permissions. Click <b>Edit Permissions</b> ' +
-					'to toggle the matrix. Changes bump perms_version for affected users.',
+					'to toggle the matrix.',
 				side: 'top',
 			},
 		},
-	];
-}
-
-function tenantsSteps(): DriveStep[] {
-	return [
+	],
+	tenants: () => [
 		{
 			popover: {
-				title: 'Tenants Tab',
+				title: 'Tenants',
 				description:
 					'Each tenant is an isolated stadium context. Use the Tenant Switcher ' +
 					'in the header to switch between them.',
 			},
 		},
-	];
-}
-
-function policiesSteps(): DriveStep[] {
-	return [
+	],
+	policies: () => [
 		{
 			popover: {
-				title: 'Policies Tab',
+				title: 'Policies',
 				description:
 					'Write and test Rego policies here. The CodeMirror editor has syntax ' +
 					'highlighting. Use the test runner to evaluate against sample input.',
 			},
 		},
-	];
-}
-
-// ─── Step registry ───────────────────────────────────────────────────────────
-
-const TAB_STEPS: Record<string, () => DriveStep[]> = {
-	operations: operationsSteps,
-	team: teamSteps,
-	roles: rolesSteps,
-	tenants: tenantsSteps,
-	policies: policiesSteps,
+	],
 };
 
 // ─── Tour runner ─────────────────────────────────────────────────────────────
 
-function runDriver(steps: DriveStep[], onComplete: () => void): void {
-	if (steps.length === 0) {
-		onComplete();
-		return;
-	}
-
-	// Filter out steps whose target element doesn't exist in the DOM.
+function runDriver(steps: DriveStep[], tabId: string): void {
+	// Filter steps whose target element doesn't exist in the DOM.
 	const visibleSteps = steps.filter((step) => {
-		if (!step.element) return true; // centered popover — always show
-		const el = document.querySelector(step.element);
-		return !!el;
+		if (!step.element) return true;
+		return !!document.querySelector(step.element);
 	});
 
 	if (visibleSteps.length === 0) {
-		onComplete();
+		markTabToured(tabId);
 		return;
 	}
 
@@ -227,10 +167,11 @@ function runDriver(steps: DriveStep[], onComplete: () => void): void {
 			popover.description?.classList.add('!text-slate-400', '!text-xs');
 			popover.footer?.classList.add('!bg-slate-900');
 		},
-		onDestruction: () => {
-			onComplete();
-		},
 	});
+
+	// Mark toured immediately on start — prevents re-trigger even if the
+	// user dismisses instantly. The tour has already been "seen".
+	markTabToured(tabId);
 
 	driverInstance.drive();
 }
@@ -239,139 +180,119 @@ function runDriver(steps: DriveStep[], onComplete: () => void): void {
 export function startTabTour(tabId: string): void {
 	const builder = TAB_STEPS[tabId];
 	if (!builder) return;
-	runDriver(builder(), () => {
-		markTabToured(tabId);
-	});
+	runDriver(builder(), tabId);
 }
 
 /**
- * Hook: auto-triggers a tab's tour on first visit.
+ * Hook: manages the "Take a quick tour?" banner state for a tab.
  *
- * Fires ONCE when the user switches to a tab they haven't toured yet.
- * Uses a ref to prevent re-triggering within the same render cycle.
+ * Returns:
+ *   - showBanner: whether to show the prompt banner
+ *   - startTour: callback to start the tour + dismiss banner
+ *   - dismissBanner: callback to dismiss without touring
  */
-export function useTabTourAutoTrigger(tabId: string): void {
-	const triggeredRef = useRef<string | null>(null);
+export function useTabTourBanner(tabId: string): {
+	showBanner: boolean;
+	startTour: () => void;
+	dismissBanner: () => void;
+} {
+	const [showBanner, setShowBanner] = useState(false);
 
 	useEffect(() => {
-		// Don't re-trigger if we already handled this tab in this session.
-		if (triggeredRef.current === tabId) return;
+		// Show banner only if this tab hasn't been toured.
+		setShowBanner(!hasTabBeenToured(tabId));
+	}, [tabId]);
 
-		// Don't trigger if the tab has been toured before.
-		if (hasTabBeenToured(tabId)) {
-			triggeredRef.current = tabId;
-			return;
-		}
+	const startTour = useCallback(() => {
+		setShowBanner(false);
+		startTabTour(tabId);
+	}, [tabId]);
 
-		// Delay to let the tab's DOM render.
-		const timer = setTimeout(() => {
-			const builder = TAB_STEPS[tabId];
-			if (!builder) {
-				markTabToured(tabId);
+	const dismissBanner = useCallback(() => {
+		setShowBanner(false);
+		markTabToured(tabId);
+	}, [tabId]);
+
+	return { showBanner, startTour, dismissBanner };
+}
+
+// ─── Field Client tour ───────────────────────────────────────────────────────
+
+const FIELD_TOUR_KEY = 'stadiumops_field_tour_v3';
+
+export function useAutoFieldClientTour(shouldShow: boolean): void {
+	const [started, setStarted] = useState(false);
+
+	useEffect(() => {
+		if (!shouldShow || started) return;
+		try {
+			if (localStorage.getItem(FIELD_TOUR_KEY) === 'true') {
+				setStarted(true);
 				return;
 			}
-			runDriver(builder(), () => {
-				markTabToured(tabId);
-			});
-		}, 600);
-
-		triggeredRef.current = tabId;
-		return () => clearTimeout(timer);
-	}, [tabId]);
-}
-
-// ─── Field Client tour (staff surface) ───────────────────────────────────────
-
-const FIELD_TOUR_KEY = 'stadiumops_field_tour_v2';
-
-export function hasCompletedFieldTour(): boolean {
-	try {
-		return localStorage.getItem(FIELD_TOUR_KEY) === 'true';
-	} catch {
-		return false;
-	}
-}
-
-function markFieldTourCompleted(): void {
-	try {
-		localStorage.setItem(FIELD_TOUR_KEY, 'true');
-	} catch {
-		// No-op.
-	}
-}
-
-function fieldClientSteps(): DriveStep[] {
-	return [
-		{
-			popover: {
-				title: 'Welcome to Field Ops',
-				description:
-					'This is your mobile command surface. You\'ll receive dispatches, ' +
-					'report incidents, and track your status here.',
-			},
-		},
-		{
-			popover: {
-				title: 'Dispatches',
-				description:
-					'When a controller dispatches you, a directive appears with: ' +
-					'<b>Acknowledge</b> (confirm receipt), <b>On Scene</b> (arrived), ' +
-					'<b>Resolve</b> (done — you return to Available).',
-			},
-		},
-		{
-			popover: {
-				title: 'Voice Report',
-				description:
-					'Press push-to-talk to report hands-free. Your voice is transcribed ' +
-					'by Whisper AI, then Gemini extracts category/severity/tier. An ' +
-					'incident is created automatically.',
-			},
-		},
-		{
-			popover: {
-				title: 'Manual Triage',
-				description:
-					'If voice isn\'t available, use the 3-tap form: pick category, ' +
-					'severity, and sector. The tier is inferred from severity.',
-			},
-		},
-		{
-			popover: {
-				title: 'GPS + Offline',
-				description:
-					'Your position auto-updates when you move >3m. If you lose ' +
-					'connection, reports queue offline and drain on reconnect.',
-			},
-		},
-	];
-}
-
-/** Start the Field Client tour manually. */
-export function startFieldClientTour(): void {
-	runDriver(fieldClientSteps(), () => {
-		markFieldTourCompleted();
-	});
-}
-
-/** Hook: auto-triggers Field Client tour on first login. */
-export function useAutoFieldClientTour(shouldShow: boolean): void {
-	const triggeredRef = useRef(false);
-
-	useEffect(() => {
-		if (!shouldShow || triggeredRef.current) return;
-		if (hasCompletedFieldTour()) {
-			triggeredRef.current = true;
-			return;
+		} catch {
+			// No-op.
 		}
 
 		const timer = setTimeout(() => {
-			runDriver(fieldClientSteps(), () => {
-				markFieldTourCompleted();
+			const steps: DriveStep[] = [
+				{
+					popover: {
+						title: 'Welcome to Field Ops',
+						description:
+							'Receive dispatches, report incidents via voice, and track ' +
+							'your GPS position. Quick 4-step tour.',
+					},
+				},
+				{
+					popover: {
+						title: 'Dispatches',
+						description:
+							'<b>Acknowledge</b> → confirm receipt. <b>On Scene</b> → arrived. ' +
+							'<b>Resolve</b> → done.',
+					},
+				},
+				{
+					popover: {
+						title: 'Voice Report',
+						description:
+							'Push-to-talk → Whisper transcribes → Gemini extracts metadata ' +
+							'→ incident created automatically.',
+					},
+				},
+				{
+					popover: {
+						title: 'GPS + Offline',
+						description:
+							'Position auto-updates >3m. Offline reports queue in IndexedDB.',
+					},
+				},
+			];
+
+			const driverInstance = driver({
+				steps,
+				progressText: '{{current}} of {{total}}',
+				nextBtnText: 'Next →',
+				prevBtnText: '← Back',
+				doneBtnText: 'Done',
+				allowClose: true,
+				onPopoverRender: (popover) => {
+					popover.wrapper?.classList.add('!bg-slate-900', '!border-slate-700', '!text-slate-100');
+					popover.title?.classList.add('!text-slate-100', '!font-mono', '!text-sm', '!uppercase', '!tracking-widest');
+					popover.description?.classList.add('!text-slate-400', '!text-xs');
+				},
 			});
+
+			try {
+				localStorage.setItem(FIELD_TOUR_KEY, 'true');
+			} catch {
+				// No-op.
+			}
+
+			driverInstance.drive();
+			setStarted(true);
 		}, 800);
 
-		triggeredRef.current = true;
 		return () => clearTimeout(timer);
-	}, [shouldShow]);
+	}, [shouldShow, started]);
 }

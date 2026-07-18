@@ -26,7 +26,7 @@ import { RolesTab } from './RolesTab';
 import { TenantsTab } from './TenantsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { useTabTourAutoTrigger, startTabTour } from '@/components/shared/GuideTour';
+import { useTabTourBanner, startTabTour } from '@/components/shared/GuideTour';
 import { mockTenants } from '@/lib/mockData';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
@@ -45,9 +45,8 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 	const [auditOpen, setAuditOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<TabId>('operations');
 
-	// Per-tab guide: auto-triggers on first visit to each tab.
-	// Uses a ref internally so it fires exactly once per tab, never repeats.
-	useTabTourAutoTrigger(activeTab);
+	// Per-tab tour banner: shows "Take a quick tour?" on first visit.
+	const tour = useTabTourBanner(activeTab);
 
 	// Derive the freshest selected incident from the polled list.
 	const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId]);
@@ -142,6 +141,26 @@ export function OperationalDashboard({ onTenantChange }: OperationalDashboardPro
 
 			{/* ── Tab content (each wrapped in its own ErrorBoundary) ──── */}
 			<main className="min-h-0 flex-1 overflow-hidden">
+				{/* Tour prompt banner — shown once per tab until dismissed */}
+				{tour.showBanner && (
+					<div className="flex items-center gap-3 border-b border-blue-800/40 bg-blue-950/30 px-4 py-2">
+						<span className="text-xs text-blue-300">
+							First time on the <strong className="capitalize">{activeTab}</strong> tab?
+						</span>
+						<button
+							onClick={tour.startTour}
+							className="rounded bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-blue-500"
+						>
+							Start Tour
+						</button>
+						<button
+							onClick={tour.dismissBanner}
+							className="ml-auto text-[10px] text-slate-500 hover:text-slate-300"
+						>
+							✕ Dismiss
+						</button>
+					</div>
+				)}
 				{activeTab === 'operations' && (
 					<ErrorBoundary name="Operations tab">
 						<div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">

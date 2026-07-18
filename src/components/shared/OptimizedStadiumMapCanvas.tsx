@@ -92,6 +92,33 @@ export function OptimizedStadiumMapCanvas({
 	const bgDirtyRef = useRef(true); // forces a background re-render
 	const selectedIdRef = useRef<string | null>(null);
 
+	// Filter state: which specialties + statuses are visible on the map.
+	const [filters, setFilters] = useState<{
+		specialties: Set<StaffSpecialty>;
+		statuses: Set<string>;
+	}>({
+		specialties: new Set(['security', 'medical', 'cleaning', 'supervisor']),
+		statuses: new Set(['AVAILABLE', 'DISPATCHED', 'OFF_DUTY']),
+	});
+	const filtersRef = useRef(filters);
+	filtersRef.current = filters;
+
+	// Tooltip state (DOM element, positioned via style).
+	const tooltipRef = useRef<HTMLDivElement | null>(null);
+	const [tooltipData, setTooltipData] = useState<{
+		visible: boolean;
+		x: number;
+		y: number;
+		name: string;
+		specialty: string;
+		zone: string;
+		status: string;
+		phone: string;
+	} | null>(null);
+
+	// Staff click → info panel
+	const [selectedStaff, setSelectedStaff] = useState<WhitelistUser | null>(null);
+
 	// Pointer tracking for pan + pinch (unified across mouse/touch).
 	const pointersRef = useRef<Map<number, PointerSample>>(new Map());
 	const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null);
@@ -291,8 +318,13 @@ export function OptimizedStadiumMapCanvas({
 			const { incidents: inc, staffMembers: staff } = propsRef.current;
 			const pulse = (Math.sin(Date.now() / 150) + 1) / 2; // 0..1
 
-			// Staff nodes.
+			// Staff nodes (filtered by legend toggles).
+			const f = filtersRef.current;
 			for (const member of staff) {
+				// Skip if this specialty or status is toggled off in the legend.
+				if (!f.specialties.has(member.specialty)) continue;
+				if (!f.statuses.has(member.status)) continue;
+
 				const pos = gridToScreen(member.currentCoords ?? { x: 500, y: 500 });
 				const color = specialtyColor(member.specialty);
 				ctx.beginPath();
@@ -399,6 +431,26 @@ export function OptimizedStadiumMapCanvas({
 		return best;
 	};
 
+	// ── Raycast: click → nearest staff dot ──────────────────────────────────────
+	const pickStaff = (cssX: number, cssY: number): WhitelistUser | null => {
+		const { staffMembers } = propsRef.current;
+		const f = filtersRef.current;
+		const tolerance = 14; // CSS px
+		let best: WhitelistUser | null = null;
+		let bestDist = tolerance;
+		for (const staff of staffMembers) {
+			if (!staff.currentCoords) continue;
+			if (!f.statuses.has(staff.status)) continue;
+			const pos = gridToScreen(staff.currentCoords);
+			const dist = Math.hypot(pos.x - cssX, pos.y - cssY);
+			if (dist <= bestDist) {
+				bestDist = dist;
+				best = staff;
+			}
+		}
+		return best;
+	};
+
 	// ── Pointer interaction (pan + pinch-zoom) ──────────────────────────────────
 	const toCss = (clientX: number, clientY: number): { x: number; y: number } => {
 		const canvas = canvasRef.current;
@@ -483,10 +535,50 @@ export function OptimizedStadiumMapCanvas({
 			return;
 		}
 		const p = toCss(e.clientX, e.clientY);
-		const hit = pickIncident(p.x, p.y);
+
+		// Try incident first (higher priority — incidents are more important).
+		const hitInc = pickIncident(p.x, p.y);
+		if (hitInc) {
+			setSelectedId(hitInc.id);
+			setSelectedStaff(null);
+			propsRef.current.onIncidentSelect(hitInc);
+			return;
+		}
+
+		// Then try staff.
+		const hitStaff = pickStaff(p.x, p.y);
+		if (hitStaff) {
+			setSelectedStaff(hitStaff);
+			setSelectedId(null);
+			return;
+		}
+
+		// Clicked empty space — deselect.
+		setSelectedStaff(null);
+		setSelectedId(null);
+	};
+
+	// Hover detection for staff tooltips (only when NOT dragging).
+	const handleCanvasHover = (e: React.MouseEvent<HTMLCanvasElement>): void => {
+		if (dragRef.current.active) {
+			setTooltipData(null);
+			return;
+		}
+		const p = toCss(e.clientX, e.clientY);
+		const hit = pickStaff(p.x, p.y);
 		if (hit) {
-			setSelectedId(hit.id);
-			propsRef.current.onIncidentSelect(hit);
+			setTooltipData({
+				visible: true,
+				x: p.x,
+				y: p.y,
+				name: hit.fullName,
+				specialty: hit.specialty,
+				zone: hit.assignedZone,
+				status: hit.status,
+				phone: hit.phoneNumber,
+			});
+		} else {
+			setTooltipData(null);
 		}
 	};
 
@@ -533,8 +625,151 @@ export function OptimizedStadiumMapCanvas({
 				onPointerUp={endPointer}
 				onPointerCancel={endPointer}
 				onClick={handleCanvasClick}
+				onMouseMove={handleCanvasHover}
 				onWheel={handleWheel}
 			/>
+
+			{/* Hover tooltip for staff dots */}
+			{tooltipData?.visible && (
+				<div
+					ref={tooltipRef}
+					className="pointer-events-none absolute z-20 rounded-lg border border-slate-700 bg-slate-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
+					style={{
+						left: tooltipData.x + 16,
+						top: tooltipData.y - 10,
+					}}
+				>
+					<p className="font-bold text-slate-100">{tooltipData.name}</p>
+					<p className="text-slate-400">
+						{tooltipData.specialty} · {tooltipData.zone}
+					</p>
+					<p className={
+						tooltipData.status === 'AVAILABLE' ? 'text-emerald-400' :
+						tooltipData.status === 'DISPATCHED' ? 'text-amber-400' : 'text-slate-500'
+					}>
+						● {tooltipData.status}
+					</p>
+					<p className="font-mono text-[10px] text-slate-600">{tooltipData.phone}</p>
+				</div>
+			)}
+
+			{/* Staff info panel (shown on click) */}
+			{selectedStaff && (
+				<div className="absolute bottom-3 right-3 z-20 w-72 rounded-xl border border-slate-700 bg-slate-900/95 p-4 text-xs shadow-xl backdrop-blur">
+					<div className="flex items-center justify-between">
+						<h4 className="font-bold text-slate-100">{selectedStaff.fullName}</h4>
+						<button
+							onClick={() => setSelectedStaff(null)}
+							className="text-slate-500 hover:text-slate-300"
+						>
+							✕
+						</button>
+					</div>
+					<div className="mt-2 space-y-1 text-slate-400">
+						<p>Phone: <span className="font-mono text-slate-300">{selectedStaff.phoneNumber}</span></p>
+						<p>Specialty: <span className="capitalize text-slate-300">{selectedStaff.specialty}</span></p>
+						<p>Zone: <span className="text-slate-300">{selectedStaff.assignedZone}</span></p>
+						<p>Status: <span className={
+							selectedStaff.status === 'AVAILABLE' ? 'text-emerald-400' :
+							selectedStaff.status === 'DISPATCHED' ? 'text-amber-400' : 'text-slate-500'
+						}>{selectedStaff.status}</span></p>
+						{selectedStaff.roles.length > 0 && (
+							<p>Roles: <span className="text-slate-300">{selectedStaff.roles.join(', ')}</span></p>
+						)}
+					</div>
+					<div className="mt-3 border-t border-slate-700 pt-2">
+						<p className="text-[10px] text-slate-500">Click an incident marker on the map to view its details.</p>
+					</div>
+				</div>
+			)}
+
+			{/* Legend with toggles */}
+			<div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-800 bg-slate-950/90 p-3 backdrop-blur">
+				<p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-slate-500">Legend</p>
+
+				{/* Specialty filters */}
+				<div className="space-y-1">
+					<p className="text-[9px] uppercase text-slate-600">Specialty</p>
+					{([
+						['security', '#3b82f6'],
+						['medical', '#22c55e'],
+						['cleaning', '#eab308'],
+						['supervisor', '#a855f7'],
+					] as const).map(([spec, color]) => (
+						<label key={spec} className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-300">
+							<input
+								type="checkbox"
+								checked={filters.specialties.has(spec)}
+								onChange={() => {
+									setFilters((prev) => {
+										const next = new Set(prev.specialties);
+										if (next.has(spec)) next.delete(spec);
+										else next.add(spec);
+										return { ...prev, specialties: next };
+									});
+								}}
+								className="h-3 w-3"
+							/>
+							<span
+								className="inline-block h-2 w-2 rounded-full"
+								style={{ backgroundColor: color }}
+							/>
+							<span className="capitalize">{spec}</span>
+						</label>
+					))}
+				</div>
+
+				{/* Status filters */}
+				<div className="mt-2 space-y-1">
+					<p className="text-[9px] uppercase text-slate-600">Status</p>
+					{([
+						['AVAILABLE', '#22c55e'],
+						['DISPATCHED', '#f59e0b'],
+						['OFF_DUTY', '#64748b'],
+					] as const).map(([status, color]) => (
+						<label key={status} className="flex cursor-pointer items-center gap-1.5 text-[10px] text-slate-300">
+							<input
+								type="checkbox"
+								checked={filters.statuses.has(status)}
+								onChange={() => {
+									setFilters((prev) => {
+										const next = new Set(prev.statuses);
+										if (next.has(status)) next.delete(status);
+										else next.add(status);
+										return { ...prev, statuses: next };
+									});
+								}}
+								className="h-3 w-3"
+							/>
+							<span
+								className="inline-block h-2 w-2 rounded-full"
+								style={{ backgroundColor: color }}
+							/>
+							<span>{status.replace('_', ' ')}</span>
+						</label>
+					))}
+				</div>
+
+				{/* Incident tier legend (informational, not toggleable) */}
+				<div className="mt-2 space-y-1">
+					<p className="text-[9px] uppercase text-slate-600">Incidents</p>
+					{([
+						['T1 Life', '#ef4444'],
+						['T2 Urgent', '#f97316'],
+						['T3 Priority', '#f59e0b'],
+						['T4 Advisory', '#3b82f6'],
+						['T5 Info', '#64748b'],
+					] as const).map(([label, color]) => (
+						<div key={label} className="flex items-center gap-1.5 text-[10px] text-slate-400">
+							<span
+								className="inline-block h-2 w-2 rounded-full ring-1 ring-slate-600"
+								style={{ backgroundColor: color }}
+							/>
+							<span>{label}</span>
+						</div>
+					))}
+				</div>
+			</div>
 
 			{/* HUD overlay (imperatively updated, never re-renders React) */}
 			<div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-400 backdrop-blur">
