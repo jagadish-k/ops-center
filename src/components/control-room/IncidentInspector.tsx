@@ -14,9 +14,13 @@ import { tierBadge, severityBadge, statusBadge } from '@/lib/ui';
 
 interface IncidentInspectorProps {
   incident: IncidentReport | null;
+  floors?: { id: string; name: string }[];
 }
 
-export function IncidentInspector({ incident }: IncidentInspectorProps) {
+export function IncidentInspector({
+  incident,
+  floors = [],
+}: IncidentInspectorProps) {
   const { staff } = useActiveOps();
   const { enqueueOrSend } = useOfflineQueue();
   const [localStatus, setLocalStatus] = useState<IncidentStatus | null>(null);
@@ -95,6 +99,7 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
         action: 'create_dispatch',
         incidentId: incident.id,
         targetStaffPhone: staffPhone,
+        targetFloorId: incident.floorId,
         directiveText: `Respond to ${incident.extractedMetadata.locationSector}: ${incident.rawText.slice(0, 100)}`,
       });
       setFeedback({
@@ -166,6 +171,15 @@ export function IncidentInspector({ incident }: IncidentInspectorProps) {
           <Field
             label="Grid"
             value={`${incident.coordinates.x}, ${incident.coordinates.y}`}
+          />
+          <Field
+            label="Floor"
+            value={
+              incident.floorId
+                ? (floors.find((f) => f.id === incident.floorId)?.name ??
+                  incident.floorId)
+                : '—'
+            }
           />
           <Field
             label="Tier"

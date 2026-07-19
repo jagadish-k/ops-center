@@ -22,9 +22,14 @@ interface VoiceIngestProps {
   /** Phone number of the authenticated staff member (sent for attribution). */
   staffPhone: string;
   tenantId: string;
+  defaultFloorId?: string;
 }
 
-export function VoiceIngest({ staffPhone, tenantId }: VoiceIngestProps) {
+export function VoiceIngest({
+  staffPhone,
+  tenantId,
+  defaultFloorId,
+}: VoiceIngestProps) {
   const [state, setState] = useState<VoiceState>('IDLE');
   const [errorText, setErrorText] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -51,6 +56,9 @@ export function VoiceIngest({ staffPhone, tenantId }: VoiceIngestProps) {
       form.append('audio', blob, 'report.webm');
       form.append('staffPhone', staffPhone);
       form.append('tenantId', tenantId);
+      if (defaultFloorId) {
+        form.append('floorId', defaultFloorId);
+      }
 
       const token = getAuthToken();
       const headers: HeadersInit = {};
@@ -77,7 +85,7 @@ export function VoiceIngest({ staffPhone, tenantId }: VoiceIngestProps) {
         );
       }
     },
-    [staffPhone, tenantId],
+    [staffPhone, tenantId, defaultFloorId],
   );
 
   const startRecording = useCallback(async (): Promise<void> => {

@@ -92,6 +92,9 @@ export function OperationalDashboard({
 
   const handleSelect = (incident: IncidentReport): void => {
     setSelectedId(incident.id);
+    if (incident.floorId) {
+      setSelectedFloorId(incident.floorId);
+    }
   };
 
   return (
@@ -299,6 +302,7 @@ export function OperationalDashboard({
                   <IncidentInspector
                     key={selected?.id ?? 'empty'}
                     incident={selected}
+                    floors={mapLayout?.floors ?? []}
                   />
                 </div>
               </aside>

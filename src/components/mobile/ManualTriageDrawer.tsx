@@ -16,6 +16,8 @@ interface ManualTriageDrawerProps {
   onClose: () => void;
   staffPhone: string;
   tenantId: string;
+  defaultFloorId?: string;
+  floors?: { id: string; name: string }[];
 }
 
 type Step = 1 | 2 | 3;
@@ -91,12 +93,17 @@ const STEP_LABELS: Record<Step, string> = {
 export function ManualTriageDrawer({
   isOpen,
   onClose,
+  defaultFloorId,
+  floors = [],
 }: ManualTriageDrawerProps) {
   const { enqueueOrSend } = useOfflineQueue();
   const [step, setStep] = useState<Step>(1);
   const [category, setCategory] = useState<IncidentCategory | null>(null);
   const [severity, setSeverity] = useState<IncidentSeverity | null>(null);
   const [zone, setZone] = useState<string | null>(null);
+  const [floorId, setFloorId] = useState<string | null>(
+    defaultFloorId ?? floors[0]?.id ?? null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{
     kind: 'ok' | 'err';
@@ -108,6 +115,7 @@ export function ManualTriageDrawer({
     setCategory(null);
     setSeverity(null);
     setZone(null);
+    setFloorId(defaultFloorId ?? floors[0]?.id ?? null);
     setFeedback(null);
     setSubmitting(false);
   };
@@ -128,6 +136,7 @@ export function ManualTriageDrawer({
         category,
         severity,
         locationSector: zone,
+        floorId,
         rawText: `Manual triage — ${category} / ${severity} at ${zone}`,
       };
       const result = await enqueueOrSend(
@@ -233,21 +242,44 @@ export function ManualTriageDrawer({
               )}
 
               {step === 3 && (
-                <div className="grid grid-cols-3 gap-3">
-                  {ZONES.map((z) => (
-                    <button
-                      key={z}
-                      type="button"
-                      onClick={() => setZone(z)}
-                      className={`rounded-xl border-2 px-3 py-6 font-mono text-xs font-bold uppercase tracking-widest transition-colors ${
-                        zone === z
-                          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200'
-                          : 'border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-500'
-                      }`}
-                    >
-                      {z}
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-4">
+                  {floors.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                        Floor
+                      </label>
+                      <select
+                        value={floorId ?? ''}
+                        onChange={(e) => setFloorId(e.target.value)}
+                        className="rounded-lg border-2 border-slate-300 bg-white px-3 py-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        {floors.map((f) => (
+                          <option
+                            key={f.id}
+                            value={f.id}
+                          >
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-3">
+                    {ZONES.map((z) => (
+                      <button
+                        key={z}
+                        type="button"
+                        onClick={() => setZone(z)}
+                        className={`rounded-xl border-2 px-3 py-6 font-mono text-xs font-bold uppercase tracking-widest transition-colors ${
+                          zone === z
+                            ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200'
+                            : 'border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-500'
+                        }`}
+                      >
+                        {z}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 

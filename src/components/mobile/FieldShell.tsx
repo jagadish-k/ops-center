@@ -15,6 +15,7 @@ import { useGeolocationTracking } from '@/hooks/useGeolocationTracking';
 import { VoiceIngest } from './VoiceIngest';
 import { ManualTriageDrawer } from './ManualTriageDrawer';
 import { DispatchModal } from './DispatchModal';
+import type { MapLayout } from '@/lib/map-layout';
 
 interface FieldShellProps {
   staffPhone: string;
@@ -27,9 +28,19 @@ export function FieldShell({
   tenantId,
   onDisconnect,
 }: FieldShellProps) {
-  const { dispatches, connectionHealthy } = useActiveOps();
+  const { dispatches, connectionHealthy, staff, mapLayout } = useActiveOps();
   const { enqueueOrSend, pendingCount, isOnline } = useOfflineQueue();
   const [triageOpen, setTriageOpen] = useState(false);
+
+  // Identify the active staff member for floor defaults.
+  const activeStaff = useMemo(() => {
+    return staff.find((s) => s.phoneNumber === staffPhone) ?? null;
+  }, [staff, staffPhone]);
+
+  // Extract floors from layout for the manual triage dropdown.
+  const floors = useMemo(() => {
+    return (mapLayout as MapLayout)?.floors ?? [];
+  }, [mapLayout]);
 
   // Live GPS tracking — 3m debounce, 500ms throttle, POSTs to /api/staff-location.
   useGeolocationTracking(staffPhone, true);
@@ -157,6 +168,7 @@ export function FieldShell({
         <VoiceIngest
           staffPhone={staffPhone}
           tenantId={tenantId}
+          defaultFloorId={activeStaff?.floorId}
         />
       </footer>
 
@@ -166,6 +178,8 @@ export function FieldShell({
         onClose={() => setTriageOpen(false)}
         staffPhone={staffPhone}
         tenantId={tenantId}
+        defaultFloorId={activeStaff?.floorId}
+        floors={floors}
       />
     </div>
   );
