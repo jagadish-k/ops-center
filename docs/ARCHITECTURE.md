@@ -55,7 +55,7 @@ with offscreen double-buffering.
 - **Real-time Synchronization:** Diff-based polling (`POST /api/state-poll`) at ~2s intervals. No WebSockets. See [ADR-0004](adr/0004-polling-realtime-synchronization.md).
 - **Identity Layer:** Edge-minted RS256 JWTs with role + tenant claims; OTP via Twilio. See [ADR-0003](adr/0003-edge-jwt-otp-authentication.md).
 - **External Integration Layer:** Twilio (Verify / SMS) for OTP delivery.
-- **Generative AI Pipeline Suite:** OpenAI Whisper API (audio transcription) and Google Gemini 1.5 Flash (structured JSON extraction). See [ADR-0006](adr/0006-whisper-gemini-voice-pipeline.md).
+- **Generative AI Pipeline Suite:** OpenAI Whisper API (audio transcription) and Google Gemini 3.5 Flash (structured JSON extraction). See [ADR-0006](adr/0006-whisper-gemini-voice-pipeline.md).
 - **RBAC:** Declarative permission model (`src/lib/permissions.ts`) with 13 typed permissions mapped to 3 roles. Client-side checks via `usePermissions().can()`; re-enforced server-side in every function. See `src/hooks/usePermissions.ts`.
 - **GPS Tracking:** `navigator.geolocation.watchPosition` with 3m haversine debounce + 500ms throttle. Projects to 0–1000 grid via per-tenant bounding box. Positions update the canvas in real time. See ADR for PRD §7.1 and `src/hooks/useGeolocationTracking.ts`.
 - **Offline Resilience:** IndexedDB mutation queue (`src/lib/offline-db.ts`) with auto-drain on reconnect. Preserves original client timestamps — mutations flush FIFO when connectivity returns.

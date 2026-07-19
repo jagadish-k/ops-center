@@ -29,18 +29,11 @@ import type {
   IncidentSeverity,
   InfoTier,
 } from '../../src/types';
+import { getOpenAIClient, getGeminiClient } from '../lib/clients.ts';
 
 // ─── AI helpers ───────────────────────────────────────────────────────────────
 
-interface WhisperResponse {
-  text: string;
-}
-
-interface GeminiResponse {
-  candidates: Array<{
-    content: { parts: Array<{ text: string }> };
-  }>;
-}
+// Removed WhisperResponse and GeminiResponse as they are no longer used with SDKs.
 
 /** Calls OpenAI Whisper API to transcribe an audio blob. */
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
@@ -50,31 +43,26 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
     return 'Code red emergency at Turnstile Sector Alpha, crowd crushing risk forming. Multiple gates jammed, requesting immediate medical and security backup.';
   }
 
-  const formData = new FormData();
-  formData.append('file', audioBlob, 'report.webm');
-  formData.append('model', 'whisper-1');
-  formData.append('language', 'en');
+  const client = getOpenAIClient();
 
-  const response = await fetch(
-    'https://api.openai.com/v1/audio/transcriptions',
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-    },
-  );
+  const file = new File([audioBlob], 'report.webm', {
+    type: audioBlob.type || 'audio/webm',
+  });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Whisper API error:', response.status, errorText);
-    throw new Error('Audio transcription failed.');
+  try {
+    const response = await client.audio.transcriptions.create({
+      file,
+      model: 'whisper-1',
+      language: 'en',
+    });
+    return response.text;
+  } catch (err) {
+    console.error('Whisper API error:', err);
+    throw new Error('Audio transcription failed.', { cause: err });
   }
-
-  const data = (await response.json()) as WhisperResponse;
-  return data.text;
 }
 
-/** Calls Gemini 1.5 Flash to extract structured triage data from text. */
+/** Calls Gemini 2.5 Flash to extract structured triage data from text. */
 async function extractTriage(
   transcribedText: string,
   contextMetadata?: string,
@@ -97,67 +85,60 @@ async function extractTriage(
     };
   }
 
-  const payload = {
-    contents: [{ parts: [{ text: transcribedText }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: 'OBJECT',
-        properties: {
-          tier: {
-            type: 'INTEGER',
-            description:
-              'The classification tier from 1 (life safety) to 5 (advisory)',
-          },
-          category: {
-            type: 'STRING',
-            enum: ['SECURITY', 'MEDICAL', 'CROWD', 'FACILITIES', 'ADVISORY'],
-          },
-          severity: {
-            type: 'STRING',
-            enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
-          },
-          locationSector: { type: 'STRING' },
-          actionRequired: { type: 'STRING' },
-        },
-        required: [
-          'tier',
-          'category',
-          'severity',
-          'locationSector',
-          'actionRequired',
-        ],
+  const client = getGeminiClient();
+
+  const responseSchema = {
+    type: 'OBJECT',
+    properties: {
+      tier: {
+        type: 'INTEGER',
+        description:
+          'The classification tier from 1 (life safety) to 5 (advisory)',
       },
+      category: {
+        type: 'STRING',
+        enum: ['SECURITY', 'MEDICAL', 'CROWD', 'FACILITIES', 'ADVISORY'],
+      },
+      severity: {
+        type: 'STRING',
+        enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
+      },
+      locationSector: { type: 'STRING' },
+      actionRequired: { type: 'STRING' },
     },
-    systemInstruction: {
-      parts: [
-        {
-          text: `You are the operational intelligence engine for a stadium operations platform. Analyze transcribed field reports and extract structured triage parameters. Classify into the 5-tier system (1=life safety, 5=advisory). Normalize zone names to ZONE-A through ZONE-F format. Respond only with the JSON object.${
-            contextMetadata
-              ? `\n\nUse the following context about the reporting operative to infer missing locations or severity (e.g., if they don't say where they are, use their assigned zone or floor):\n${contextMetadata}`
-              : ''
-          }`,
-        },
-      ],
-    },
+    required: [
+      'tier',
+      'category',
+      'severity',
+      'locationSector',
+      'actionRequired',
+    ],
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  const systemInstruction = `You are the operational intelligence engine for a stadium operations platform. Analyze transcribed field reports and extract structured triage parameters. Classify into the 5-tier system (1=life safety, 5=advisory). Normalize zone names to ZONE-A through ZONE-F format. Respond only with the JSON object.${
+    contextMetadata
+      ? `\n\nUse the following context about the reporting operative to infer missing locations or severity (e.g., if they don't say where they are, use their assigned zone or floor):\n${contextMetadata}`
+      : ''
+  }`;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Gemini API error:', response.status, errorText);
-    throw new Error('Structured extraction failed.');
+  try {
+    const response = await client.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: transcribedText,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema,
+        systemInstruction,
+      },
+    });
+
+    const rawJson = response.text;
+    if (!rawJson) throw new Error('Empty response from Gemini');
+    return JSON.parse(rawJson);
+  } catch (err) {
+    console.error('Gemini API error:', err);
+    throw new Error('Structured extraction failed.', { cause: err });
   }
-
-  const data = (await response.json()) as GeminiResponse;
-  const rawJson = data.candidates[0].content.parts[0].text;
-  return JSON.parse(rawJson);
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
