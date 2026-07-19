@@ -262,6 +262,7 @@ export function OperationalDashboard({
                   mapLayout={mapLayout}
                   onIncidentSelect={handleSelect}
                   selectedFloorId={selectedFloorId}
+                  onFloorChange={setSelectedFloorId}
                   selectedCategories={selectedCategories}
                 />
               </section>

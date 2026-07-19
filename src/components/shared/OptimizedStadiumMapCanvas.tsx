@@ -19,7 +19,7 @@
  *      avoid a re-render storm at 60fps.
  */
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { Checkbox } from '@heroui/react';
+import { Button, Checkbox } from '@heroui/react';
 import { useTheme } from '@/context/theme-constants';
 import type {
   IncidentReport,
@@ -44,6 +44,7 @@ interface OptimizedStadiumMapCanvasProps {
   onIncidentSelect: (incident: IncidentReport) => void;
   selectedFloorId?: string | null;
   selectedCategories?: Set<IncidentCategory>;
+  onFloorChange?: (floorId: string) => void;
 }
 
 // ── Color mapping ─────────────────────────────────────────────────────────────
@@ -102,6 +103,7 @@ export function OptimizedStadiumMapCanvas({
   onIncidentSelect,
   selectedFloorId: controlledFloorId,
   selectedCategories,
+  onFloorChange,
 }: OptimizedStadiumMapCanvasProps): React.JSX.Element {
   const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1073,9 +1075,12 @@ export function OptimizedStadiumMapCanvas({
       {floors.length > 1 && (
         <div className="absolute left-50 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-300 bg-white/90 p-1.5 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
           {floors.map((floor) => (
-            <button
+            <Button
               key={floor.id}
-              onClick={() => setSelectedFloorId(floor.id)}
+              onClick={() => {
+                setSelectedFloorId(floor.id);
+                onFloorChange?.(floor.id);
+              }}
               className={`rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
                 effectiveFloorId === floor.id
                   ? 'neu-pressed-sm bg-blue-600 text-white'
@@ -1083,7 +1088,7 @@ export function OptimizedStadiumMapCanvas({
               }`}
             >
               {floor.name}
-            </button>
+            </Button>
           ))}
         </div>
       )}
