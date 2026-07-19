@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Input, TextArea, Spinner } from '@heroui/react';
+import Logo from '@/components/shared/Logo';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -42,14 +43,7 @@ export default function LandingPage() {
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/70 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/70">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-blue-600 font-mono text-lg font-black text-white">
-              S
-            </div>
-            <span className="font-mono text-lg font-black uppercase tracking-widest text-slate-900 dark:text-slate-100">
-              StadiumOps
-            </span>
-          </div>
+          <Logo />
           <div className="flex items-center gap-4">
             <Button
               variant="primary"
