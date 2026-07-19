@@ -12,9 +12,10 @@
  * The /api/ai-triage endpoint is built in M2; until then failures are shown
  * gracefully so the surface remains fully reviewable.
  */
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { Spinner } from '@heroui/react';
 import { getAuthToken, ApiError } from '@/services/api';
+import { useActiveOps } from '@/context/ActiveOpsContext';
 
 type VoiceState = 'IDLE' | 'RECORDING' | 'UPLOADING' | 'SUCCESS' | 'ERROR';
 
@@ -35,6 +36,11 @@ export function VoiceIngest({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const { staff } = useActiveOps();
+
+  const activeStaff = useMemo(() => {
+    return staff.find((s) => s.phoneNumber === staffPhone) ?? null;
+  }, [staff, staffPhone]);
 
   const stateLabel: Record<VoiceState, string> = {
     IDLE: 'Hold to report',
@@ -59,6 +65,15 @@ export function VoiceIngest({
       if (defaultFloorId) {
         form.append('floorId', defaultFloorId);
       }
+
+      const contextMetadata = JSON.stringify({
+        fullName: activeStaff?.fullName,
+        roles: activeStaff?.roles,
+        specialty: activeStaff?.specialty,
+        assignedZone: activeStaff?.assignedZone,
+        floorId: defaultFloorId,
+      });
+      form.append('contextMetadata', contextMetadata);
 
       const token = getAuthToken();
       const headers: HeadersInit = {};
@@ -85,7 +100,7 @@ export function VoiceIngest({
         );
       }
     },
-    [staffPhone, tenantId, defaultFloorId],
+    [staffPhone, tenantId, defaultFloorId, activeStaff],
   );
 
   const startRecording = useCallback(async (): Promise<void> => {
