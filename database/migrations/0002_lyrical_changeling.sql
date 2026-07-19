@@ -1,1 +1,0 @@
-ALTER TABLE "incidents" ADD COLUMN "reported_by" uuid;

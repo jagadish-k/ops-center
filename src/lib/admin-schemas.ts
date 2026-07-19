@@ -86,6 +86,11 @@ export const createTenantSchema = z.object({
   bboxMaxLat: z.number().optional(),
   bboxMinLng: z.number().optional(),
   bboxMaxLng: z.number().optional(),
+  tier: z.enum(['BASIC', 'PRO', 'ENTERPRISE']).optional(),
+  healthScore: z.number().min(0).max(100).optional(),
+  renewalDate: z.string().optional().nullable(),
+  accountManagerId: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 export type CreateTenantForm = z.infer<typeof createTenantSchema>;
 

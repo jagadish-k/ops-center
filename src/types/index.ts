@@ -117,11 +117,36 @@ export interface MapCoordinates {
 
 // ─── Tenancy ──────────────────────────────────────────────────────────────────
 
+export interface TenantAccessPeriod {
+  id: string;
+  tenantId: string;
+  type: 'EVENT' | 'SETUP' | 'TEARDOWN';
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
+  notes?: string;
+}
+
+export interface TenantContact {
+  id: string;
+  tenantId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string;
+}
+
 export interface TenantConfig {
   tenantId: string;
   orgName: string;
   createdAt: number;
-  status: 'ACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'SUSPENDED' | 'PAUSED' | 'DEACTIVATED' | 'ARCHIVED';
+  tier: 'BASIC' | 'PRO' | 'ENTERPRISE';
+  healthScore: number;
+  renewalDate?: string;
+  accountManagerId?: string;
+  notes?: string;
+  accessPeriods?: TenantAccessPeriod[];
+  contacts?: TenantContact[];
 }
 
 // ─── Field Staff ──────────────────────────────────────────────────────────────

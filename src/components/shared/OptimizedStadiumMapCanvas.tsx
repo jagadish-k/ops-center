@@ -132,7 +132,7 @@ export function OptimizedStadiumMapCanvas({
   }>({
     specialties: new Set(['security', 'medical', 'cleaning', 'supervisor']),
     statuses: new Set(['AVAILABLE', 'DISPATCHED', 'OFF_DUTY']),
-    incidentStatuses: new Set(['OPEN', 'ACKNOWLEDGED']),
+    incidentStatuses: new Set(['OPEN']),
   });
   const filtersRef = useRef(filters);
 
@@ -596,7 +596,7 @@ export function OptimizedStadiumMapCanvas({
           continue;
         const pos = gridToScreen(incident.coordinates);
         const color = tierColor(incident.tier);
-        const size = incident.tier <= 2 ? 18 : incident.tier === 3 ? 14 : 12;
+        const size = incident.tier <= 2 ? 22 : incident.tier === 3 ? 18 : 16;
         const half = size / 2;
 
         // Outer pulse halo (square/diamond bounding).
@@ -617,6 +617,23 @@ export function OptimizedStadiumMapCanvas({
           : 'rgba(255, 255, 255, 0.85)';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(pos.x - half, pos.y - half, size, size);
+
+        // Incident category emoji inside the core
+        const incidentEmojiMap: Record<IncidentCategory, string> = {
+          SECURITY: '👮',
+          MEDICAL: '🩺',
+          CROWD: '👥',
+          FACILITIES: '🔧',
+          ADVISORY: 'ℹ️',
+        };
+        const catEmoji =
+          incidentEmojiMap[incident.extractedMetadata.category] || '⚠️';
+        ctx.font =
+          '11px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(catEmoji, pos.x, pos.y + 1);
 
         // Selection ring.
         if (selectedIdRef.current === incident.id) {
@@ -1109,7 +1126,7 @@ export function OptimizedStadiumMapCanvas({
                 effectiveFloorId === floor.id
                   ? '-sm bg-blue-600 text-white'
                   : '-sm text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-200 dark:bg-slate-800'
-              }`}
+              } w-full`}
             >
               {floor.name}
             </Button>
@@ -1208,7 +1225,7 @@ export function OptimizedStadiumMapCanvas({
           </p>
           {(
             [
-              ['PENDING', '#ef4444'],
+              ['OPEN', '#ef4444'],
               ['ACKNOWLEDGED', '#f59e0b'],
               ['RESOLVED', '#10b981'],
             ] as const

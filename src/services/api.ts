@@ -231,8 +231,15 @@ export interface AdminRole {
 export interface AdminTenant {
   id: string;
   orgName: string;
-  status: 'ACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'SUSPENDED' | 'PAUSED' | 'DEACTIVATED' | 'ARCHIVED';
+  tier: 'BASIC' | 'PRO' | 'ENTERPRISE';
+  healthScore: number;
+  renewalDate?: string | null;
+  accountManagerId?: string | null;
+  notes?: string | null;
   mapLayout?: unknown;
+  accessPeriods?: import('@/types').TenantAccessPeriod[] | null;
+  contacts?: import('@/types').TenantContact[] | null;
   createdAt: string;
 }
 
@@ -447,6 +454,11 @@ export interface CreateTenantInput {
   tenantId: string;
   orgName: string;
   bbox?: { minLat: number; maxLat: number; minLng: number; maxLng: number };
+  tier?: 'BASIC' | 'PRO' | 'ENTERPRISE';
+  healthScore?: number;
+  renewalDate?: string | null;
+  accountManagerId?: string | null;
+  notes?: string | null;
 }
 
 export async function adminCreateTenant(
@@ -465,6 +477,76 @@ export async function adminUpdateMapLayout(
   return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
     method: 'POST',
     body: JSON.stringify({ action: 'update_map_layout', tenantId, mapLayout }),
+  });
+}
+
+export async function adminUpdateTenantStatus(
+  tenantId: string,
+  status: AdminTenant['status'],
+): Promise<AdminMutationResponse> {
+  return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'update_status', tenantId, status }),
+  });
+}
+
+export async function adminUpdateTenant(
+  tenantId: string,
+  data: Partial<Omit<CreateTenantInput, 'tenantId'>>,
+): Promise<AdminMutationResponse> {
+  return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'update', tenantId, ...data }),
+  });
+}
+
+export async function adminCreateContact(data: {
+  tenantId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string;
+}): Promise<{ contact: import('@/types').TenantContact }> {
+  return apiFetch<{ contact: import('@/types').TenantContact }>(
+    '/api/admin/tenants',
+    {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_contact', ...data }),
+    },
+  );
+}
+
+export async function adminDeleteContact(
+  id: string,
+): Promise<AdminMutationResponse> {
+  return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete_contact', id }),
+  });
+}
+
+export async function adminCreateAccessPeriod(data: {
+  tenantId: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  notes?: string;
+}): Promise<{ accessPeriod: import('@/types').TenantAccessPeriod }> {
+  return apiFetch<{ accessPeriod: import('@/types').TenantAccessPeriod }>(
+    '/api/admin/tenants',
+    {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_access_period', ...data }),
+    },
+  );
+}
+
+export async function adminDeleteAccessPeriod(
+  id: string,
+): Promise<AdminMutationResponse> {
+  return apiFetch<AdminMutationResponse>('/api/admin/tenants', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete_access_period', id }),
   });
 }
 
