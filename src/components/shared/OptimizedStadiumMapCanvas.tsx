@@ -20,7 +20,7 @@
  */
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Button, Checkbox } from '@heroui/react';
-import { useTheme } from '@/context/theme-constants';
+
 import type {
   IncidentReport,
   WhitelistUser,
@@ -105,7 +105,7 @@ export function OptimizedStadiumMapCanvas({
   selectedCategories,
   onFloorChange,
 }: OptimizedStadiumMapCanvasProps): React.JSX.Element {
-  const { isDark } = useTheme();
+  const isDark = true;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const leafletMapRef = useRef<LeafletMapRef | null>(null);
@@ -538,6 +538,14 @@ export function OptimizedStadiumMapCanvas({
       const f = filtersRef.current;
       const activeFloorId = selectedFloorRef.current;
       const isDark = isDarkRef.current;
+
+      const emojiMap: Record<StaffSpecialty, string> = {
+        security: '🛡️',
+        medical: '🚑',
+        cleaning: '🧹',
+        supervisor: '👮‍♂️',
+      };
+
       for (const member of staff) {
         // Skip if this specialty or status is toggled off in the legend.
         if (!f.specialties.has(member.specialty)) continue;
@@ -550,16 +558,23 @@ export function OptimizedStadiumMapCanvas({
         const pos = gridToScreen(member.currentCoords ?? { x: 500, y: 500 });
         const color = specialtyColor(member.specialty);
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
         if (member.status === 'DISPATCHED') {
           ctx.beginPath();
-          ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+          ctx.arc(pos.x, pos.y, 11, 0, Math.PI * 2);
           ctx.strokeStyle = isDark ? '#f8fafc' : '#0f172a';
           ctx.lineWidth = 2;
           ctx.stroke();
         }
+
+        const emoji = emojiMap[member.specialty] || '👤';
+        ctx.font =
+          '10px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, pos.x, pos.y + 1);
       }
 
       // Incident beacons (pulsing, tier-colored, filtered by floor and category).
@@ -614,6 +629,15 @@ export function OptimizedStadiumMapCanvas({
           ctx.setLineDash([4, 3]);
           ctx.stroke();
           ctx.setLineDash([]);
+        }
+
+        // Critical alert emoji
+        if (incident.extractedMetadata.severity === 'CRITICAL') {
+          ctx.font =
+            '12px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🚨', pos.x, pos.y - size);
         }
       }
 
@@ -1073,7 +1097,7 @@ export function OptimizedStadiumMapCanvas({
 
       {/* Floor selector — switch between multi-floor layouts */}
       {floors.length > 1 && (
-        <div className="absolute left-50 top-3 z-20 flex flex-wrap gap-1 rounded-lg border border-slate-300 bg-white/90 p-1.5 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="absolute right-4 top-16 z-20 flex flex-col gap-1 rounded-lg border border-slate-300 bg-white/90 p-1.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/90">
           {floors.map((floor) => (
             <Button
               key={floor.id}
@@ -1083,8 +1107,8 @@ export function OptimizedStadiumMapCanvas({
               }}
               className={`rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
                 effectiveFloorId === floor.id
-                  ? 'neu-pressed-sm bg-blue-600 text-white'
-                  : 'neu-raised-sm text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-200 dark:bg-slate-800'
+                  ? '-sm bg-blue-600 text-white'
+                  : '-sm text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-200 dark:bg-slate-800'
               }`}
             >
               {floor.name}
@@ -1094,7 +1118,8 @@ export function OptimizedStadiumMapCanvas({
       )}
 
       {/* Legend with toggles */}
-      <div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-300 bg-white/90 p-3 backdrop-blur neu-raised-sm dark:border-slate-800 dark:bg-slate-950/90">
+
+      <div className="absolute bottom-3 left-3 z-20 rounded-xl border border-slate-300 bg-white/90 p-3 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/90">
         <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-slate-600 dark:text-slate-500">
           Legend
         </p>
@@ -1246,6 +1271,7 @@ export function OptimizedStadiumMapCanvas({
       </div>
 
       {/* HUD overlay (imperatively updated, never re-renders React) */}
+
       <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 backdrop-blur">
         <div className="flex items-center gap-2">
           <span className="text-slate-600">ZOOM</span>

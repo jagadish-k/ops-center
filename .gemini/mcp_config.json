@@ -2,6 +2,10 @@
   "mcpServers": {
     "context-mode": {
       "command": "context-mode"
+    },
+    "heroui-react": {
+      "command": "npx",
+      "args": ["-y", "@heroui/react-mcp@latest"]
     }
   }
 }

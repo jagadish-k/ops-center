@@ -69,7 +69,6 @@ export function TenantsTab() {
             size="sm"
             variant="secondary"
             onPress={() => setCreateOpen(true)}
-            className="neu-raised-sm neu-hover neu-active"
           >
             + New Tenant
           </Button>
@@ -83,7 +82,7 @@ export function TenantsTab() {
             size="sm"
             variant="ghost"
             onPress={() => void reload()}
-            className="ml-3 neu-raised-sm neu-hover neu-active"
+            className="ml-3"
           >
             Retry
           </Button>
@@ -132,7 +131,7 @@ export function TenantsTab() {
                   {(t) => (
                     <Table.Row
                       id={t.id}
-                      className="hover:bg-slate-100/70 dark:hover:bg-slate-200 dark:bg-slate-800/30"
+                      className="hover:bg-slate-100 dark:hover:bg-slate-700/50 dark:bg-slate-800/30"
                     >
                       <Table.Cell className="font-bold text-slate-800 dark:text-slate-100">
                         {t.orgName}
@@ -167,7 +166,6 @@ export function TenantsTab() {
                               layout: t.mapLayout as MapLayout | null,
                             })
                           }
-                          className="neu-raised-sm neu-hover neu-active"
                         >
                           🗺 Edit Map
                         </Button>
@@ -275,7 +273,7 @@ function CreateTenantModal({
         onOpenChange={(o) => !o && onClose()}
       >
         <Modal.Container>
-          <Modal.Dialog className="sm:max-w-lg neu-raised rounded-2xl">
+          <Modal.Dialog className="sm:max-w-lg rounded-2xl">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -293,7 +291,7 @@ function CreateTenantModal({
                       Tenant ID
                     </Label>
                     <Input
-                      className="neu-pressed w-full"
+                      className=" w-full"
                       {...form.register('tenantId')}
                     />
                     <FieldError className="text-xs text-red-500">
@@ -308,7 +306,7 @@ function CreateTenantModal({
                       Organization Name
                     </Label>
                     <Input
-                      className="neu-pressed w-full"
+                      className=" w-full"
                       {...form.register('orgName')}
                     />
                     <FieldError className="text-xs text-red-500">
@@ -331,28 +329,28 @@ function CreateTenantModal({
                       type="number"
                       step="0.0001"
                       placeholder="min lat"
-                      className="neu-pressed"
+
                       {...form.register('bboxMinLat', { valueAsNumber: true })}
                     />
                     <Input
                       type="number"
                       step="0.0001"
                       placeholder="max lat"
-                      className="neu-pressed"
+
                       {...form.register('bboxMaxLat', { valueAsNumber: true })}
                     />
                     <Input
                       type="number"
                       step="0.0001"
                       placeholder="min lng"
-                      className="neu-pressed"
+
                       {...form.register('bboxMinLng', { valueAsNumber: true })}
                     />
                     <Input
                       type="number"
                       step="0.0001"
                       placeholder="max lng"
-                      className="neu-pressed"
+
                       {...form.register('bboxMaxLng', { valueAsNumber: true })}
                     />
                   </div>
@@ -372,7 +370,6 @@ function CreateTenantModal({
                 variant="ghost"
                 onPress={onClose}
                 isDisabled={submitting}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 Cancel
               </Button>
@@ -382,7 +379,6 @@ function CreateTenantModal({
                 variant="primary"
                 isDisabled={submitting}
                 onPress={() => form.handleSubmit(onSubmit)()}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 {submitting ? <Spinner size="sm" /> : 'Create'}
               </Button>

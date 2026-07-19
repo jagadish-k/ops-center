@@ -84,7 +84,7 @@ export function RolesTab() {
             size="sm"
             variant="secondary"
             onPress={() => setCreateOpen(true)}
-            className="neu-raised-sm neu-hover neu-active"
+            className="-sm"
           >
             + New Role
           </Button>
@@ -98,7 +98,7 @@ export function RolesTab() {
             size="sm"
             variant="ghost"
             onPress={() => void reload()}
-            className="ml-3 neu-raised-sm neu-hover neu-active"
+            className="ml-3-sm"
           >
             Retry
           </Button>
@@ -184,7 +184,7 @@ function RoleCard({
   };
 
   return (
-    <div className="neu-raised rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+    <div className=" rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
       <div className="flex items-center gap-2">
         <h3 className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100">
           {role.name}
@@ -221,7 +221,7 @@ function RoleCard({
           size="sm"
           variant="ghost"
           onPress={onEdit}
-          className="neu-raised-sm neu-hover neu-active"
+          className="-sm"
         >
           Edit Permissions
         </Button>
@@ -229,7 +229,7 @@ function RoleCard({
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-600 neu-raised-sm neu-hover neu-active dark:text-red-400"
+            className="text-red-600-sm dark:text-red-400"
             isDisabled={deleting}
             onPress={handleDelete}
           >
@@ -303,8 +303,8 @@ function CreateRoleDrawer({
         isOpen={isOpen}
         onOpenChange={(o) => !o && onClose()}
       >
-        <Drawer.Content className="neu-flat bg-slate-100/90 shadow-2xl backdrop-blur-md dark:bg-slate-900/90">
-          <Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+        <Drawer.Content className=" bg-slate-100/90 shadow-2xl backdrop-blur-md dark:bg-slate-900/90">
+          <Drawer.Dialog className="sm:max-w-md rounded-2xl">
             <Drawer.CloseTrigger />
             <Drawer.Header>
               <Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -322,7 +322,7 @@ function CreateRoleDrawer({
                       Name
                     </Label>
                     <Input
-                      className="neu-pressed w-full"
+                      className=" w-full"
                       {...form.register('name')}
                     />
                     <FieldError className="text-xs text-red-500">
@@ -337,7 +337,7 @@ function CreateRoleDrawer({
                       Description
                     </Label>
                     <Input
-                      className="neu-pressed w-full"
+                      className=" w-full"
                       {...form.register('description')}
                     />
                     <FieldError className="text-xs text-red-500">
@@ -399,7 +399,7 @@ function CreateRoleDrawer({
                 variant="ghost"
                 onPress={onClose}
                 isDisabled={submitting}
-                className="neu-raised-sm neu-hover neu-active"
+                className="-sm"
               >
                 Cancel
               </Button>
@@ -409,7 +409,7 @@ function CreateRoleDrawer({
                 variant="primary"
                 isDisabled={submitting}
                 onPress={() => form.handleSubmit(onSubmit)()}
-                className="neu-raised-sm neu-hover neu-active"
+                className="-sm"
               >
                 {submitting ? <Spinner size="sm" /> : 'Create'}
               </Button>
@@ -475,7 +475,7 @@ function EditRoleDrawer({
         onOpenChange={(o) => !o && onClose()}
       >
         <Drawer.Content>
-          <Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+          <Drawer.Dialog className="sm:max-w-md rounded-2xl">
             <Drawer.CloseTrigger />
             <Drawer.Header>
               <Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -537,7 +537,7 @@ function EditRoleDrawer({
                 variant="ghost"
                 onPress={onClose}
                 isDisabled={saving}
-                className="neu-raised-sm neu-hover neu-active"
+                className="-sm"
               >
                 Close
               </Button>
@@ -546,7 +546,7 @@ function EditRoleDrawer({
                 variant="primary"
                 onPress={save}
                 isDisabled={saving}
-                className="neu-raised-sm neu-hover neu-active"
+                className="-sm"
               >
                 {saving ? <Spinner size="sm" /> : 'Save Changes'}
               </Button>
@@ -599,7 +599,7 @@ function CascadeRevokeModal({
         onOpenChange={() => onClose()}
       >
         <Modal.Container>
-          <Modal.Dialog className="sm:max-w-lg neu-raised rounded-2xl">
+          <Modal.Dialog className="sm:max-w-lg rounded-2xl">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading className="font-mono text-sm uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -614,7 +614,7 @@ function CascadeRevokeModal({
               </p>
               <TextArea
                 aria-label="User UUIDs"
-                className="mt-2 h-32 w-full neu-pressed font-mono text-xs"
+                className="mt-2 h-32 w-full font-mono text-xs"
                 placeholder="paste UUIDs separated by newlines or commas"
                 value={userIds}
                 onChange={(e) => setUserIds(e.target.value)}
@@ -636,7 +636,7 @@ function CascadeRevokeModal({
                 variant="ghost"
                 onPress={onClose}
                 isDisabled={submitting}
-                className="neu-raised-sm neu-hover neu-active"
+                className="-sm"
               >
                 Cancel
               </Button>
@@ -645,7 +645,7 @@ function CascadeRevokeModal({
                 variant="primary"
                 onPress={submit}
                 isDisabled={submitting || result !== null}
-                className="neu-raised-sm neu-hover neu-active"
+                className="-sm"
               >
                 {submitting ? (
                   <Spinner size="sm" />
@@ -658,7 +658,7 @@ function CascadeRevokeModal({
                   size="sm"
                   variant="secondary"
                   onPress={onClose}
-                  className="neu-raised-sm neu-hover neu-active"
+                  className="-sm"
                 >
                   Done
                 </Button>

@@ -28,7 +28,6 @@ import { TenantsTab } from './TenantsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useTabTourBanner, startTabTour } from '@/components/shared/GuideTour';
-import { useTheme, THEME_LABELS, THEME_ICONS } from '@/context/theme-constants';
 import { OptimizedStadiumMapCanvas } from '@/components/shared/OptimizedStadiumMapCanvas';
 
 type TabId = 'operations' | 'team' | 'roles' | 'tenants' | 'policies';
@@ -40,10 +39,9 @@ interface OperationalDashboardProps {
 export function OperationalDashboard({
   onTenantChange,
 }: OperationalDashboardProps) {
-  const { signOut, claims } = useAuth();
-  const { can, phone, fullName, isSuperadmin } = usePermissions();
-  const { incidents, staff, activeTenantId, connectionHealthy, mapLayout } =
-    useActiveOps();
+  const { signOut } = useAuth();
+  const { can, phone, fullName } = usePermissions();
+  const { incidents, staff, activeTenantId, mapLayout } = useActiveOps();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
@@ -77,18 +75,11 @@ export function OperationalDashboard({
   // Per-tab tour banner: shows "Take a quick tour?" on first visit.
   const tour = useTabTourBanner(activeTab);
 
-  // Theme toggle.
-  const { theme, cycleTheme } = useTheme();
-
   // Derive the freshest selected incident from the polled list.
   const selected = useMemo(
     () => incidents.find((i) => i.id === selectedId) ?? null,
     [incidents, selectedId],
   );
-
-  const tenantName =
-    tenants.find((t) => t.tenantId === activeTenantId)?.orgName ??
-    activeTenantId;
 
   const handleSelect = (incident: IncidentReport): void => {
     setSelectedId(incident.id);
@@ -98,30 +89,106 @@ export function OperationalDashboard({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex h-screen flex-col bg-slate-950 text-slate-100 selection:bg-cyan-500/30">
       {/* ── Header bar ─────────────────────────────────────────────── */}
-      <header className="flex items-center gap-4 border-b border-slate-300 bg-white/80 px-4 py-2.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/60">
-        <div className="flex items-baseline gap-2">
-          <h1 className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
-            Stadium Ops
-          </h1>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400">
-            // Command Room
-          </span>
+      <header className="flex items-center justify-between border-b border-white/10 bg-slate-950/80 px-6 py-3 backdrop-blur-xl z-50">
+        <div className="flex flex-1 items-center gap-4">
+          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+            <div className="absolute inset-0 rounded-lg bg-cyan-400 blur-md opacity-20"></div>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-cyan-400 relative z-10"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div className="flex items-center">
+            <span
+              className="font-mono text-lg font-black tracking-widest uppercase text-transparent"
+              style={{ WebkitTextStroke: '1px #22d3ee' }}
+            >
+              Ops
+            </span>
+            <span className="font-mono text-lg font-black tracking-[0.2em] uppercase text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+              Center
+            </span>
+          </div>
         </div>
 
-        <div className="mx-2 hidden h-5 w-px bg-slate-300 sm:block dark:bg-slate-800" />
+        {/* ── Center Navigation (Tabs) ────────────────────────────────────────── */}
+        <nav
+          data-tour="tab-nav"
+          className="flex flex-1 items-center justify-center"
+        >
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(k) => setActiveTab(k as TabId)}
+            className="w-full"
+            variant="secondary"
+          >
+            <Tabs.ListContainer>
+              <Tabs.List
+                aria-label="Operations Navigation"
+                className="gap-8 w-full relative rounded-none p-0 border-b-0 justify-center"
+              >
+                <Tabs.Tab
+                  id="operations"
+                  className="max-w-fit px-0 h-12 data-[selected=true]:text-cyan-400 group-data-[selected=true]:text-cyan-400 text-slate-400 font-mono text-xs font-bold tracking-widest uppercase hover:text-white transition-colors"
+                >
+                  Operations
+                  <Tabs.Indicator className="w-full bg-cyan-400 h-[2px] shadow-[0_-2px_10px_rgba(34,211,238,0.5)]" />
+                </Tabs.Tab>
+                {can('staff:manage') && (
+                  <Tabs.Tab
+                    id="team"
+                    className="max-w-fit px-0 h-12 data-[selected=true]:text-cyan-400 group-data-[selected=true]:text-cyan-400 text-slate-400 font-mono text-xs font-bold tracking-widest uppercase hover:text-white transition-colors"
+                  >
+                    Team
+                    <Tabs.Indicator className="w-full bg-cyan-400 h-[2px] shadow-[0_-2px_10px_rgba(34,211,238,0.5)]" />
+                  </Tabs.Tab>
+                )}
+                {can('tenant:manage') && (
+                  <Tabs.Tab
+                    id="roles"
+                    className="max-w-fit px-0 h-12 data-[selected=true]:text-cyan-400 group-data-[selected=true]:text-cyan-400 text-slate-400 font-mono text-xs font-bold tracking-widest uppercase hover:text-white transition-colors"
+                  >
+                    Roles
+                    <Tabs.Indicator className="w-full bg-cyan-400 h-[2px] shadow-[0_-2px_10px_rgba(34,211,238,0.5)]" />
+                  </Tabs.Tab>
+                )}
+                {can('tenant:switch') && (
+                  <Tabs.Tab
+                    id="tenants"
+                    className="max-w-fit px-0 h-12 data-[selected=true]:text-cyan-400 group-data-[selected=true]:text-cyan-400 text-slate-400 font-mono text-xs font-bold tracking-widest uppercase hover:text-white transition-colors"
+                  >
+                    Tenants
+                    <Tabs.Indicator className="w-full bg-cyan-400 h-[2px] shadow-[0_-2px_10px_rgba(34,211,238,0.5)]" />
+                  </Tabs.Tab>
+                )}
+                {can('tenant:manage') && (
+                  <Tabs.Tab
+                    id="policies"
+                    className="max-w-fit px-0 h-12 data-[selected=true]:text-cyan-400 group-data-[selected=true]:text-cyan-400 text-slate-400 font-mono text-xs font-bold tracking-widest uppercase hover:text-white transition-colors"
+                  >
+                    Policies
+                    <Tabs.Indicator className="w-full bg-cyan-400 h-[2px] shadow-[0_-2px_10px_rgba(34,211,238,0.5)]" />
+                  </Tabs.Tab>
+                )}
+              </Tabs.List>
+            </Tabs.ListContainer>
+          </Tabs>
+        </nav>
 
-        <div className="hidden items-center gap-2 sm:flex">
-          <span
-            className={`h-2 w-2 rounded-full ${connectionHealthy ? 'bg-emerald-500' : 'bg-amber-500'}`}
-          />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-400">
-            {tenantName}
-          </span>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex flex-1 items-center justify-end gap-4">
           {can('tenant:switch') && tenants.length > 0 && (
             <div data-tour="tenant-switcher">
               <TenantSwitcher
@@ -135,11 +202,11 @@ export function OperationalDashboard({
             <Button
               data-tour="compliance-log"
               size="sm"
-              variant="secondary"
+              variant="tertiary"
               onPress={() => setAuditOpen(true)}
-              className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest"
+              className="bg-white/5 font-mono text-[10px] font-bold uppercase tracking-widest text-slate-300 hover:bg-white/10"
             >
-              Compliance Log
+              Log
             </Button>
           )}
           <Button
@@ -147,87 +214,31 @@ export function OperationalDashboard({
             size="sm"
             variant="ghost"
             onPress={() => startTabTour(activeTab)}
-            className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest"
+            className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white"
           >
-            ? Help
+            ?
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={cycleTheme}
 
-            className="neu-raised-sm neu-hover neu-active"
-          >
-            <span className="mr-1">{THEME_ICONS[theme]}</span>
-            <span className="font-mono text-[9px] uppercase tracking-widest">
-              {THEME_LABELS[theme]}
-            </span>
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onPress={signOut}
-            className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest"
-          >
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-3 pl-4 border-l border-white/10">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 cursor-help"
+                title={`Logged in as: ${fullName ?? phone}`}
+              >
+                <span className="text-[10px]">👤</span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onPress={signOut}
+              className="border-white/10 font-mono text-[10px] uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white"
+            >
+              Out
+            </Button>
+          </div>
         </div>
       </header>
-
-      {/* ── Operator identity (footprint) ─────────────────────────── */}
-      {(phone || fullName) && (
-        <div className="border-b border-slate-300 bg-slate-50 px-4 py-1 dark:border-slate-800/60 dark:bg-slate-950">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-slate-900 dark:text-slate-500 dark:text-slate-600">
-            Operator {fullName ?? phone} ·{' '}
-            {isSuperadmin ? 'superadmin' : 'member'}
-            {claims?.tenant_id ? ` · ${claims.tenant_id}` : ''}
-          </p>
-        </div>
-      )}
-
-      {/* ── Tab nav (M9.5) ────────────────────────────────────────── */}
-      <nav
-        data-tour="tab-nav"
-        className="border-b border-slate-300 bg-white/60 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/30"
-      >
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(k) => setActiveTab(k as TabId)}
-        >
-          <Tabs.ListContainer>
-            <Tabs.List aria-label="Control Room sections">
-              <Tabs.Tab id="operations">
-                Operations
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              {can('staff:manage') && (
-                <Tabs.Tab id="team">
-                  Team
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              )}
-              {can('tenant:manage') && (
-                <Tabs.Tab id="roles">
-                  Roles
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              )}
-              {can('tenant:switch') && (
-                <Tabs.Tab id="tenants">
-                  Tenants
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              )}
-              {can('tenant:manage') && (
-                <Tabs.Tab id="policies">
-                  Policies
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              )}
-            </Tabs.List>
-          </Tabs.ListContainer>
-        </Tabs>
-      </nav>
 
       {/* ── Tab content (each wrapped in its own ErrorBoundary) ──── */}
       <main className="min-h-0 flex-1 overflow-hidden">
@@ -254,11 +265,35 @@ export function OperationalDashboard({
         )}
         {activeTab === 'operations' && (
           <ErrorBoundary name="Operations tab">
-            <div className="grid h-full grid-cols-1 gap-3 p-3 lg:grid-cols-3">
+            <div className="grid h-full grid-cols-1 gap-4 p-4 lg:grid-cols-4">
               <section
                 data-tour="map-canvas"
-                className="min-h-[320px] lg:col-span-2 lg:min-h-0"
+                className="relative min-h-[320px] lg:col-span-3 lg:min-h-0 rounded-2xl overflow-hidden border border-white/10 bg-slate-950 shadow-2xl"
               >
+                {/* ── Top Status Overlay ── */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 hidden items-center gap-4 rounded-full bg-slate-950/90 border border-white/10 px-6 py-2 backdrop-blur-md shadow-2xl md:flex">
+                  <span className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">
+                    Active Units:{' '}
+                    <span className="text-cyan-400 font-bold ml-1">
+                      {staff.length}
+                    </span>
+                  </span>
+                  <div className="w-px h-3 bg-white/20" />
+                  <span className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">
+                    Incidents:{' '}
+                    <span className="text-orange-400 font-bold ml-1">
+                      {incidents.filter((i) => i.status !== 'RESOLVED').length}
+                    </span>
+                  </span>
+                  <div className="w-px h-3 bg-white/20" />
+                  <span className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">
+                    System Health:{' '}
+                    <span className="text-emerald-400 font-bold ml-1">
+                      Stable
+                    </span>
+                  </span>
+                </div>
+
                 <OptimizedStadiumMapCanvas
                   incidents={incidents}
                   staffMembers={staff}
@@ -269,10 +304,10 @@ export function OperationalDashboard({
                   selectedCategories={selectedCategories}
                 />
               </section>
-              <aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
+              <aside className="flex min-h-0 flex-col gap-4 lg:col-span-1">
                 <div
                   data-tour="incident-queue"
-                  className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40"
+                  className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 shadow-2xl backdrop-blur-md"
                 >
                   <IncidentQueue
                     incidents={incidents}
@@ -297,7 +332,7 @@ export function OperationalDashboard({
                 </div>
                 <div
                   data-tour="incident-inspector"
-                  className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40"
+                  className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 shadow-2xl backdrop-blur-md"
                 >
                   <IncidentInspector
                     key={selected?.id ?? 'empty'}

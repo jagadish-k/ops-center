@@ -91,23 +91,23 @@ If either process dies, the orchestrator kills the sibling and exits cleanly
 
 ## 3. Helper Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Full orchestration: .env → Docker → migrate → seed → vite + netlify dev |
-| `npm run dev:db` | Start the Postgres Docker container only |
-| `npm run dev:db:stop` | Stop the Postgres container (data is preserved in volume) |
-| `npm run dev:db:reset` | **Wipe all data** and recreate a fresh Postgres container |
-| `npm run db:migrate` | Apply pending Drizzle migrations |
-| `npm run db:seed` | Run `database/seed.ts` (idempotent — tenants, users, roles, perms) |
+| Command                      | What it does                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `npm run dev`                | Full orchestration: .env → Docker → migrate → seed → vite + netlify dev        |
+| `npm run dev:db`             | Start the Postgres Docker container only                                       |
+| `npm run dev:db:stop`        | Stop the Postgres container (data is preserved in volume)                      |
+| `npm run dev:db:reset`       | **Wipe all data** and recreate a fresh Postgres container                      |
+| `npm run db:migrate`         | Apply pending Drizzle migrations                                               |
+| `npm run db:seed`            | Run `database/seed.ts` (idempotent — tenants, users, roles, perms)             |
 | `npm run db:seed-superadmin` | Idempotent upsert of `SUPERADMIN_PHONE` env user as `global_role='superadmin'` |
-| `npm run db:generate` | Generate a new migration from `database/schema.ts` changes (drizzle-kit) |
-| `npm run db:studio` | Open Drizzle Studio (local DB browser at https://local.drizzle.studio) |
-| `npm run simulate` | Stress test (250 staff, 50 incidents) — reports latency metrics |
-| `npm run verify:deploy` | Pre-flight deploy check (env vars, DB, migrations, endpoints, JWT keys) |
-| `npm test` | Run the test suite (82 tests across 10 files) |
-| `npm run test:watch` | Vitest watch mode |
-| `npm run test:policy` | Run OPA Rego policy unit tests (`bin/opa test policies/`) |
-| `npm run build:policies` | Compile Rego → WASM bundle (`policies/dist/policy.wasm`) |
+| `npm run db:generate`        | Generate a new migration from `database/schema.ts` changes (drizzle-kit)       |
+| `npm run db:studio`          | Open Drizzle Studio (local DB browser at https://local.drizzle.studio)         |
+| `npm run simulate`           | Stress test (250 staff, 50 incidents) — reports latency metrics                |
+| `npm run verify:deploy`      | Pre-flight deploy check (env vars, DB, migrations, endpoints, JWT keys)        |
+| `npm test`                   | Run the test suite (82 tests across 10 files)                                  |
+| `npm run test:watch`         | Vitest watch mode                                                              |
+| `npm run test:policy`        | Run OPA Rego policy unit tests (`bin/opa test policies/`)                      |
+| `npm run build:policies`     | Compile Rego → WASM bundle (`policies/dist/policy.wasm`)                       |
 
 ### Stress Testing (`npm run simulate`)
 
@@ -163,18 +163,19 @@ https://stadops.local:5173/
 
 You'll see the **OTP Authentication Gateway** — a dark, high-contrast screen
 with:
+
 - An E.164 phone number input
 - A "Send Code" button
 
 After authentication, you'll land in the **Control Room** with a tab bar:
 
-| Tab | Permission | Purpose |
-|---|---|---|
-| **Operations** | `surface:control-room` (admin+) | Live map + incident queue + inspector |
-| **Team** | `staff:manage` (admin+) | Staff CRUD, role assignment, per-user grants |
-| **Roles** | `tenant:manage` (superadmin) | Role definitions, permission matrix, cascade-revoke |
-| **Tenants** | `tenant:switch` (superadmin) | Tenant list + create |
-| **Policies** | `tenant:manage` (superadmin) | Rego policy editor + test runner (M10) |
+| Tab            | Permission                      | Purpose                                             |
+| -------------- | ------------------------------- | --------------------------------------------------- |
+| **Operations** | `surface:control-room` (admin+) | Live map + incident queue + inspector               |
+| **Team**       | `staff:manage` (admin+)         | Staff CRUD, role assignment, per-user grants        |
+| **Roles**      | `tenant:manage` (superadmin)    | Role definitions, permission matrix, cascade-revoke |
+| **Tenants**    | `tenant:switch` (superadmin)    | Tenant list + create                                |
+| **Policies**   | `tenant:manage` (superadmin)    | Rego policy editor + test runner (M10)              |
 
 Tabs are permission-gated: a user without `staff:manage` won't see the Team
 tab at all. Each tab is wrapped in its own ErrorBoundary so one broken tab
@@ -194,22 +195,26 @@ the tab layer.
 ### Admin UI workflow examples
 
 **Create a new staff member:**
+
 1. Open the **Team** tab → **+ Add Staff**
 2. Fill in phone (E.164), full name, specialty, zone, role(s)
 3. Validation runs on submit (zod); errors show inline
 4. On success, the new staff appears in the table immediately (optimistic)
 
 **Promote a staff member to manager:**
+
 1. Find the user in the Team table → **Edit**
 2. Check the `manager` role checkbox
 3. The role list updates optimistically; server confirms or rolls back
 
 **Give a specific user an extra permission (e.g., `audit:view` to a staff member):**
+
 1. Team table → **Perms** button on the user's row
 2. Check `audit:view` in the drawer
 3. The grant is additive (ADR-0011 P1) — it doesn't change their role
 
 **Edit a role's permissions (superadmin):**
+
 1. **Roles** tab → **Edit Permissions** on the role card
 2. Toggle permissions in the matrix. Added = green, removed = red strikethrough
 3. **Save Changes** triggers the update; affected users' `perms_version` is
@@ -218,6 +223,7 @@ the tab layer.
    cascade-revoke modal lets you bulk-revoke those grants (max 100/batch)
 
 **Author / test a Rego policy (superadmin):**
+
 1. **Policies** tab → **+ New Policy**
 2. Give it a namespaced name (e.g., `stadium/custom`), description, and Rego source
 3. Use the CodeMirror editor — Rego keywords + strings are highlighted
@@ -293,11 +299,11 @@ positions. Roles and permissions are defined per ADR-0010 / ADR-0011.
 
 ### Tenants
 
-| Tenant ID | Name | Map Floors |
-|---|---|---|
-| `tenant_metlife_ops` | MetLife Stadium Ops Core | 3 (Ground, Level 200, Suite) |
-| `tenant_sofi_ops` | SoFi Stadium Command Center | _(no layout seeded)_ |
-| `tenant_hardrock_ops` | Hard Rock Tournament Hub | _(no layout seeded)_ |
+| Tenant ID             | Name                        | Map Floors                   |
+| --------------------- | --------------------------- | ---------------------------- |
+| `tenant_metlife_ops`  | MetLife Stadium Ops Core    | 3 (Ground, Level 200, Suite) |
+| `tenant_sofi_ops`     | SoFi Stadium Command Center | _(no layout seeded)_         |
+| `tenant_hardrock_ops` | Hard Rock Tournament Hub    | _(no layout seeded)_         |
 
 MetLife has a full multi-floor `mapLayout` JSONB configuration seeded per
 the TypeScript interface in `src/lib/map-layout.ts` — 11 zones, 29 POIs
@@ -306,40 +312,40 @@ elevators, stairs, vomitories) across 3 floors.
 
 ### Users
 
-| Phone | Name | global_role | Memberships | Notes |
-|---|---|---|---|---|
-| `$SUPERADMIN_PHONE` (default `+14155550000`) | Default Superadmin | `superadmin` | _(none)_ | Env-seeded via ADR-0010 §Superadmin Bootstrap |
-| `+14155552026` | Command Coordinator | `member` | `metlife: [admin]` | Control Room operator |
-| `+14155552027` | Maya the Manager | `member` | `metlife: [manager]` | Coordinator role |
-| `+14155552028` | Mixed Role Morgan | `member` | `metlife: [staff]`, `sofi: [manager]` | Cross-tenant multi-membership; DISPATCHED at (380,310) |
-| `+14155550001` | Alpha Security Lead | `member` | `metlife: [staff]` | ZONE-A security; AVAILABLE at (320,280) |
-| `+14155550002` | Beta Medical Triage | `member` | `metlife: [staff]` + override `audit:view` | ZONE-B medical; per-user grant demo |
-| `+14155550003` | Gamma Security | `member` | `metlife: [staff]` | ZONE-C; AVAILABLE at (750,180) |
-| `+14155550004` | Delta Medical | `member` | `metlife: [staff]` | ZONE-D; DISPATCHED at (540,640) |
-| `+14155550005` | Echo Cleaning | `member` | `metlife: [staff]` | ZONE-E; AVAILABLE at (720,350) |
-| `+14155550006` | Foxtrot Supervisor | `member` | `metlife: [staff]` | ZONE-F; AVAILABLE at (850,200) |
-| `+14155550007` | Golf Security | `member` | `metlife: [staff]` | ZONE-B; OFF_DUTY at (580,380) |
-| `+14155550008` | Hotel Medical | `member` | `metlife: [staff]` | ZONE-A; AVAILABLE at (280,540) |
-| `+14155550009` | India Cleaning | `member` | `metlife: [staff]` | ZONE-D; AVAILABLE at (500,700) |
+| Phone                                        | Name                | global_role  | Memberships                                | Notes                                                  |
+| -------------------------------------------- | ------------------- | ------------ | ------------------------------------------ | ------------------------------------------------------ |
+| `$SUPERADMIN_PHONE` (default `+14155550000`) | Default Superadmin  | `superadmin` | _(none)_                                   | Env-seeded via ADR-0010 §Superadmin Bootstrap          |
+| `+14155552026`                               | Command Coordinator | `member`     | `metlife: [admin]`                         | Control Room operator                                  |
+| `+14155552027`                               | Maya the Manager    | `member`     | `metlife: [manager]`                       | Coordinator role                                       |
+| `+14155552028`                               | Mixed Role Morgan   | `member`     | `metlife: [staff]`, `sofi: [manager]`      | Cross-tenant multi-membership; DISPATCHED at (380,310) |
+| `+14155550001`                               | Alpha Security Lead | `member`     | `metlife: [staff]`                         | ZONE-A security; AVAILABLE at (320,280)                |
+| `+14155550002`                               | Beta Medical Triage | `member`     | `metlife: [staff]` + override `audit:view` | ZONE-B medical; per-user grant demo                    |
+| `+14155550003`                               | Gamma Security      | `member`     | `metlife: [staff]`                         | ZONE-C; AVAILABLE at (750,180)                         |
+| `+14155550004`                               | Delta Medical       | `member`     | `metlife: [staff]`                         | ZONE-D; DISPATCHED at (540,640)                        |
+| `+14155550005`                               | Echo Cleaning       | `member`     | `metlife: [staff]`                         | ZONE-E; AVAILABLE at (720,350)                         |
+| `+14155550006`                               | Foxtrot Supervisor  | `member`     | `metlife: [staff]`                         | ZONE-F; AVAILABLE at (850,200)                         |
+| `+14155550007`                               | Golf Security       | `member`     | `metlife: [staff]`                         | ZONE-B; OFF_DUTY at (580,380)                          |
+| `+14155550008`                               | Hotel Medical       | `member`     | `metlife: [staff]`                         | ZONE-A; AVAILABLE at (280,540)                         |
+| `+14155550009`                               | India Cleaning      | `member`     | `metlife: [staff]`                         | ZONE-D; AVAILABLE at (500,700)                         |
 
 ### Seed Incidents (5, one per tier)
 
-| ID | Tier | Category | Severity | Zone | Status | Description |
-|---|---|---|---|---|---|---|
-| `inc_seed_001` | 1 | CROWD | CRITICAL | B | OPEN | Crowd surge at Section 112 |
-| `inc_seed_002` | 2 | SECURITY | HIGH | D | ACKNOWLEDGED | Altercation in upper deck Sec 308 |
-| `inc_seed_003` | 3 | MEDICAL | HIGH | A | OPEN | Unresponsive male near Gate C |
-| `inc_seed_004` | 4 | FACILITIES | MEDIUM | E | ON_SCENE | Overflowing restroom fixture |
-| `inc_seed_005` | 5 | ADVISORY | LOW | C | OPEN | Long concession queues at Sec 200 |
+| ID             | Tier | Category   | Severity | Zone | Status       | Description                       |
+| -------------- | ---- | ---------- | -------- | ---- | ------------ | --------------------------------- |
+| `inc_seed_001` | 1    | CROWD      | CRITICAL | B    | OPEN         | Crowd surge at Section 112        |
+| `inc_seed_002` | 2    | SECURITY   | HIGH     | D    | ACKNOWLEDGED | Altercation in upper deck Sec 308 |
+| `inc_seed_003` | 3    | MEDICAL    | HIGH     | A    | OPEN         | Unresponsive male near Gate C     |
+| `inc_seed_004` | 4    | FACILITIES | MEDIUM   | E    | ON_SCENE     | Overflowing restroom fixture      |
+| `inc_seed_005` | 5    | ADVISORY   | LOW      | C    | OPEN         | Long concession queues at Sec 200 |
 
 ### Roles (system roles, preseeded)
 
-| Role | Permissions (summary) |
-|---|---|
-| `superadmin` | All 15 permissions (via `global_role`, not `role_permissions`) |
-| `admin` | `audit:view`, `dispatch:*`, `incident:create/read/transition`, `staff:manage`, `staff:reassign`, `surface:control-room` |
-| `manager` | `dispatch:*`, `incident:create/read/transition` (T4-5 via ABAC), `staff:reassign`, `surface:control-room` |
-| `staff` | `dispatch:read/update`, `incident:create/read`, `surface:field-client` |
+| Role         | Permissions (summary)                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `superadmin` | All 15 permissions (via `global_role`, not `role_permissions`)                                                          |
+| `admin`      | `audit:view`, `dispatch:*`, `incident:create/read/transition`, `staff:manage`, `staff:reassign`, `surface:control-room` |
+| `manager`    | `dispatch:*`, `incident:create/read/transition` (T4-5 via ABAC), `staff:reassign`, `surface:control-room`               |
+| `staff`      | `dispatch:read/update`, `incident:create/read`, `surface:field-client`                                                  |
 
 Full matrix in ADR-0011 §System roles.
 
@@ -350,23 +356,24 @@ configuration. The TypeScript interface lives in `src/lib/map-layout.ts`:
 
 ```typescript
 interface MapLayout {
-  floors: MapFloor[];       // each floor is independent
-  defaultFloorId?: string;  // which floor to show on load
+  floors: MapFloor[]; // each floor is independent
+  defaultFloorId?: string; // which floor to show on load
 }
 
 interface MapFloor {
-  id: string;               // "ground", "level-200", "suite-level"
-  name: string;             // "Ground Level (Concourse)"
-  level: number;            // 0 = ground, 1 = second level, etc.
-  zones: MapZone[];         // polygon boundaries on the 0-1000 grid
-  pois: MapPOI[];           // gates, restrooms, first aid, etc.
+  id: string; // "ground", "level-200", "suite-level"
+  name: string; // "Ground Level (Concourse)"
+  level: number; // 0 = ground, 1 = second level, etc.
+  zones: MapZone[]; // polygon boundaries on the 0-1000 grid
+  pois: MapPOI[]; // gates, restrooms, first aid, etc.
 }
 
 interface MapPOI {
   id: string;
   name: string;
-  type: POIType;            // entry | exit | restroom | first_aid | ... (11 types)
-  x: number; y: number;     // 0-1000 grid coords
+  type: POIType; // entry | exit | restroom | first_aid | ... (11 types)
+  x: number;
+  y: number; // 0-1000 grid coords
   notes?: string;
 }
 ```
@@ -495,6 +502,7 @@ curl -s http://localhost:5173/api/auth/refresh \
 ```
 
 Rules:
+
 - JWT signature must verify (even if `exp` has passed).
 - Refresh grace period: **5 minutes** post-expiry.
 - Rate limit: **10 calls/min/user** (per warm function instance).
@@ -524,12 +532,12 @@ is via `claims.permissions.includes(...)` per ADR-0011/0013.
 
 ### Auth Endpoints
 
-| Method | Path | Body | Response |
-|---|---|---|---|
-| `POST` | `/api/auth/request-otp` | `{ "phoneNumber": "+14155550001" }` | `{ "status": "SENT", "devCode": "482910" }` |
-| `POST` | `/api/auth/verify-otp` | `{ "phoneNumber": "+14155550001", "code": "482910" }` | `{ "token": "<jwt>", "claims": { ... } }` |
-| `POST` | `/api/auth/refresh` | _(none; `Authorization: Bearer <jwt>`)_ | `{ "token": "<new-jwt>", "claims": {...} }` |
-| `POST` | `/api/auth/switch-tenant` | `{ "tenantId": "tenant_sofi_ops" }` | `{ "token": "<new-jwt>", "claims": {...} }` |
+| Method | Path                      | Body                                                  | Response                                    |
+| ------ | ------------------------- | ----------------------------------------------------- | ------------------------------------------- |
+| `POST` | `/api/auth/request-otp`   | `{ "phoneNumber": "+14155550001" }`                   | `{ "status": "SENT", "devCode": "482910" }` |
+| `POST` | `/api/auth/verify-otp`    | `{ "phoneNumber": "+14155550001", "code": "482910" }` | `{ "token": "<jwt>", "claims": { ... } }`   |
+| `POST` | `/api/auth/refresh`       | _(none; `Authorization: Bearer <jwt>`)_               | `{ "token": "<new-jwt>", "claims": {...} }` |
+| `POST` | `/api/auth/switch-tenant` | `{ "tenantId": "tenant_sofi_ops" }`                   | `{ "token": "<new-jwt>", "claims": {...} }` |
 
 - `refresh` accepts recently-expired JWTs (5-min grace), rate-limited 10/min/user.
 - `switch-tenant`: superadmins can target any tenant; members can target only
@@ -537,22 +545,22 @@ is via `claims.permissions.includes(...)` per ADR-0011/0013.
 
 ### Operational Endpoints
 
-| Method | Path | Required Permission | Purpose |
-|---|---|---|---|
-| `POST` | `/api/state-poll` | any authenticated | Diff-poll incidents + staff + dispatches (ADR-0004) |
-| `POST` | `/api/staff-location` | any authenticated (self-only) | Update caller's GPS coordinates |
-| `POST` | `/api/mutations` | varies by action | Incident CRUD + dispatch lifecycle |
-| `POST` | `/api/ai-triage` | `incident:create` | Whisper + Gemini voice pipeline (ADR-0006) |
-| `GET` | `/api/audit-ledger` | `audit:view` | Recent entries + SHA-256 chain verification |
+| Method | Path                  | Required Permission           | Purpose                                             |
+| ------ | --------------------- | ----------------------------- | --------------------------------------------------- |
+| `POST` | `/api/state-poll`     | any authenticated             | Diff-poll incidents + staff + dispatches (ADR-0004) |
+| `POST` | `/api/staff-location` | any authenticated (self-only) | Update caller's GPS coordinates                     |
+| `POST` | `/api/mutations`      | varies by action              | Incident CRUD + dispatch lifecycle                  |
+| `POST` | `/api/ai-triage`      | `incident:create`             | Whisper + Gemini voice pipeline (ADR-0006)          |
+| `GET`  | `/api/audit-ledger`   | `audit:view`                  | Recent entries + SHA-256 chain verification         |
 
 `/api/mutations` action routing:
 
-| Action | Required Permission | Notes |
-|---|---|---|
-| `create_incident` | `incident:create` | Staff + admin + superadmin |
-| `transition_incident` | `incident:transition` | Admin + superadmin (Tier-gated ABAC in M9.4) |
-| `create_dispatch` | `dispatch:create` | Admin + manager + superadmin |
-| `update_dispatch` | `dispatch:update` | Admin/manager/superadmin OR target staff (self) |
+| Action                | Required Permission   | Notes                                           |
+| --------------------- | --------------------- | ----------------------------------------------- |
+| `create_incident`     | `incident:create`     | Staff + admin + superadmin                      |
+| `transition_incident` | `incident:transition` | Admin + superadmin (Tier-gated ABAC in M9.4)    |
+| `create_dispatch`     | `dispatch:create`     | Admin + manager + superadmin                    |
+| `update_dispatch`     | `dispatch:update`     | Admin/manager/superadmin OR target staff (self) |
 
 ### Admin Endpoints (M9.3)
 
@@ -563,42 +571,42 @@ tenant.
 
 #### `POST /api/admin/users` — staff CRUD + role assignment + per-user grants
 
-| Action | Required Permission | Body |
-|---|---|---|
-| `list` | `staff:manage` | _(none)_ |
-| `create` | `staff:manage` | `{ phone, fullName, specialty?, assignedZone?, roles? }` |
-| `update` | `staff:manage` | `{ userId, fullName?, status? }` |
-| `assign_role` | `staff:manage` | `{ userId, role }` (admin role requires superadmin) |
-| `revoke_role` | `staff:manage` | `{ userId, role }` (admin role requires superadmin) |
-| `grant_permission` | `role:assign-admin` | `{ userId, permission }` |
-| `revoke_permission` | `role:assign-admin` | `{ userId, permission }` |
+| Action              | Required Permission | Body                                                     |
+| ------------------- | ------------------- | -------------------------------------------------------- |
+| `list`              | `staff:manage`      | _(none)_                                                 |
+| `create`            | `staff:manage`      | `{ phone, fullName, specialty?, assignedZone?, roles? }` |
+| `update`            | `staff:manage`      | `{ userId, fullName?, status? }`                         |
+| `assign_role`       | `staff:manage`      | `{ userId, role }` (admin role requires superadmin)      |
+| `revoke_role`       | `staff:manage`      | `{ userId, role }` (admin role requires superadmin)      |
+| `grant_permission`  | `role:assign-admin` | `{ userId, permission }`                                 |
+| `revoke_permission` | `role:assign-admin` | `{ userId, permission }`                                 |
 
 #### `POST /api/admin/roles` — role CRUD + cascade revoke
 
-| Action | Required Permission | Body |
-|---|---|---|
-| `list` | `tenant:manage` | _(none)_ |
-| `create` | `tenant:manage` | `{ name, description, permissions: Permission[] }` |
-| `update` | `tenant:manage` | `{ name, description?, permissions? }` — bumps affected users' `perms_version` |
-| `delete` | `tenant:manage` | `{ name }` — refuses if any user holds the role; refuses system roles |
-| `cascade_revoke` | `tenant:manage` | `{ name, permission, userIds: string[] }` — **max 100 userIds per call** |
+| Action           | Required Permission | Body                                                                           |
+| ---------------- | ------------------- | ------------------------------------------------------------------------------ |
+| `list`           | `tenant:manage`     | _(none)_                                                                       |
+| `create`         | `tenant:manage`     | `{ name, description, permissions: Permission[] }`                             |
+| `update`         | `tenant:manage`     | `{ name, description?, permissions? }` — bumps affected users' `perms_version` |
+| `delete`         | `tenant:manage`     | `{ name }` — refuses if any user holds the role; refuses system roles          |
+| `cascade_revoke` | `tenant:manage`     | `{ name, permission, userIds: string[] }` — **max 100 userIds per call**       |
 
 #### `POST /api/admin/tenants` — tenant management
 
-| Action | Required Permission | Body |
-|---|---|---|
-| `list` | `tenant:switch` | _(none)_ |
-| `create` | `tenant:manage` | `{ tenantId, orgName, bbox? }` — tenantId must match `/^tenant_[a-z0-9_]+$/` |
+| Action   | Required Permission | Body                                                                         |
+| -------- | ------------------- | ---------------------------------------------------------------------------- |
+| `list`   | `tenant:switch`     | _(none)_                                                                     |
+| `create` | `tenant:manage`     | `{ tenantId, orgName, bbox? }` — tenantId must match `/^tenant_[a-z0-9_]+$/` |
 
 #### `POST /api/admin/policies` — Rego policy management (M10)
 
-| Action | Required Permission | Body |
-|---|---|---|
-| `list` | `tenant:manage` | _(none)_ — returns system policy (read-only) + DB policies |
-| `create` | `tenant:manage` | `{ name, description, source }` — name must match `/^[a-z][a-z0-9/_-]*$/i` |
-| `update` | `tenant:manage` | `{ name, source?, description? }` |
-| `delete` | `tenant:manage` | `{ name }` — system policies protected |
-| `test` | `tenant:manage` | `{ source, input }` — spawns `opa eval`, returns `{ ok, allowed, elapsedMs }` (5s timeout) |
+| Action   | Required Permission | Body                                                                                       |
+| -------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| `list`   | `tenant:manage`     | _(none)_ — returns system policy (read-only) + DB policies                                 |
+| `create` | `tenant:manage`     | `{ name, description, source }` — name must match `/^[a-z][a-z0-9/_-]*$/i`                 |
+| `update` | `tenant:manage`     | `{ name, source?, description? }`                                                          |
+| `delete` | `tenant:manage`     | `{ name }` — system policies protected                                                     |
+| `test`   | `tenant:manage`     | `{ source, input }` — spawns `opa eval`, returns `{ ok, allowed, elapsedMs }` (5s timeout) |
 
 ### Example: Creating a staff member as admin
 
@@ -664,17 +672,17 @@ All endpoints return errors as:
 
 Common status codes:
 
-| Code | Meaning |
-|---|---|
-| `400` | Missing/invalid request body |
+| Code  | Meaning                                                                                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------- |
+| `400` | Missing/invalid request body                                                                                |
 | `401` | OTP wrong/expired/max-attempts **OR** JWT signature invalid **OR** `pv` stale (see `X-Reason: stale-perms`) |
-| `403` | Missing required permission (response includes `X-Reason: forbidden`) |
-| `404` | Resource not found in caller's tenant |
-| `405` | Wrong HTTP method |
-| `409` | Conflict (duplicate role, role still held by users) |
-| `413` | Batch too large (`cascade_revoke` > 100 users) |
-| `429` | OTP cooldown or refresh rate-limit exceeded |
-| `500` | Server error (check terminal) |
+| `403` | Missing required permission (response includes `X-Reason: forbidden`)                                       |
+| `404` | Resource not found in caller's tenant                                                                       |
+| `405` | Wrong HTTP method                                                                                           |
+| `409` | Conflict (duplicate role, role still held by users)                                                         |
+| `413` | Batch too large (`cascade_revoke` > 100 users)                                                              |
+| `429` | OTP cooldown or refresh rate-limit exceeded                                                                 |
+| `500` | Server error (check terminal)                                                                               |
 
 ---
 
@@ -693,19 +701,19 @@ npx vitest run --coverage
 
 Current test coverage (75+ tests, 11 files):
 
-| File | Tests | What it covers |
-|---|---|---|
-| `canvasMath.test.ts` | 13 | Coordinate projection (clientToGrid, gridToClient, distance, clamp) |
-| `types.test.ts` | 9 | Type unions — 5-tier, no stale values (CLOSED, ACTIVE, logistics) |
-| `jwt.test.ts` | 6 | RS256 sign/verify roundtrip, tamper rejection, bearer extraction |
-| `otp.test.ts` | 5 | Code generation format/range, SMS formatting |
-| `api.test.ts` | 4 | Client-side claims decoding, malformed token handling |
-| `mappers.test.ts` | — | Postgres row → domain type mapping |
-| `sectors.test.ts` | — | Sector anchor coordinate lookup |
-| `geo.test.ts` | — | GPS-to-grid haversine projection |
-| `permissions.test.ts` | — | RBAC permission matrix (role → permission) |
-| `audit-chain.test.ts` | — | SHA-256 chain computation + tamper detection |
-| `integration.test.ts` | — | End-to-end auth → poll → mutate → audit flow |
+| File                  | Tests | What it covers                                                      |
+| --------------------- | ----- | ------------------------------------------------------------------- |
+| `canvasMath.test.ts`  | 13    | Coordinate projection (clientToGrid, gridToClient, distance, clamp) |
+| `types.test.ts`       | 9     | Type unions — 5-tier, no stale values (CLOSED, ACTIVE, logistics)   |
+| `jwt.test.ts`         | 6     | RS256 sign/verify roundtrip, tamper rejection, bearer extraction    |
+| `otp.test.ts`         | 5     | Code generation format/range, SMS formatting                        |
+| `api.test.ts`         | 4     | Client-side claims decoding, malformed token handling               |
+| `mappers.test.ts`     | —     | Postgres row → domain type mapping                                  |
+| `sectors.test.ts`     | —     | Sector anchor coordinate lookup                                     |
+| `geo.test.ts`         | —     | GPS-to-grid haversine projection                                    |
+| `permissions.test.ts` | —     | RBAC permission matrix (role → permission)                          |
+| `audit-chain.test.ts` | —     | SHA-256 chain computation + tamper detection                        |
+| `integration.test.ts` | —     | End-to-end auth → poll → mutate → audit flow                        |
 
 ---
 
@@ -734,6 +742,7 @@ createdb stadium_ops
 ```
 
 Update `.env`:
+
 ```
 DATABASE_URL=postgres:///stadium_ops
 ```
@@ -797,6 +806,7 @@ target in `vite.config.ts` (`API_PROXY_TARGET` env var also overrides).
 ```
 
 **Fix:** Ensure Postgres is running:
+
 - Docker: `docker ps | grep stad-ops-db` — if missing, recreate the container.
 - Homebrew: `brew services list | grep postgresql`
 
@@ -811,6 +821,7 @@ invalid after 5 minutes (`OTP_EXPIRES_IN=300`).
 
 The phone number doesn't exist in the `users` table with a corresponding
 `tenant_memberships` row. Either:
+
 - Use one of the [seeded test users](#6-seeded-test-users).
 - Create one via the admin API (see [§8 Example](#example-creating-a-staff-member-as-admin)).
 - If the phone matches `SUPERADMIN_PHONE` env, the user is lazily created on

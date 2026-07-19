@@ -30,7 +30,7 @@ export function TenantSwitcher({
   };
 
   return (
-    <div className="w-48">
+    <div className="w-64">
       <Select
         fullWidth
         value={activeTenantId}

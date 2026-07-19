@@ -52,7 +52,7 @@ export function ErrorFallback({
         size="sm"
         variant="secondary"
         onPress={resetErrorBoundary}
-        className="neu-raised-sm neu-hover neu-active"
+        className="-sm"
       >
         {retryLabel}
       </Button>

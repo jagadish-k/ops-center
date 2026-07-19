@@ -109,7 +109,6 @@ export function TeamTab() {
             size="sm"
             variant="secondary"
             onPress={() => setCreateOpen(true)}
-            className="neu-raised-sm neu-hover neu-active"
           >
             + Add Staff
           </Button>
@@ -123,7 +122,7 @@ export function TeamTab() {
             size="sm"
             variant="ghost"
             onPress={() => void reload()}
-            className="ml-3 neu-raised-sm neu-hover neu-active"
+            className="ml-3"
           >
             Retry
           </Button>
@@ -177,7 +176,7 @@ export function TeamTab() {
                   {(u) => (
                     <Table.Row
                       id={u.userId}
-                      className="hover:bg-slate-100/70 dark:hover:bg-slate-200 dark:bg-slate-800/30"
+                      className="hover:bg-slate-100 dark:hover:bg-slate-700/50 dark:bg-slate-800/30"
                     >
                       <Table.Cell className="font-mono text-slate-700 dark:text-slate-300">
                         {u.phone}
@@ -213,7 +212,6 @@ export function TeamTab() {
                           size="sm"
                           variant="ghost"
                           onPress={() => setEditingUser(u)}
-                          className="neu-raised-sm neu-hover neu-active"
                         >
                           Edit
                         </Button>{' '}
@@ -221,7 +219,6 @@ export function TeamTab() {
                           size="sm"
                           variant="ghost"
                           onPress={() => setPermsUser(u)}
-                          className="neu-raised-sm neu-hover neu-active"
                         >
                           Perms
                         </Button>
@@ -348,7 +345,7 @@ function CreateStaffDrawer({
         onOpenChange={(o) => !o && onClose()}
       >
         <Drawer.Content>
-          <Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+          <Drawer.Dialog className="sm:max-w-md rounded-2xl">
             <Drawer.CloseTrigger />
             <Drawer.Header>
               <Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -366,7 +363,7 @@ function CreateStaffDrawer({
                       Phone (E.164)
                     </Label>
                     <Input
-                      className="neu-pressed w-full"
+                      className=" w-full"
                       {...form.register('phone')}
                     />
                     <FieldError className="text-xs text-red-500">
@@ -381,7 +378,7 @@ function CreateStaffDrawer({
                       Full Name
                     </Label>
                     <Input
-                      className="neu-pressed w-full"
+                      className=" w-full"
                       {...form.register('fullName')}
                     />
                     <FieldError className="text-xs text-red-500">
@@ -405,7 +402,7 @@ function CreateStaffDrawer({
                         )
                       }
                     >
-                      <Select.Trigger className="neu-pressed">
+                      <Select.Trigger>
                         <Select.Value />
                         <Select.Indicator />
                       </Select.Trigger>
@@ -439,7 +436,7 @@ function CreateStaffDrawer({
                         )
                       }
                     >
-                      <Select.Trigger className="neu-pressed">
+                      <Select.Trigger>
                         <Select.Value />
                         <Select.Indicator />
                       </Select.Trigger>
@@ -506,7 +503,6 @@ function CreateStaffDrawer({
                 variant="ghost"
                 onPress={onClose}
                 isDisabled={submitting}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 Cancel
               </Button>
@@ -516,7 +512,6 @@ function CreateStaffDrawer({
                 variant="primary"
                 isDisabled={submitting}
                 onPress={() => form.handleSubmit(onSubmit)()}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 {submitting ? <Spinner size="sm" /> : 'Create'}
               </Button>
@@ -604,7 +599,7 @@ function EditUserDrawer({
         onOpenChange={(o) => !o && onClose()}
       >
         <Drawer.Content>
-          <Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+          <Drawer.Dialog className="sm:max-w-md rounded-2xl">
             <Drawer.CloseTrigger />
             <Drawer.Header>
               <Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -620,7 +615,6 @@ function EditUserDrawer({
                   <Input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="neu-pressed"
                   />
                 </div>
 
@@ -635,7 +629,7 @@ function EditUserDrawer({
                       setStatus(k as 'active' | 'disabled')
                     }
                   >
-                    <Select.Trigger className="neu-pressed">
+                    <Select.Trigger>
                       <Select.Value />
                       <Select.Indicator />
                     </Select.Trigger>
@@ -704,7 +698,6 @@ function EditUserDrawer({
                 variant="ghost"
                 onPress={onClose}
                 isDisabled={submitting}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 Close
               </Button>
@@ -713,7 +706,6 @@ function EditUserDrawer({
                 variant="primary"
                 onPress={saveProfile}
                 isDisabled={submitting}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 {submitting ? <Spinner size="sm" /> : 'Save Profile'}
               </Button>
@@ -770,7 +762,7 @@ function UserPermissionsDrawer({
         onOpenChange={(o) => !o && onClose()}
       >
         <Drawer.Content>
-          <Drawer.Dialog className="sm:max-w-md neu-raised rounded-2xl">
+          <Drawer.Dialog className="sm:max-w-md rounded-2xl">
             <Drawer.CloseTrigger />
             <Drawer.Header>
               <Drawer.Heading className="font-mono text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100">
@@ -817,7 +809,6 @@ function UserPermissionsDrawer({
                 size="sm"
                 variant="ghost"
                 onPress={onClose}
-                className="neu-raised-sm neu-hover neu-active"
               >
                 Close
               </Button>

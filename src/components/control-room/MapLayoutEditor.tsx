@@ -770,7 +770,7 @@ export function MapLayoutEditor({
                   selectedKey={selectedPoiType}
                   onSelectionChange={(k) => setSelectedPoiType(k as POIType)}
                 >
-                  <Select.Trigger className="neu-pressed text-[10px]">
+                  <Select.Trigger className=" text-[10px]">
                     <Select.Value />
                     <Select.Indicator />
                   </Select.Trigger>
@@ -812,7 +812,7 @@ export function MapLayoutEditor({
                         name: e.target.value,
                       }))
                     }
-                    className="text-xs neu-pressed"
+                    className="text-xs"
                   />
                 </div>
                 <div>
@@ -828,7 +828,7 @@ export function MapLayoutEditor({
                         level: Number(e.target.value) || 0,
                       }))
                     }
-                    className="text-xs neu-pressed"
+                    className="text-xs"
                   />
                 </div>
               </div>
@@ -1199,7 +1199,6 @@ export function MapLayoutEditor({
                         name: e.target.value,
                       })
                     }
-                    className="neu-pressed"
                   />
                 </div>
                 <div>
@@ -1232,7 +1231,7 @@ export function MapLayoutEditor({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-red-600 w-full neu-raised-sm neu-hover neu-active dark:text-red-400"
+                  className="text-red-600 w-full-sm dark:text-red-400"
                   onPress={() =>
                     setDeleteConfirm(
                       new Set([
@@ -1265,7 +1264,6 @@ export function MapLayoutEditor({
                         name: e.target.value,
                       })
                     }
-                    className="neu-pressed"
                   />
                 </div>
                 <div>
@@ -1281,7 +1279,7 @@ export function MapLayoutEditor({
                       })
                     }
                   >
-                    <Select.Trigger className="neu-pressed text-xs">
+                    <Select.Trigger className=" text-xs">
                       <Select.Value />
                       <Select.Indicator />
                     </Select.Trigger>
@@ -1312,7 +1310,6 @@ export function MapLayoutEditor({
                         notes: e.target.value,
                       })
                     }
-                    className="neu-pressed"
                   />
                 </div>
                 <div className="text-[10px] text-slate-600 dark:text-slate-500">
@@ -1321,7 +1318,7 @@ export function MapLayoutEditor({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-red-600 w-full neu-raised-sm neu-hover neu-active dark:text-red-400"
+                  className="text-red-600 w-full-sm dark:text-red-400"
                   onPress={() =>
                     setDeleteConfirm(
                       new Set([

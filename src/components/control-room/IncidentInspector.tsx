@@ -123,34 +123,34 @@ export function IncidentInspector({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-slate-300 dark:border-slate-800 px-4 py-3">
-        <div className="mb-1 flex items-center gap-1.5">
+      <div className="border-b border-white/10 px-5 py-4">
+        <div className="mb-2 flex items-center gap-2">
           <span
-            className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${tier.className}`}
+            className={`rounded border px-2 py-0.5 font-mono text-[10px] font-bold ${tier.className}`}
           >
             {tier.label}
           </span>
           <span
-            className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${st.className}`}
+            className={`rounded border px-2 py-0.5 font-mono text-[10px] font-bold ${st.className}`}
           >
             {st.label}
           </span>
-          <span className="ml-auto font-mono text-[10px] text-slate-900 dark:text-slate-500">
+          <span className="ml-auto font-mono text-[10px] text-slate-500">
             {incident.id}
           </span>
         </div>
-        <h3 className="font-mono text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+        <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-white">
           Incident Inspector
         </h3>
       </div>
 
       {/* Body */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <p className="mb-4 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-3 font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 no-scrollbar">
+        <p className="mb-5 rounded-xl border border-white/10 bg-slate-950/60 p-4 font-sans text-sm leading-relaxed text-slate-300 shadow-inner">
           {incident.rawText}
         </p>
 
-        <dl className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+        <dl className="grid grid-cols-2 gap-3 font-mono text-[11px]">
           <Field
             label="Category"
             value={incident.extractedMetadata.category}
@@ -212,16 +212,16 @@ export function IncidentInspector({
       </div>
 
       {/* Action rail */}
-      <div className="border-t border-slate-300 dark:border-slate-800 p-3">
+      <div className="border-t border-white/10 p-5 bg-slate-950/80">
         {showDispatchPicker ? (
           /* Dispatch staff picker */
-          <div className="space-y-2">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-slate-900 dark:text-slate-500">
+          <div className="space-y-3">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-slate-400">
               Select staff to dispatch ({availableStaff.length} available)
             </p>
-            <div className="max-h-40 space-y-1.5 overflow-y-auto">
+            <div className="max-h-40 space-y-2 overflow-y-auto no-scrollbar">
               {availableStaff.length === 0 ? (
-                <p className="py-2 text-center font-mono text-[10px] text-slate-600">
+                <p className="py-2 text-center font-mono text-[10px] text-slate-500">
                   No available staff.
                 </p>
               ) : (
@@ -230,12 +230,12 @@ export function IncidentInspector({
                     key={s.id}
                     disabled={pending !== null}
                     onClick={() => void handleSelectStaff(s.phoneNumber)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-2 text-left transition-colors hover:border-blue-600 disabled:opacity-40"
+                    className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-left transition-colors hover:border-cyan-500/50 hover:bg-cyan-500/10 disabled:opacity-40"
                   >
-                    <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <span className="font-mono text-xs font-bold text-white">
                       {s.fullName}
                     </span>
-                    <span className="ml-auto font-mono text-[10px] text-slate-900 dark:text-slate-500">
+                    <span className="ml-auto font-mono text-[10px] text-slate-500">
                       {s.specialty} · {s.assignedZone}
                     </span>
                   </button>
@@ -244,10 +244,10 @@ export function IncidentInspector({
             </div>
             <Button
               fullWidth
-              variant="secondary"
+              variant="tertiary"
               isDisabled={pending !== null}
               onPress={() => setShowDispatchPicker(false)}
-              className="font-bold uppercase tracking-widest"
+              className="bg-white/5 font-bold uppercase tracking-widest text-slate-300 hover:bg-white/10"
             >
               Cancel
             </Button>

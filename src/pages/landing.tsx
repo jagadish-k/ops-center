@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Input, TextArea, Spinner } from '@heroui/react';
-import { useTheme } from '@/context/theme-constants';
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { theme, cycleTheme } = useTheme();
 
   const [formState, setFormState] = useState({
     name: '',
@@ -53,16 +51,6 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <button
-              onClick={cycleTheme}
-              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-              aria-label="Toggle theme"
-            >
-              {theme === 'flat-dark' && '🌙'}
-              {theme === 'flat-light' && '☀️'}
-              {theme === 'neu-dark' && '🌑'}
-              {theme === 'neu-light' && '🌕'}
-            </button>
             <Button
               variant="primary"
               className="font-bold shadow-lg shadow-blue-600/30 transition-all hover:scale-105"

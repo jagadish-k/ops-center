@@ -80,7 +80,7 @@ export function OtpGateway() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 font-sans dark:bg-slate-950">
-      <div className="neu-raised w-full max-w-sm rounded-2xl border border-slate-300 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <div className=" w-full max-w-sm rounded-2xl border border-slate-300 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
         {/* Header */}
         <div className="mb-6 text-center">
           <h1 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
@@ -126,7 +126,7 @@ export function OtpGateway() {
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 disabled={isPending}
                 fullWidth
-                className="neu-pressed rounded-xl border border-slate-300 bg-white font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-700"
+                className=" rounded-xl border border-slate-300 bg-white font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-700"
               />
             </div>
             <Button
@@ -135,7 +135,7 @@ export function OtpGateway() {
               size="lg"
               isDisabled={isPending || !phoneNumber}
               isPending={isPending}
-              className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest"
+              className="-sm font-bold uppercase tracking-widest"
             >
               {({ isPending: pending }) => (
                 <>
@@ -174,7 +174,7 @@ export function OtpGateway() {
                 }
                 disabled={isPending}
                 fullWidth
-                className="neu-pressed rounded-xl border border-slate-300 bg-white text-center font-mono text-lg tracking-widest text-slate-800 placeholder-slate-400 focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-700"
+                className=" rounded-xl border border-slate-300 bg-white text-center font-mono text-lg tracking-widest text-slate-800 placeholder-slate-400 focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-700"
               />
             </div>
             <Button
@@ -183,7 +183,7 @@ export function OtpGateway() {
               size="lg"
               isDisabled={isPending || code.length !== 6}
               isPending={isPending}
-              className="neu-raised-sm neu-hover neu-active font-bold uppercase tracking-widest"
+              className="-sm font-bold uppercase tracking-widest"
             >
               {({ isPending: pending }) => (
                 <>

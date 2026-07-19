@@ -95,7 +95,7 @@ export function PoliciesTab() {
             size="sm"
             variant="secondary"
             onPress={() => setCreateOpen(true)}
-            className="neu-raised-sm neu-hover neu-active"
+            className="-sm"
           >
             + New Policy
           </Button>
@@ -109,7 +109,7 @@ export function PoliciesTab() {
             size="sm"
             variant="ghost"
             onPress={() => void reload()}
-            className="ml-3 neu-raised-sm neu-hover neu-active"
+            className="ml-3-sm"
           >
             Retry
           </Button>
@@ -297,7 +297,7 @@ function PolicyEditor({
             variant="primary"
             onPress={save}
             isDisabled={saving || !dirty}
-            className="neu-raised-sm neu-hover neu-active"
+            className="-sm"
           >
             {saving ? <Spinner size="sm" /> : 'Save'}
           </Button>
@@ -306,7 +306,7 @@ function PolicyEditor({
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-600 neu-raised-sm neu-hover neu-active dark:text-red-400"
+            className="text-red-600-sm dark:text-red-400"
             onPress={remove}
           >
             Delete
@@ -354,7 +354,7 @@ function PolicyEditor({
           </Label>
           <TextArea
             aria-label="Policy test input JSON"
-            className="h-32 w-full neu-pressed font-mono text-xs"
+            className="h-32 w-full font-mono text-xs"
             value={testInput}
             onChange={(e) => setTestInput(e.target.value)}
             spellCheck={false}
@@ -365,7 +365,7 @@ function PolicyEditor({
               variant="secondary"
               onPress={runTest}
               isDisabled={testing}
-              className="neu-raised-sm neu-hover neu-active"
+              className="-sm"
             >
               {testing ? <Spinner size="sm" /> : 'Run test'}
             </Button>
@@ -473,7 +473,6 @@ function CreatePolicyDrawer({
             placeholder="stadium/custom"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="neu-pressed"
           />
         </div>
 
@@ -489,7 +488,6 @@ function CreatePolicyDrawer({
             placeholder="Custom audit policy"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="neu-pressed"
           />
         </div>
 
@@ -515,7 +513,7 @@ function CreatePolicyDrawer({
             variant="ghost"
             onPress={onClose}
             isDisabled={submitting}
-            className="neu-raised-sm neu-hover neu-active"
+            className="-sm"
           >
             Cancel
           </Button>
@@ -524,7 +522,7 @@ function CreatePolicyDrawer({
             variant="primary"
             onPress={submit}
             isDisabled={submitting || !name || !description}
-            className="neu-raised-sm neu-hover neu-active"
+            className="-sm"
           >
             {submitting ? <Spinner size="sm" /> : 'Create'}
           </Button>
