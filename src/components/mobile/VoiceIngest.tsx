@@ -33,9 +33,11 @@ export function VoiceIngest({
 }: VoiceIngestProps) {
   const [state, setState] = useState<VoiceState>('IDLE');
   const [errorText, setErrorText] = useState<string>('');
+  const [timeLeft, setTimeLeft] = useState<number>(30);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<number | null>(null);
   const { staff } = useActiveOps();
 
   const activeStaff = useMemo(() => {
@@ -128,6 +130,25 @@ export function VoiceIngest({
 
       recorder.start();
       setState('RECORDING');
+      setTimeLeft(30);
+
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+      timerRef.current = window.setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            // Reached 30s limit
+            if (timerRef.current !== null) {
+              window.clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+            if (mediaRecorderRef.current?.state !== 'inactive') {
+              mediaRecorderRef.current?.stop();
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (err) {
       setState('ERROR');
       setErrorText(
@@ -139,6 +160,10 @@ export function VoiceIngest({
   }, [cleanupStream, upload]);
 
   const stopRecording = useCallback((): void => {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
@@ -201,7 +226,9 @@ export function VoiceIngest({
               : 'text-slate-500 dark:text-slate-400'
         }`}
       >
-        {stateLabel[state]}
+        {state === 'RECORDING'
+          ? `Recording… ${timeLeft}s left`
+          : stateLabel[state]}
       </p>
       {state === 'ERROR' && errorText && (
         <p className="max-w-[80%] text-center font-mono text-[9px] text-red-500/80">

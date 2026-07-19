@@ -173,6 +173,13 @@ export default async (request: Request): Promise<Response> => {
       return badRequest('Missing audio payload.');
     }
 
+    // Enforce 1MB limit (~30s of compressed webm audio)
+    if (audioFile.size > 1048576) {
+      return badRequest(
+        'Audio payload too large (max 1MB). Please keep reports under 30 seconds.',
+      );
+    }
+
     const contextMetadata = formData.get('contextMetadata') as string;
 
     // Stage 1: Transcribe.
