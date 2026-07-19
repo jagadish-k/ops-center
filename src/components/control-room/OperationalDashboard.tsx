@@ -15,7 +15,7 @@ import { Button, Tabs } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActiveOps } from '@/context/ActiveOpsContext';
-import type { IncidentReport } from '@/types';
+import type { IncidentReport, IncidentCategory } from '@/types';
 import { adminListTenants } from '@/services/api';
 
 import { IncidentQueue } from './IncidentQueue';
@@ -48,6 +48,11 @@ export function OperationalDashboard({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('operations');
+
+  const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<
+    Set<IncidentCategory>
+  >(new Set(['SECURITY', 'MEDICAL', 'CROWD', 'FACILITIES', 'ADVISORY']));
 
   // Fetch real tenant list from the API for the TenantSwitcher.
   const [tenants, setTenants] = useState<
@@ -256,6 +261,8 @@ export function OperationalDashboard({
                   staffMembers={staff}
                   mapLayout={mapLayout}
                   onIncidentSelect={handleSelect}
+                  selectedFloorId={selectedFloorId}
+                  selectedCategories={selectedCategories}
                 />
               </section>
               <aside className="flex min-h-0 flex-col gap-3 lg:col-span-1">
@@ -267,6 +274,21 @@ export function OperationalDashboard({
                     incidents={incidents}
                     selectedId={selectedId}
                     onSelect={handleSelect}
+                    selectedFloorId={selectedFloorId}
+                    onFloorChange={setSelectedFloorId}
+                    selectedCategories={selectedCategories}
+                    onCategoryToggle={(cat) => {
+                      setSelectedCategories((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(cat)) {
+                          next.delete(cat);
+                        } else {
+                          next.add(cat);
+                        }
+                        return next;
+                      });
+                    }}
+                    floors={mapLayout?.floors ?? []}
                   />
                 </div>
                 <div

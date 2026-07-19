@@ -28,6 +28,7 @@ import type {
   StaffSpecialty,
   MapCoordinates,
   IncidentStatus,
+  IncidentCategory,
 } from '@/types';
 import type { MapLayout } from '@/lib/map-layout';
 import { POI_COLORS } from '@/lib/map-layout';
@@ -41,6 +42,8 @@ interface OptimizedStadiumMapCanvasProps {
   staffMembers: WhitelistUser[];
   mapLayout?: unknown;
   onIncidentSelect: (incident: IncidentReport) => void;
+  selectedFloorId?: string | null;
+  selectedCategories?: Set<IncidentCategory>;
 }
 
 // ── Color mapping ─────────────────────────────────────────────────────────────
@@ -97,6 +100,8 @@ export function OptimizedStadiumMapCanvas({
   staffMembers,
   mapLayout,
   onIncidentSelect,
+  selectedFloorId: controlledFloorId,
+  selectedCategories,
 }: OptimizedStadiumMapCanvasProps): React.JSX.Element {
   const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +114,7 @@ export function OptimizedStadiumMapCanvas({
     staffMembers,
     onIncidentSelect,
     mapLayout,
+    selectedCategories,
   });
   const viewportRef = useRef<Viewport>({ zoom: 1, offsetX: 0, offsetY: 0 });
   const dimsRef = useRef<Dimensions>({ cssWidth: 0, cssHeight: 0, dpr: 1 });
@@ -191,14 +197,17 @@ export function OptimizedStadiumMapCanvas({
   // Derive effective floor: user selection wins if it exists in current layout,
   // otherwise fall back to the layout's default or first floor.
   const effectiveFloorId = useMemo(() => {
-    if (selectedFloorId && floors.find((f) => f.id === selectedFloorId)) {
-      return selectedFloorId;
+    const floorToUse =
+      controlledFloorId !== undefined ? controlledFloorId : selectedFloorId;
+    if (floorToUse && floors.find((f) => f.id === floorToUse)) {
+      return floorToUse;
     }
     return layoutData?.defaultFloorId ?? floors[0]?.id ?? null;
-  }, [selectedFloorId, floors, layoutData]);
+  }, [controlledFloorId, selectedFloorId, floors, layoutData]);
 
   const selectedFloorRef = useRef<string | null>(effectiveFloorId);
-
+  // ── Forward / inverse transforms (grid ↔ CSS pixel) ─────────────────────────
+  const baseScale = (cssMin: number): number => (cssMin * 0.92) / 1000;
   // Trigger background re-render when floor changes.
   useEffect(() => {
     bgDirtyRef.current = true;
@@ -206,11 +215,42 @@ export function OptimizedStadiumMapCanvas({
 
   // ── Sync props into the ref WITHOUT touching the rAF loop deps ──────────────
   useEffect(() => {
-    propsRef.current = { incidents, staffMembers, onIncidentSelect, mapLayout };
+    propsRef.current = {
+      incidents,
+      staffMembers,
+      onIncidentSelect,
+      mapLayout,
+      selectedCategories,
+    };
     // Re-render the background when mapLayout changes (new zones/POIs).
     bgDirtyRef.current = true;
     // Sync refs that the rAF loop reads.
     filtersRef.current = filters;
+
+    if (selectedId !== selectedIdRef.current && selectedId) {
+      const incident = incidents.find((i) => i.id === selectedId);
+      if (incident) {
+        const { cssWidth, cssHeight } = dimsRef.current;
+        const s =
+          baseScale(Math.min(cssWidth, cssHeight)) * viewportRef.current.zoom;
+        const screenPos = {
+          x: incident.coordinates.x * s + viewportRef.current.offsetX,
+          y: incident.coordinates.y * s + viewportRef.current.offsetY,
+        };
+        // If offscreen or near edge, pan to center it
+        const margin = 50;
+        if (
+          screenPos.x < margin ||
+          screenPos.x > cssWidth - margin ||
+          screenPos.y < margin ||
+          screenPos.y > cssHeight - margin
+        ) {
+          viewportRef.current.offsetX += cssWidth / 2 - screenPos.x;
+          viewportRef.current.offsetY += cssHeight / 2 - screenPos.y;
+          bgDirtyRef.current = true;
+        }
+      }
+    }
     selectedIdRef.current = selectedId;
     selectedFloorRef.current = effectiveFloorId;
   }, [
@@ -221,10 +261,8 @@ export function OptimizedStadiumMapCanvas({
     filters,
     selectedId,
     effectiveFloorId,
+    selectedCategories,
   ]);
-
-  // ── Forward / inverse transforms (grid ↔ CSS pixel) ─────────────────────────
-  const baseScale = (cssMin: number): number => (cssMin * 0.92) / 1000;
 
   const gridToScreen = (coord: MapCoordinates): { x: number; y: number } => {
     const { cssWidth, cssHeight } = dimsRef.current;
@@ -522,9 +560,16 @@ export function OptimizedStadiumMapCanvas({
         }
       }
 
-      // Incident beacons (pulsing, tier-colored, filtered by floor).
+      // Incident beacons (pulsing, tier-colored, filtered by floor and category).
       for (const incident of inc) {
         if (!f.incidentStatuses.has(incident.status)) continue;
+        if (
+          propsRef.current.selectedCategories &&
+          !propsRef.current.selectedCategories.has(
+            incident.extractedMetadata.category,
+          )
+        )
+          continue;
         // Skip if this incident is on a different floor.
         if (
           activeFloorId &&

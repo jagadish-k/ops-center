@@ -9,6 +9,8 @@
  * where a value shape is genuinely dynamic.
  */
 
+import type { MapLayout } from '@/lib/map-layout';
+
 // ─── Role & Identity ──────────────────────────────────────────────────────────
 
 /**
@@ -255,6 +257,6 @@ export interface StatePollDiff {
   incidents: IncidentReport[];
   staff: WhitelistUser[];
   dispatches: DispatchDirective[];
-  mapLayout?: unknown;
+  mapLayout?: MapLayout;
   serverTimestamp: number;
 }

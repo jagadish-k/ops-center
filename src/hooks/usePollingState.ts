@@ -22,12 +22,13 @@ import type {
 } from '@/types';
 import { apiFetch, ApiError } from '@/services/api';
 import { mockIncidents, mockStaff, mockDispatches } from '@/lib/mockData';
+import type { MapLayout } from '@/lib/map-layout';
 
 export interface PollingState {
   incidents: IncidentReport[];
   staff: WhitelistUser[];
   dispatches: DispatchDirective[];
-  mapLayout: unknown;
+  mapLayout: MapLayout | null;
   loading: boolean;
   /** False when the last poll failed (endpoint unreachable / errored). */
   connectionHealthy: boolean;
@@ -44,7 +45,7 @@ export function usePollingState(tenantId: string | undefined): PollingState {
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
   const [staff, setStaff] = useState<WhitelistUser[]>([]);
   const [dispatches, setDispatches] = useState<DispatchDirective[]>([]);
-  const [mapLayout, setMapLayout] = useState<unknown>(null);
+  const [mapLayout, setMapLayout] = useState<MapLayout | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionHealthy, setConnectionHealthy] = useState(true);
 
