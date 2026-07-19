@@ -10,4 +10,6 @@ export default [
   route('/control', 'pages/control-room.tsx'),
   // Field staff mobile surface.
   route('/field', 'pages/field-client.tsx'),
+  // Living Manual
+  route('/docs', 'pages/docs.tsx'),
 ] satisfies RouteConfig;
