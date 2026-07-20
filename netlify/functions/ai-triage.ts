@@ -1,0 +1,253 @@
+/**
+ * POST /api/ai-triage
+ *
+ * Voice triage pipeline (ADR-0006):
+ *   1. Receive multipart audio (webm/opus) from the field client.
+ *   2. Stage 1: OpenAI Whisper API → transcribed text.
+ *   3. Stage 2: Gemini 1.5 Flash → structured 5-tier extraction.
+ *   4. Stage 3: Resolve sector coordinates + create incident in Postgres.
+ *   5. Return the created IncidentReport.
+ *
+ * Dev mode (no OPENAI_API_KEY / GEMINI_API_KEY): uses a mock transcription +
+ * mock extraction so local development works without real API keys.
+ *
+ * Security: JWT-verified. tenantId resolved from claims (not form data).
+ */
+import { type Config } from '@netlify/functions';
+import { authorizeRequest, authResponse } from '../lib/auth.ts';
+import {
+  jsonResponse,
+  handlePreflight,
+  badRequest,
+  serverError,
+} from '../lib/http.ts';
+import { createIncident } from '../lib/incidents.ts';
+import { checkOperationalWindow } from '../lib/operational-window.ts';
+import type {
+  TriageResult,
+  IncidentCategory,
+  IncidentSeverity,
+  InfoTier,
+} from '../../src/types';
+import { getOpenAIClient, getGeminiClient } from '../lib/clients.ts';
+
+// ─── AI helpers ───────────────────────────────────────────────────────────────
+
+// Removed WhisperResponse and GeminiResponse as they are no longer used with SDKs.
+
+/** Calls OpenAI Whisper API to transcribe an audio blob. */
+async function transcribeAudio(audioBlob: Blob): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    // Dev mode — return a mock transcription.
+    return 'Code red emergency at Turnstile Sector Alpha, crowd crushing risk forming. Multiple gates jammed, requesting immediate medical and security backup.';
+  }
+
+  const client = getOpenAIClient();
+
+  const file = new File([audioBlob], 'report.webm', {
+    type: audioBlob.type || 'audio/webm',
+  });
+
+  try {
+    const response = await client.audio.transcriptions.create({
+      file,
+      model: 'whisper-1',
+      language: 'en',
+    });
+    return response.text;
+  } catch (err) {
+    console.error('Whisper API error:', err);
+    throw new Error('Audio transcription failed.', { cause: err });
+  }
+}
+
+/** Calls Gemini 2.5 Flash to extract structured triage data from text. */
+async function extractTriage(
+  transcribedText: string,
+  contextMetadata?: string,
+): Promise<{
+  tier: InfoTier;
+  category: IncidentCategory;
+  severity: IncidentSeverity;
+  locationSector: string;
+  actionRequired: string;
+}> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    // Dev mode — return a mock extraction.
+    return {
+      tier: 1,
+      category: 'CROWD',
+      severity: 'CRITICAL',
+      locationSector: 'ZONE-A',
+      actionRequired: 'Deploy relief cordons to Sector Alpha immediately.',
+    };
+  }
+
+  const client = getGeminiClient();
+
+  const responseSchema = {
+    type: 'OBJECT',
+    properties: {
+      tier: {
+        type: 'INTEGER',
+        description:
+          'The classification tier from 1 (life safety) to 5 (advisory)',
+      },
+      category: {
+        type: 'STRING',
+        enum: ['SECURITY', 'MEDICAL', 'CROWD', 'FACILITIES', 'ADVISORY'],
+      },
+      severity: {
+        type: 'STRING',
+        enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
+      },
+      locationSector: { type: 'STRING' },
+      actionRequired: { type: 'STRING' },
+    },
+    required: [
+      'tier',
+      'category',
+      'severity',
+      'locationSector',
+      'actionRequired',
+    ],
+  };
+
+  const systemInstruction = `You are the operational intelligence engine for a stadium operations platform. Analyze transcribed field reports and extract structured triage parameters. Classify into the 5-tier system (1=life safety, 5=advisory). Normalize zone names to ZONE-A through ZONE-F format. Respond only with the JSON object.${
+    contextMetadata
+      ? `\n\nUse the following context about the reporting operative to infer missing locations or severity (e.g., if they don't say where they are, use their assigned zone or floor):\n${contextMetadata}`
+      : ''
+  }`;
+
+  try {
+    const response = await client.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: transcribedText,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema,
+        systemInstruction,
+      },
+    });
+
+    const rawJson = response.text;
+    if (!rawJson) throw new Error('Empty response from Gemini');
+    return JSON.parse(rawJson);
+  } catch (err) {
+    console.error('Gemini API error:', err);
+    throw new Error('Structured extraction failed.', { cause: err });
+  }
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
+
+export default async (request: Request): Promise<Response> => {
+  const preflight = handlePreflight(request);
+  if (preflight) return preflight;
+
+  if (request.method !== 'POST') {
+    return jsonResponse({ error: 'Method Not Allowed' }, 405);
+  }
+
+  // Anyone with incident:create can file (staff + admin + superadmin per ADR-0011).
+  const auth = await authorizeRequest(request, 'incident:create');
+  if (!auth.ok) {
+    return authResponse(auth)!;
+  }
+  const claims = auth.claims;
+
+  // Enforce the operational time window.
+  const windowCheck = await checkOperationalWindow(claims);
+  if (!windowCheck.ok) {
+    return jsonResponse({ error: windowCheck.reason }, 403);
+  }
+
+  try {
+    // Extract the audio blob from multipart form data.
+    const formData = await request.formData();
+    const audioFile = formData.get('audio');
+
+    if (!audioFile || !(audioFile instanceof Blob)) {
+      return badRequest('Missing audio payload.');
+    }
+
+    // Enforce 1MB limit (~30s of compressed webm audio)
+    if (audioFile.size > 1048576) {
+      return badRequest(
+        'Audio payload too large (max 1MB). Please keep reports under 30 seconds.',
+      );
+    }
+
+    const contextMetadata = formData.get('contextMetadata') as string;
+
+    // Stage 1: Transcribe.
+    const transcribedText = await transcribeAudio(audioFile);
+
+    // Log transcription for debugging / review in development
+    console.log('--- WHISPER TRANSCRIPTION ---');
+    console.log(transcribedText);
+    console.log('-----------------------------');
+
+    // Stage 2: Extract structured triage data.
+    let triage: {
+      tier: InfoTier;
+      category: IncidentCategory;
+      severity: IncidentSeverity;
+      locationSector: string;
+      actionRequired: string;
+    };
+    let extractionFailed = false;
+
+    try {
+      triage = await extractTriage(transcribedText, contextMetadata);
+    } catch (extractErr) {
+      console.error(
+        'Gemini extraction failed, creating incident with defaults:',
+        extractErr,
+      );
+      extractionFailed = true;
+      triage = {
+        tier: 3,
+        category: 'ADVISORY',
+        severity: 'MEDIUM',
+        locationSector: 'UNKNOWN',
+        actionRequired:
+          'AI extraction failed — manual classification required.',
+      };
+    }
+
+    // Stage 3: Create the incident in Postgres.
+    const incident = await createIncident({
+      tenantId: claims.tenant_id,
+      source: 'field_staff',
+      tier: triage.tier,
+      rawText: extractionFailed
+        ? `[REVIEW NEEDED] ${transcribedText}`
+        : transcribedText,
+      category: triage.category,
+      severity: triage.severity,
+      locationSector: triage.locationSector,
+      actionRequired: triage.actionRequired,
+    });
+
+    const result: TriageResult & { incident: typeof incident } = {
+      rawTranscription: transcribedText,
+      structuredAnalysis: triage,
+      processedTimestamp: Date.now(),
+      incident,
+    };
+
+    return jsonResponse(result);
+  } catch (err) {
+    console.error('ai-triage error:', err);
+    const message =
+      err instanceof Error ? err.message : 'Voice triage pipeline failed.';
+    return serverError(message);
+  }
+};
+
+export const config: Config = {
+  path: '/api/ai-triage',
+};

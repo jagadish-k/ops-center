@@ -1,75 +1,115 @@
-# React + TypeScript + Vite
+# Stadium Ops Grid Matrix
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mission-critical, low-latency SaaS incident management and tactical
+coordination platform for large-scale sports tournaments and multi-tenant
+arena networks.
 
-Currently, two official plugins are available:
+Built with **React 19 + HeroUI v3 + React Router v8 + Tailwind v4**, deployed
+on **Netlify** (Postgres + Blobs + Functions).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev                   # → UI http://localhost:5173, API http://localhost:8888
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+That's it. `npm run dev` orchestrates everything: `.env` setup, Docker
+Postgres, Drizzle migrations + seed, then starts **vite** (UI on 5173) and
+**netlify dev** (API on 8888) in parallel — vite proxies `/api/*` to
+netlify dev automatically.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+**Full setup guide:** [`DEVELOPMENT.md`](DEVELOPMENT.md) (includes SMS
+emulation, seeded test users, full API reference, troubleshooting).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [`DEVELOPMENT.md`](DEVELOPMENT.md) | **How to run locally** — setup, DB, SMS emulation, testing, full API reference |
+| [`PRD.md`](PRD.md) | Product requirements, feature scope, build milestones |
+| [`CONTEXT.md`](CONTEXT.md) | Domain glossary — canonical vocabulary |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records (ADR-0001 through ADR-0014) |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System topology, component stack, data pipelines |
+| [`docs/CODE-DESIGN.md`](docs/CODE-DESIGN.md) | Frontend guidelines, directory blueprint, type contracts |
+| [`docs/STRUCTURAL-TYPES.md`](docs/STRUCTURAL-TYPES.md) | Canonical TypeScript type definitions |
+| [`docs/DEPLOYMENT-RUNBOOK.md`](docs/DEPLOYMENT-RUNBOOK.md) | Production deployment & env var reference |
+
+---
+
+## Architecture (Summary)
 
 ```
+Client (React 19 / HeroUI v3) ──HTTPS──► Netlify Functions (Deno/Node)
+                                              ├── Postgres (tenants, incidents, staff,
+                                              │              audit ledger — SHA-256 WORM)
+                                              ├── Twilio (OTP SMS)
+                                              ├── Whisper API (audio transcription)
+                                              └── Gemini 1.5 Flash (structured extraction)
+```
+
+Real-time via **diff-based polling** (~2s). Auth via **RS256 JWT** minted at the
+edge. Permission model: **DB-driven RBAC + per-user grants + JWT staleness
+via `perms_version`** (ADR-0010 through ADR-0014). See all ADRs in
+[`docs/adr/`](docs/adr/).
+
+---
+
+## Build Progress
+
+| Milestone | Status | Description |
+|---|---|---|
+| M0 — Foundation | ✅ Done | Types, Postgres schema, migration runner, test infra |
+| M1 — Auth | ✅ Done | Edge JWT, Twilio OTP, AuthContext, OtpGateway |
+| M2 — Live Map | ✅ Done | Diff polling endpoint, canvas engine, real data |
+| M3 — Control Room | ✅ Done | Dashboard, incident CRUD, dispatch creation |
+| M4 — Voice AI | ✅ Done | Whisper + Gemini triage pipeline |
+| M5 — Dispatch | ✅ Done | Two-way dispatch loop, mobile takeover |
+| M6 — Audit Ledger | ✅ Done | SHA-256 chain, WORM triggers, forensic timeline |
+| M7 — Offline + PWA | ✅ Done | IndexedDB queue, auto-drain, pending indicator |
+| M8 — Hardening | ✅ Done | Stress simulator, integration tests, FPS audit, deploy check |
+| M9.1 — Drizzle | ✅ Done | Full Drizzle ORM adoption (replaces raw `pg`) |
+| M9.2 — Identity Split | ✅ Done | `users` + `tenant_memberships` + JWT-3 (`permissions[]` + `pv`) |
+| M9.3 — RBAC Admin API | ✅ Done | Users CRUD, role management, cascade-revoke, per-user grants |
+| M9.4 — ABAC v1 | ✅ Done | OPA/WASM policy engine + 5 attribute-aware policies |
+| M9.5 — Admin UI | ✅ Done | Team, Roles, Tenants tabs + per-user grants (react-hook-form + zod) |
+| M9.6 — Hardening | ✅ Done | Error boundaries, optimistic updates, skeleton loaders |
+| M10 — Policy UI v1 | ✅ Done | CodeMirror Rego editor + OPA test runner + DB-stored policies |
+| M10+ — Hardening | ✅ Done | Guide tour, role-aware onboarding, seed expansion, multi-floor map layout |
+| M11 — Landing & Marketing | ✅ Done | Premium marketing page with Hero, Features, and Contact Lead form |
+| M12 — Geographic Mode | ✅ Done | OpenStreetMap integration, geo-bounds selector, 60fps canvas sync |
+| M13 — Policy UI v2 | ⏳ Planned | Per-tenant overrides, rebuild-and-deploy, audit integration |
+
+---
+
+## Scripts
+
+```bash
+npm run dev                 # Full stack: Docker + vite (5173) + netlify dev (8888)
+npm run build               # TypeScript check + Vite production build
+npm run simulate            # Stress test (250 staff, 50 incidents)
+npm run verify:deploy       # Pre-flight deploy check
+npm test                    # Run vitest suite (82 tests across 10 files)
+npm run test:watch          # Watch mode
+npm run test:policy         # OPA Rego policy unit tests (19 tests)
+npm run build:policies      # Compile Rego → WASM bundle
+npm run db:migrate          # Apply Drizzle migrations
+npm run db:seed             # Idempotent seed (tenants, users, roles, perms, incidents, map layout)
+npm run db:seed-superadmin  # Upsert SUPERADMIN_PHONE user as superadmin
+npm run db:generate         # Generate migration from schema.ts changes
+npm run db:studio           # Drizzle Studio (DB browser)
+npm run dev:db              # Start Postgres Docker container
+npm run dev:db:stop         # Stop Postgres container
+npm run dev:db:reset        # Wipe and recreate Postgres container
+npm run lint                # ESLint
+```
+
+---
+
+## License
+
+Private. See project configuration for details.

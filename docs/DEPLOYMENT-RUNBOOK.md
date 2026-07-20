@@ -1,65 +1,108 @@
 # DEPLOYMENT-RUNBOOK.md: Phase Verification & Infrastructure Commissioning
 
-This document outlines the validation procedures required to deploy and verify the multi-tenant stadium architecture across cloud testing environments.
+> **Netlify-only architecture.** This runbox reflects the resolved platform per
+> [ADR-0002](adr/0002-netlify-postgres-blobs-data-layer.md) (no Firebase).
+> Security is enforced imperatively in Netlify Functions, not via
+> `firestore.rules`.
+
+This document outlines the validation procedures required to deploy and verify the multi-tenant stadium architecture.
 
 ---
 
 ## Phase 1: Local Sandbox Hydration & Verification
 
-Execute these terminal instructions at the root folder path location to compile the dependencies and fire up the local development loop:
+Execute these terminal instructions at the project root:
 
 ```bash
-# Install rigid package manifest requirements
+# Install dependencies
 npm install
 
-# Initialize local emulator frameworks for Edge Functions & Datastores
-# This boots up the Netlify local runtime platform server on port 8888
+# Run the Postgres schema migration (creates tables, indexes, seed data)
+# Requires DATABASE_URL in .env or Netlify env
+npm run db:migrate
+
+# Boot the local Netlify runtime (functions + edge + static) on port 8888
 netlify dev
 ```
 
 ### In-Circuit Sanity Validation Loop
 
-To run a full headless verification check on the token generation, AI parsing logic, and cryptographic block hash linkage structures without loading the UI canvas layer, set the environment flag and fire the test suite:
+To run a headless verification check on token generation, AI parsing logic, and cryptographic block hash linkage without loading the UI:
 
 ```bash
-RUN_DIAGNOSTIC_SIMULATION=true npx ts-node src/utils/runSimulation.ts
+# Run the unit + integration test suite
+npm test
+
+# Run the matchday stress simulation
+npx tsx scripts/matchday-simulator.ts
 ```
 
 ---
 
-## Phase 2: Datastore Core Permissions Provisioning
+## Phase 2: Datastore Provisioning
 
-1. Open your target Cloud Database Management Console.
-2. Navigate to the Storage Access / Security Rules Engine configuration pane.
-3. Paste the contents compiled inside `SECURITY-GATING.md` (`firestore.rules`) directly into the active terminal box.
-4. Publish the changes. This guarantees that no field operator session token can read or edit records outside their custom `tenantId` claim context block.
+1. Provision a **Netlify Postgres** database via the Netlify dashboard.
+2. Run the schema migration against it (`npm run db:migrate`).
+3. Seed at least one tenant, one admin, and test staff in `staff_roster`.
+4. The `audit_ledger` table (migration 0003) is provisioned automatically —
+   it is append-only (WORM) with Postgres triggers rejecting UPDATE/DELETE.
+   No separate blob store is required.
+
+> **Note:** There are no declarative `firestore.rules`. Authorization is
+> enforced imperatively inside each Netlify Function — every query filters by
+> `tenant_id` extracted from the verified JWT claims (ADR-0003).
 
 ---
 
 ## Phase 3: Production Pipeline Infrastructure Commissioning
 
-When syncing this repository out to production infrastructure triggers via automated Git actions, ensure the deployment platform holds the following cluster variables:
+When deploying via Git, ensure the following Netlify environment variables are set:
 
-| Variable Identifier     | Target Content Context                         | Validation Requirement                                          |
-| :---------------------- | :--------------------------------------------- | :-------------------------------------------------------------- |
-| `GEMINI_API_KEY`        | Upstream AI LLM Cognitive Inference Engine Key | Required for real-time dispatch textual telemetry translations. |
-| `VITE_APP_ENVIRONMENT`  | `production`                                   | Enforces rigid token parsing configurations.                    |
-| `VITE_EDGE_GATEWAY_URL` | Live production endpoint DNS string            | Sets target network routes for authentication boots.            |
+| Variable Identifier | Target Content Context | Validation Requirement |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Netlify Postgres connection string | Required for all data operations |
+| `JWT_PRIVATE_KEY` | RSA private key (PEM) for RS256 signing | Required for auth token minting (ADR-0003) |
+| `JWT_PUBLIC_KEY` | RSA public key (PEM) for verification | Required for JWT verification in functions |
+| `GEMINI_API_KEY` | Google AI Studio key | Required for voice triage extraction (ADR-0006) |
+| `OPENAI_API_KEY` | OpenAI key | Required for Whisper transcription (ADR-0006) |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID | Required for OTP delivery (ADR-0003) |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token | Required for OTP delivery |
+| `TWILIO_VERIFY_SID` | Twilio Verify service SID | Required if using Twilio Verify for OTP |
 
 ---
 
 ## Phase 4: Operational HUD Handshake Protocols
 
-Once deployment finishes, verify system readiness using this network handshake trace runbook:
+Once deployment finishes, verify system readiness using this network handshake trace:
 
 ```text
 [FIELD OPERATIVE COMMS HANDSHAKE DIAGNOSTIC TRACE]
-1. Operative presses the Radio Ingestion hotkey on the mobile panel frame.
-2. Captured audio streams straight through to /api/ai-orchestrator with a verified tenant header.
-3. The AI engine parses coordinates and updates the map canvas at the correct pixel locations.
-4. The hook interceptor generates an append-only log entry, calculates the SHA-256 signature chain link, and pushes it to the ledger.
-5. The Forensic Timeline dashboard verifies the chain structure live, showing an all-clear green badge indicator.
+ 1. Operative enters phone number → OTP sent via Twilio → JWT minted at edge.
+ 2. Operative presses the Radio Ingestion button on the Field Client.
+ 3. Captured audio POSTs to /api/ai-triage with a verified Bearer JWT.
+ 4. Whisper transcribes → Gemini extracts structured 5-tier metadata.
+ 5. Incident is written to Postgres (mutations.ts) + SHA-256 audit entry chained.
+ 6. The Control Room's next state-poll (~2s) picks up the new incident.
+ 7. The map canvas renders the incident beacon at the correct grid coordinates.
+ 8. Field Staff GPS positions stream via /api/staff-location → canvas plots live dots.
+ 9. Every mutation (transition, dispatch) appends a chained SHA-256 audit entry.
+10. The AuditTimelineInspector verifies the SHA-256 chain — green badge.
 ```
+
+### Pre-Deploy Verification
+
+Before pushing to production, run the automated checks:
+
+```bash
+# 1. Pre-flight: env vars, DB connectivity, migrations applied, endpoints, JWT keys
+npm run verify:deploy
+
+# 2. Stress test: 250 staff, 50 incidents — measure query latency + throughput
+npm run simulate
+```
+
+Both must pass before promoting the deploy. The simulator reports median/p95
+latency; the verifier exits non-zero on any missing requirement.
 
 ```
 

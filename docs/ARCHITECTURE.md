@@ -1,45 +1,80 @@
 # Technical Architecture & System Topography
 
+> **Architectural decisions:** This document reflects the resolved architecture
+> per [ADR-0001](adr/0001-frontend-stack-hybriderui-react-router-tailwind.md)
+> through [ADR-0008](adr/0008-defer-social-listening.md). Where earlier drafts
+> assumed Firebase/Firestore, the platform now uses **Netlify-only
+> infrastructure**. See [CONTEXT.md](../CONTEXT.md) for the glossary.
+
 ## 1. System Topology Overview
 
-The system relies on a hybrid architecture combining a high-speed, edge-routed frontend network with an offline-resilient, real-time streaming backend datastore. Netlify coordinates edge computation, validation, and static asset delivery, while Google Firebase manages high-frequency bi-directional state synchronization. To maintain 60 FPS performance during high-congested events, the frontend map interface bypasses standard DOM rendering, offloading all spatial and personnel vector tracking to a hardware-accelerated HTML5 Canvas engine.
+The system is a **Netlify-only** architecture: edge computation, validation,
+static asset delivery, relational storage, and object storage all run on
+Netlify. Real-time synchronization is handled by **diff-based polling** (no
+WebSockets). To maintain 60 FPS performance during high-congested events, the
+frontend map interface bypasses standard DOM rendering, offloading all spatial
+and personnel vector tracking to a hardware-accelerated HTML5 Canvas engine
+with offscreen double-buffering.
 
 ```
 +-----------------------------------------------------------------------------------------+
 |                                     NETLIFY EDGE                                        |
 |  +------------------------+  +------------------------+  +---------------------------+  |
-|  |   Static App Hosting   |  |  Edge Functions (Auth) |  |   Netlify Postgres DB     |  |
-|  | (React / TS / Vite UI) |  | (Google OAuth Proxy)   |  |  (Rosters & Static Maps)  |  |
+|  |   Static App Hosting   |  |  Edge/Serverless Fns   |  |   Netlify Postgres DB     |  |
+|  | (React 19 / TS / Vite) |  |  (Auth, Poll, AI, CRUD) |  |  (Tenants, Incidents,     |  |
+|  |  HeroUI v3 / RR8 / TW4 |  |  (Deno / Node runtime)  |  |   Staff, Dispatches, OTP,|  |
+|  |   Audit Ledger — WORM)  |  |
 |  +------------------------+  +------------------------+  +---------------------------+  |
+|  +------------------------+  +------------------------+                               |
+|                              |  Twilio Verify / SMS   |                               |
+|                              |  (OTP Delivery)        |                               |
+|                              +------------------------+                               |
 +-------------------------------------------+---------------------------------------------+
                                             |
-                         Bi-directional Websocket State Stream
+                        Diff-Based Polling (HTTP, ~2s interval)
                                             |
 +-------------------------------------------v---------------------------------------------+
-|                                  GOOGLE CLOUD PLATFORM                                  |
-|  +-----------------------------------------------------------------------------------+  |
-|  |                          Firebase Realtime Database & Firestore                    |  |
-|  |     (Active Incident Queues, Live Field Staff Locations, Operational Master Switch) |  |
-|  +-----------------------------------------------------------------------------------+  |
-|  +------------------------+  +------------------------+  +---------------------------+  |
-|  |   Google Cloud Pub/Sub |  |  Gemini 1.5 Flash API  |  |     Whisper API Core      |  |
-|  | (Social Ingestion Buffer) |  | (Cluster & Triage Engine)| |  (Crowd Audio Processor)  |  |
-|  +------------------------+  +------------------------+  +---------------------------+  |
+|                              EXTERNAL AI SERVICES                                       |
+|  +------------------------+  +------------------------+                               |
+|  |  OpenAI Whisper API    |  |  Gemini 1.5 Flash API  |                               |
+|  |  (Audio Transcription) |  |  (Structured Extraction)|                               |
+|  +------------------------+  +------------------------+                               |
 +-----------------------------------------------------------------------------------------+
 ```
 
 ## 2. Component Stack Breakdown
 
-- **Frontend Core:** React.js (v19), TypeScript, Vite (build optimization engine).
-- **Render Pipeline:** HTML5 Canvas (2D Context) API backed by `requestAnimationFrame` for high-density spatial rendering.
-- **Style Engine:** Tailwind CSS providing utility compilation. Supports device preference dark-mode targeting via the native `dark:` layout selector flags.
-- **UX Component Framework:** `shadcn/ui` built over Radix UI primitives. Ensures strict compliance with accessibility frameworks while decoupling components from large module node dependencies.
-- **Edge Compute:** Netlify Edge Functions running over the Deno runtime environment.
-- **Relational Storage:** Netlify Postgres managed database cluster. Houses the master staff whitelist rosters, spatial stadium maps, coordinate data, and post-event analytical log archives.
-- **Real-time Synchronization Engine:** Firebase Firestore paired with the Firebase Realtime Database Client SDK. Provides real-time synchronization via WebSockets with local SQLite caching for offline-first resilience.
-- **Identity Layer:** Firebase Authentication using Custom Claims.
-- **External Integration Layer:** Twilio API for WhatsApp Business and SMS transport pipelines.
-- **Generative AI Pipeline Suite:** Google Gemini 1.5 Flash (context mapping, classification, social clustering) and OpenAI Whisper API (low-latency acoustic transcription).
+- **Frontend Core:** React.js (v19), TypeScript, Vite (build optimization engine). See [ADR-0001](adr/0001-frontend-stack-hybriderui-react-router-tailwind.md).
+- **Routing:** React Router v8 in framework mode (`@react-router/dev`) — file-based routing, loaders, SSR-capable.
+- **Render Pipeline:** HTML5 Canvas (2D Context) API backed by `requestAnimationFrame` for high-density spatial rendering, with offscreen double-buffering for cached background layers.
+- **Style Engine:** Tailwind CSS v4 (CSS-first config via `@tailwindcss/vite`, no `tailwind.config.js`).
+- **UX Component Framework:** HeroUI v3 (`@heroui/react`) built over React Aria Components. Ensures strict accessibility compliance.
+- **Edge Compute:** Netlify Functions / Edge Functions running over the Deno/Node runtime environment.
+- **Relational Storage:** Netlify Postgres managed database. Houses tenants, staff rosters, incidents, dispatches, OTP sessions, and sector coordinate anchors. See [ADR-0002](adr/0002-netlify-postgres-blobs-data-layer.md).
+- **Object Storage:** Append-only `audit_ledger` table in Postgres for the tamper-evident SHA-256 chained Audit Chain. WORM-enforced via Postgres triggers that reject UPDATE/DELETE. See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
+- **Real-time Synchronization:** Diff-based polling (`POST /api/state-poll`) at ~2s intervals. No WebSockets. See [ADR-0004](adr/0004-polling-realtime-synchronization.md).
+- **Identity Layer:** Edge-minted RS256 JWTs with role + tenant claims; OTP via Twilio. See [ADR-0003](adr/0003-edge-jwt-otp-authentication.md).
+- **External Integration Layer:** Twilio (Verify / SMS) for OTP delivery.
+- **Generative AI Pipeline Suite:** OpenAI Whisper API (audio transcription) and Google Gemini 3.5 Flash (structured JSON extraction). See [ADR-0006](adr/0006-whisper-gemini-voice-pipeline.md).
+- **RBAC:** Declarative permission model (`src/lib/permissions.ts`) with 13 typed permissions mapped to 3 roles. Client-side checks via `usePermissions().can()`; re-enforced server-side in every function. See `src/hooks/usePermissions.ts`.
+- **GPS Tracking:** `navigator.geolocation.watchPosition` with 3m haversine debounce + 500ms throttle. Projects to 0–1000 grid via per-tenant bounding box. Positions update the canvas in real time. See ADR for PRD §7.1 and `src/hooks/useGeolocationTracking.ts`.
+- **Offline Resilience:** IndexedDB mutation queue (`src/lib/offline-db.ts`) with auto-drain on reconnect. Preserves original client timestamps — mutations flush FIFO when connectivity returns.
+- **Audit Ledger:** SHA-256 chained entries in Postgres (`audit_ledger` table) with append-only triggers (WORM). Server-side chain verification via `netlify/lib/auditLogger.ts`. See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
+
+### API Endpoints
+
+All endpoints live under `/api/*` as Netlify Functions. Every protected route
+verifies the RS256 JWT and enforces `tenantId` isolation.
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/api/auth/request-otp` | None | Request OTP via Twilio SMS (dev-mode returns code in response) |
+| `POST` | `/api/auth/verify-otp` | None | Verify OTP → mint RS256 JWT with role + tenant claims |
+| `POST` | `/api/state-poll` | Bearer JWT | Diff-based polling — returns records changed since `sinceTimestamp` |
+| `POST` | `/api/mutations` | Bearer JWT | Unified mutation endpoint (`create_incident`, `transition_incident`, `create_dispatch`, `update_dispatch`) |
+| `POST` | `/api/ai-triage` | Bearer JWT | Voice triage pipeline (Whisper transcription → Gemini extraction) |
+| `POST` | `/api/staff-location` | Bearer JWT | Update staff GPS position → projected to grid |
+| `GET` | `/api/audit-ledger` | Bearer JWT | View audit chain entries + run SHA-256 integrity verification |
 
 ## 3. Core Data Processing Pipelines
 
@@ -51,12 +86,12 @@ The system relies on a hybrid architecture combining a high-speed, edge-routed f
 4.  **Enrichment:** The text string is handed directly to the Gemini 1.5 Flash engine. The prompt demands a structured JSON response extracting: `IncidentType`, `Severity`, `ExtractedZone`, and `StructuralKeywords`.
 5.  **Sync & Render:** The resulting JSON structure is written to the Firebase Firestore `incidents` collection. It instantly populates the Event Admin's desktop interface queue via an active WebSocket listener, where it is picked up by the map's Canvas loop and plotted as a high-visibility pulsing geometric beacon.
 
-### Pipeline B: Crowdsourced Social Media Listening
+### Pipeline B: Crowdsourced Social Media Listening — DEFERRED
 
-1.  **Ingestion:** External social listening worker processes continuous streaming payloads via public filters and pushes items directly to Google Cloud Pub/Sub queues.
-2.  **Buffering:** Pub/Sub batches inputs in 15-second intervals to minimize invocation overhead and prevent execution locks.
-3.  **Analysis:** Gemini 1.5 Flash scans the text array. It ignores personal banter, evaluates threat metrics, extracts semantic matching data, and evaluates if multiple unique handles are pointing to the same localized stadium issue.
-4.  **Clustering:** If the engine uncovers thematic density exceeding 5 distinct alerts within a specific sub-quadrant, it writes a new item to the `social_candidates` collection inside Firestore for Operator review.
+> **Out of scope for the initial build.** See [ADR-0008](adr/0008-defer-social-listening.md).
+> This pipeline required Google Cloud Pub/Sub, a paid social-media firehose, and
+> Firestore service-account credentials — all incompatible with the Netlify-only
+> architecture. Do not implement until the ADR is reopened.
 
 ### Pipeline C: Two-Way Dispatch Loop
 
@@ -68,68 +103,78 @@ The system relies on a hybrid architecture combining a high-speed, edge-routed f
 
 ## 4. Authentication, Provisioning, & RBAC Specification
 
-Security and identity are verified via cryptographic tokens embedding role claims.
+Security and identity are verified via **RS256-signed JWTs minted at the Netlify
+Edge**. The edge function verifies the OTP (via Twilio), looks up the user in
+the `staff_roster` Postgres table, and mints a JWT carrying role + tenant claims.
+See [ADR-0003](adr/0003-edge-jwt-otp-authentication.md).
 
 ```
-[ User Logs In via Provider ]
-             │
-             ▼
-[ Netlify Edge Token Analyzer ]
-             │
-             ├──► Email matches FIRST_SUPERADMIN_EMAIL? ──► Set Claim: { superadmin: true }
-             │
-             ├──► Email matches Event Admins Table?    ──► Set Claim: { admin: true }
-             │
-             └──► Phone matches Whitelist Table?        ──► Set Claim: { staff: true }
+[ User Logs In via Phone + OTP ]
+              │
+              ▼
+[ Netlify Edge: auth-bootstrap.ts ]
+              │
+              ├──► Phone in staff_roster with role superadmin? ──► Claim: { role: superadmin }
+              │
+              ├──► Phone in staff_roster with role admin?    ──► Claim: { role: admin }
+              │
+              └──► Phone in staff_roster with role staff?     ──► Claim: { role: staff }
 ```
+
+Every subsequent Netlify Function call verifies the JWT signature server-side
+(using the public key) and extracts the `tenantId` + `role` claims to enforce
+authorization. **Client-decoded claims are never trusted for authorization.**
 
 ### Access Control Rules Matrix:
 
-- `superadmin`: Granted read/write permissions to all schemas across all active tournaments. Has exclusive permissions to alter configuration variables, add/remove Event Admins, and initialize new stadium spaces.
-- `admin`: Restricted to their explicitly assigned stadium venue instance. Can read/write the local `whitelisted_staff` database collection via CSV import, issue dispatches, clear incidents, and access the Social Listening interface.
-- `staff`: Locked down to the Mobile Client canvas. Can only read incidents or dispatches explicitly assigned to their specific UID, and can only write to the `incidents` creation collection and their own location paths.
+- `superadmin`: Granted read/write permissions to all schemas across all active tenants. Has exclusive permissions to alter configuration variables, add/remove Event Admins, and initialize new stadium spaces.
+- `admin`: Restricted to their explicitly assigned tenant. Can read/write the local `staff_roster` table, issue dispatches, clear incidents, and access operational dashboards.
+- `staff`: Locked down to the Field Client. Can only read incidents or dispatches explicitly assigned to their specific phone number, and can only write to incident creation and their own location coordinates.
 
 ## 5. Resiliency & High-Availability Configurations
 
 ### Offline-First Synchronization Architecture
 
-To survive severe localized cell tower load spikes, the Mobile Client configures offline persistence flags within the Firebase initialization scripts:
+> **Note:** With Firebase removed (ADR-0002), the Firebase `persistentLocalCache`
+> SDK is no longer available. Offline-first is implemented manually with
+> **IndexedDB** — a local queue stores incident reports and dispatch
+> acknowledgements, and drains in order when connectivity is restored. See the
+> build plan Milestone 7.
 
-```typescript
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-
-const db = initializeFirestore(app, {
-	localCache: persistentLocalCache({
-		tabManager: persistentMultipleTabManager(),
-	}),
-});
-```
-
-When connectivity degrades, incident reports and dispatch state mutations are logged to internal indexedDB storage. The client local view updates seamlessly, and mutations are automatically queued and synchronized back to the primary database the moment connectivity is restored.
+When connectivity degrades, incident reports and dispatch state mutations are
+logged to an IndexedDB queue. The client local view updates seamlessly, and
+mutations are synchronized back to Postgres the moment connectivity is restored.
 
 ### Temporal Operational Enforcement (The Switch)
 
-To ensure system isolation outside active match blocks, a global timestamp configuration document is verified by granular server-side validation rules inside the Firebase Security Rules configuration schema:
+To ensure system isolation outside active match blocks, a global timestamp
+configuration row in Postgres (`config` table) is verified by the mutation
+functions before accepting writes:
 
-```javascript
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /incidents/{incidentId} {
-      allow write: if request.auth != null
-                    && request.auth.token.staff == true
-                    && request.time >= get(/databases/$(database)/documents/config/switch).data.windowStart
-                    && request.time <= get(/databases/$(database)/documents/config/switch).data.windowEnd;
-    }
-  }
+```typescript
+// Inside the mutations Netlify Function — server-side temporal guard
+const switchRow = await sql`SELECT window_start, window_end FROM config WHERE id = 'switch'`;
+const now = Date.now();
+if (now < switchRow.window_start || now > switchRow.window_end) {
+  return new Response(JSON.stringify({ error: 'Operational window inactive.' }), { status: 403 });
 }
 ```
 
+This replaces the former Firestore Security Rules temporal check — the guard now
+lives in imperative function logic rather than declarative database rules.
+
 ## More References
 
-1. **Code guidelines** `CODE-DESIGN.md`
-2. **System Topology & Foundations** (`ARCHITECTURE.md`)
-3. **GenAI Serverless Proxies & Adapters** (`netlify/functions/ai-orchestrator.ts`, `whisper.ts`, `gemini.ts`)
-4. **Programmatic Security Perimeter** (`firestore.rules`, `auth-bootstrap.ts`)
-5. **GPU-Accelerated Map Loop & Dynamic Clustering** (`StadiumMapCanvas.tsx`)
-6. **Ergonomic Field Input Components** (`VoiceIngest.tsx`, `ManualTriageDrawer.tsx`)
-7. **Reactive Global Synchronization Layer & Surface Routing** (`AuthContext.tsx`, `ActiveMatchContext.tsx`, `App.tsx`)
+1. **Decision records** — [`docs/adr/`](adr/) (ADR-0001 through ADR-0008)
+2. **Domain glossary** — [`CONTEXT.md`](../CONTEXT.md)
+3. **Code guidelines** — `CODE-DESIGN.md`
+4. **GenAI Serverless Proxies & Adapters** — `netlify/functions/ai-triage.ts` (reference: `SETUP-GUIDE.md`, `AI-ORCHESTRATOR.md`)
+5. **Programmatic Security Perimeter** — `netlify/functions/auth-bootstrap.ts` (reference: `SECURITY-GATING.md`, `EDGE-GATEWAY.md` — see ADR-0003 for crypto bug fixes)
+6. **GPU-Accelerated Map Loop & Dynamic Clustering** — `OptimizedStadiumMapCanvas.tsx` (reference: `MAP-OPTIMIZATION.md`, `CANVAS-ENGINE.md`)
+7. **Ergonomic Field Input Components** — `VoiceIngest.tsx`, `ManualTriageDrawer.tsx` (reference: `MOBILE-INTERFACE.md`)
+8. **Reactive Global Synchronization Layer & Surface Routing** — `AuthContext.tsx`, `ActiveOpsContext.tsx`, `root.tsx`
+
+> **⚠️ Reference docs caveat:** The files in `docs/*.md` contain reference
+> implementations written against Firebase + shadcn/ui. They are **reference
+> pseudo-code only** — do not copy-paste. The authoritative architecture is
+> defined by the ADRs and this document.

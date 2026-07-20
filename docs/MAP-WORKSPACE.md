@@ -225,7 +225,7 @@ export const OptimizedStadiumMapCanvas: React.FC<MapCanvasProps> = ({ incidents,
 				height={650}
 				onMouseMove={interpretMouseInteractionCoordinate}
 				onClick={executeTargetSelectionQuery}
-				className="w-full h-full max-w-full max-h-full aspect-[900/650] block cursor-crosshair transition-all rounded-xl"
+				className="w-full h-full max-w-full max-h-full aspect-900/650 block cursor-crosshair transition-all rounded-xl"
 			/>
 		</div>
 	);

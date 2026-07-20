@@ -6,5 +6,9 @@
 			"command": ["npx", "-y", "@heroui/react-mcp@latest"]
 		}
 	},
-	"plugin": [".opencode/plugins/graphify.js", "superpowers@git+https://github.com/obra/superpowers.git"]
+	"plugin": [
+		".opencode/plugins/graphify.js",
+		"superpowers@git+https://github.com/obra/superpowers.git",
+		"opencode-gemini-auth@latest"
+	]
 }

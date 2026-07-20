@@ -1,93 +1,159 @@
 # Frontend Development & Code Design Guidelines
 
+> **Stack note:** The platform uses **HeroUI v3** (not shadcn/ui), **Tailwind CSS
+> v4** (not v3), and **React Router v8** framework mode. See
+> [ADR-0001](adr/0001-frontend-stack-hybriderui-react-router-tailwind.md). The
+> code examples below are reference implementations — translate shadcn/Radix
+> patterns to HeroUI v3 components during implementation.
+
 ## 1. Directory Blueprint
 
-The codebase enforces an immutable, decoupled folder structure ensuring that logic, components, types, and services are fully modular.
+The codebase enforces a decoupled folder structure ensuring that logic, components, types, and services are fully modular.
 
 ```text
 /
-├── .env.example
+├── database/
+│   ├── migrate.ts                  # Idempotent migration runner
+│   └── migrations/
+│       ├── 0001_init.sql           # Schema: tenants, staff_roster, incidents, dispatches, otp_sessions, config, sectors
+│       ├── 0002_gps_tracking.sql   # Staff GPS position tracking columns + indexes
+│       └── 0003_audit_ledger.sql   # WORM audit_chain table + append-only trigger
+├── scripts/
+│   ├── dev.ts                      # Full-stack dev orchestrator (Docker → migrate → netlify dev)
+│   ├── setup-env.ts                # .env bootstrapper (auto-generates RSA keypair)
+│   ├── matchday-simulator.ts       # Stress test: 250 staff, 50 incidents, latency metrics
+│   └── verify-deploy.ts            # Pre-flight deploy check (env, DB, endpoints, JWT keys)
 ├── netlify/
-│   └── edge-functions/
-│       ├── auth-bootstrap.ts
-│       └── twilio-gateway.ts
+│   ├── functions/
+│   │   ├── auth-request-otp.ts     # OTP request (Twilio SMS or dev-mode console)
+│   │   ├── auth-verify-otp.ts      # OTP verify → RS256 JWT mint (ADR-0003)
+│   │   ├── state-poll.ts           # Diff-based polling endpoint (ADR-0004)
+│   │   ├── mutations.ts            # Unified mutation endpoint (incident/dispatch CRUD + audit hook)
+│   │   ├── ai-triage.ts            # Whisper + Gemini voice triage pipeline (ADR-0006)
+│   │   ├── staff-location.ts       # GPS position update (field staff tracking)
+│   │   ├── audit-ledger.ts         # Audit chain viewer + SHA-256 verifier (ADR-0005)
+│   │   └── hello.ts                # Health-check smoke test
+│   └── lib/
+│       ├── db.ts                   # Postgres connection pool (pg)
+│       ├── jwt.ts                  # RS256 sign/verify (jose)
+│       ├── otp.ts                  # OTP generation, hashing, expiry, rate-limit
+│       ├── twilio.ts               # SMS delivery (real or dev-mode stub)
+│       ├── http.ts                 # Shared response helpers, JWT extraction
+│       ├── mappers.ts              # Postgres row → domain type mapping
+│       ├── incidents.ts            # Incident query/mutation helpers
+│       ├── sectors.ts              # Sector anchor coordinate lookup
+│       ├── geo.ts                  # GPS lat/lng → 0–1000 grid projection (haversine)
+│       ├── auditLogger.ts          # SHA-256 chained entry computation (ADR-0005)
+│       └── operational-window.ts   # Time-window guard ("the switch") for write rejection
 ├── src/
-│   ├── assets/
 │   ├── components/
-│   │   ├── ui/               # Pure atomic components (shadcn/ui copies)
-│   │   ├── mobile/           # Mobile Field interface components
-│   │   ├── control-room/     # Desktop dashboard widgets
-│   │   └── shared/           # Cross-surface utilities
-│   │       └── StadiumMapCanvas.tsx  # GPU-accelerated Canvas map
+│   │   ├── auth/
+│   │   │   └── OtpGateway.tsx       # Phone + OTP entry (HeroUI v3, NOT shadcn/ui)
+│   │   ├── control-room/            # Desktop dashboard widgets
+│   │   │   ├── OperationalDashboard.tsx
+│   │   │   ├── IncidentQueue.tsx
+│   │   │   ├── IncidentInspector.tsx
+│   │   │   ├── TenantSwitcher.tsx
+│   │   │   └── AuditTimelineInspector.tsx
+│   │   ├── mobile/                  # Mobile Field interface components
+│   │   │   ├── FieldShell.tsx
+│   │   │   ├── VoiceIngest.tsx
+│   │   │   ├── ManualTriageDrawer.tsx
+│   │   │   └── DispatchModal.tsx
+│   │   └── shared/
+│   │       └── OptimizedStadiumMapCanvas.tsx  # Offscreen-double-buffered Canvas
 │   ├── context/
-│   │   ├── AuthContext.tsx
-│   │   └── ActiveMatchContext.tsx
+│   │   ├── AuthContext.tsx          # JWT verify, claims, tenant scope
+│   │   └── ActiveOpsContext.tsx     # Polling hook, diff-merge into refs
 │   ├── hooks/
-│   │   ├── useFirestoreSync.ts
-│   │   └── useVoiceRecorder.ts
+│   │   ├── usePollingState.ts       # 2s diff-poll engine
+│   │   ├── usePermissions.ts        # RBAC permission check hook (can/hasPermission)
+│   │   ├── useGeolocationTracking.ts # GPS watchPosition + haversine debounce + throttle
+│   │   └── useOfflineQueue.ts       # IndexedDB queue + FIFO drain on reconnect
+│   ├── lib/
+│   │   ├── permissions.ts           # Declarative permission model (13 permissions → 3 roles)
+│   │   ├── geo-client.ts            # Client-side grid math (clientToGrid, gridToClient)
+│   │   ├── offline-db.ts            # IndexedDB store wrapper (idb)
+│   │   ├── mockData.ts              # Seed fixtures for local dev / testing
+│   │   └── ui.ts                    # Shared UI constants, class helpers
 │   ├── services/
-│   │   ├── firebase.ts
-│   │   ├── gemini.ts
-│   │   └── whisper.ts
+│   │   └── api.ts                   # Fetch wrapper, JWT injection
+│   ├── pages/
+│   │   ├── auth-gate.tsx            # RR8 route: OTP gateway
+│   │   ├── control-room.tsx         # RR8 route: admin dashboard
+│   │   ├── field-client.tsx         # RR8 route: mobile field surface
+│   │   └── home.tsx                 # RR8 route: role-based redirect
 │   ├── types/
-│   │   └── index.ts
-│   ├── App.tsx
+│   │   └── index.ts                 # Canonical domain types (single source of truth)
+│   ├── __tests__/                   # Vitest suite (75+ tests)
+│   ├── routes.ts                    # RR8 route config
+│   ├── root.tsx                     # RR8 root layout
 │   └── main.tsx
-├── vite.config.ts
-└── tailwind.config.js
+├── vite.config.ts                   # Tailwind v4 via @tailwindcss/vite + vite-plugin-pwa
+└── docs/adr/                        # Architecture Decision Records (ADR-0001 through ADR-0008)
 ```
 
 ## 2. Strong Type Architecture (TypeScript Contract)
 
-All domain data models must be backed by explicit, strictly declared types. No runtime implicit types (`any`) are permitted.
+All domain data models must be backed by explicit, strictly declared types. No runtime implicit types (`any`) are permitted. The **authoritative** type definitions live in `src/types/index.ts` (see also `docs/STRUCTURAL-TYPES.md`).
 
 ```typescript
-// src/types/index.ts
+// src/types/index.ts — UNIFIED (resolves all prior doc contradictions)
 
-export type UserRole = 'superadmin' | 'admin' | 'staff';
-
-export type InfoTier = 1 | 2 | 3 | 4 | 5;
-
+export type OperationalRole = 'superadmin' | 'admin' | 'staff';
 export type StaffSpecialty = 'security' | 'medical' | 'cleaning' | 'supervisor';
-
+export type IncidentCategory = 'SECURITY' | 'MEDICAL' | 'CROWD' | 'FACILITIES' | 'ADVISORY';
+export type IncidentSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type IncidentStatus = 'OPEN' | 'ACKNOWLEDGED' | 'ON_SCENE' | 'RESOLVED';
 export type DispatchStatus = 'SENT' | 'ACKNOWLEDGED' | 'ON_SCENE' | 'RESOLVED';
+export type StaffStatus = 'AVAILABLE' | 'DISPATCHED' | 'OFF_DUTY';
+export type InfoTier = 1 | 2 | 3 | 4 | 5;          // 5-tier system (ADR-0007)
 
 export interface MapCoordinates {
 	x: number; // Normalized coordinate (0 to 1000) for stadium grid scaling
 	y: number; // Normalized coordinate (0 to 1000) for stadium grid scaling
 }
 
+export interface TenantConfig {
+	tenantId: string;
+	orgName: string;
+	createdAt: number;
+	status: 'ACTIVE' | 'SUSPENDED';
+}
+
 export interface WhitelistUser {
-	id: string; // E.164 phone number used as identifier
-	name: string;
-	role: 'staff';
+	id: string;                    // E.164 phone number used as identifier
+	tenantId: string;              // SaaS isolation boundary
+	fullName: string;
+	role: OperationalRole;
 	specialty: StaffSpecialty;
 	assignedZone: string;
+	status: StaffStatus;
+	phoneNumber: string;
 	currentCoords?: MapCoordinates;
-	status: 'AVAILABLE' | 'DISPATCHED' | 'OFF_DUTY';
 	createdAt: number;
 }
 
 export interface IncidentReport {
 	id: string;
+	tenantId: string;
 	source: 'field_staff' | 'social_media';
 	tier: InfoTier;
-	reporterUid?: string;
-	reporterName?: string;
+	status: IncidentStatus;
 	rawText: string;
-	extractedMetadata: {
-		category: 'SECURITY' | 'MEDICAL' | 'CROWD' | 'FACILITIES' | 'ADVISORY';
-		severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-		locationSector: string;
-		actionRequired: string;
-	};
-	coordinates: MapCoordinates;
 	timestamp: number;
-	status: 'OPEN' | 'INVESTIGATING' | 'DISPATCHED' | 'CLOSED';
+	coordinates: MapCoordinates;
+	extractedMetadata: {
+		category: IncidentCategory;
+		severity: IncidentSeverity;
+		locationSector: string;
+		actionRequired?: string;
+	};
 }
 
 export interface DispatchDirective {
 	id: string;
+	tenantId: string;
 	incidentId: string;
 	targetStaffPhone: string;
 	directiveText: string;
@@ -95,6 +161,23 @@ export interface DispatchDirective {
 	sentTimestamp: number;
 	ackTimestamp?: number;
 	resolvedTimestamp?: number;
+}
+
+export interface AuditLogEntry {
+	eventId: string;
+	tenantId: string;
+	timestamp: number;
+	actor: {
+		uid: string;
+		role: OperationalRole;
+		phoneOrEmail: string;
+		deviceFingerprint: string;
+		ipAddress: string;
+	};
+	action: string;
+	targetResourceId: string;
+	stateDelta: { before: Record<string, unknown> | null; after: Record<string, unknown> | null };
+	cryptographicHash: string; // SHA-256 chain link
 }
 ```
 
@@ -323,6 +406,12 @@ If no operational anomalies are identified, return an object containing an empty
 ```
 
 ## 6. State Management & Real-time Synchronization Strategy
+
+> **⚠️ Superseded by ADR-0004.** The example below uses Firestore `onSnapshot`
+> WebSocket listeners, which are no longer the architecture. The platform now
+> uses **diff-based polling** (`POST /api/state-poll`, ~2s interval). The
+> example is retained as reference for the context pattern only — the data
+> source must be a polling hook, not Firestore listeners.
 
 To manage operational changes without causing global rendering layout lag, the client maintains decoupled custom contexts with localized query listeners.
 

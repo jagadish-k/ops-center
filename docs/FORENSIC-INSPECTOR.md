@@ -160,7 +160,7 @@ export const AuditTimelineInspector: React.FC<AuditInspectorProps> = ({ historic
 							key={log.eventId}
 							className="relative border-l-2 border-slate-800 pl-4 pb-2 ml-2">
 							{/* Radial geometric connection nodes */}
-							<div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-blue-500 border border-slate-900" />
+							<div className="absolute left-[-5px] top-1 w-2 h-2 rounded-full bg-blue-500 border border-slate-900" />
 
 							<div className="bg-slate-950 border border-slate-850 rounded-xl p-3 space-y-2">
 								<div className="flex justify-between items-center text-[9px]">

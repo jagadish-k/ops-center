@@ -1,25 +1,31 @@
 # Architecture Summary & Decision Ledger
 
-This document serves as a master summary of the entire architectural design session for the **SaaS Multi-Tenant Stadium Operations Core Engine**. It defines the core engineering choices, maps out the subsystem interfaces, and tracks every artifact designed across this lifecycle sprint.
+> **Resolved architecture:** This summary reflects the Netlify-only platform
+> per [ADR-0001](adr/0001-frontend-stack-hybriderui-react-router-tailwind.md)
+> through [ADR-0008](adr/0008-defer-social-listening.md). Earlier drafts
+> assumed Firebase/Firestore — those assumptions are superseded. See
+> [`CONTEXT.md`](../CONTEXT.md) for the glossary.
+
+This document serves as a master summary of the entire architectural design for the **Stadium Ops Grid Matrix**. It defines the core engineering choices, maps out the subsystem interfaces, and tracks every artifact.
 
 ---
 
 ## 1. Core Architectural Pillars & Strategy Decisions
 
-During the session, the platform was modeled around four non-negotiable architectural requirements:
+During the design session, the platform was modeled around four non-negotiable architectural requirements:
 
 ### A. Multi-Tenant Data Isolation (Zero-Leakage Guarantee)
 
 Instead of provisioning separate databases per customer, the system implements a **shared-process, partitioned-data SaaS architecture**.
 
-- **Decisions:** Tenant boundaries are governed using a single key (`tenantId`).
-- **Enforcement:** Security boundaries are applied at the network edge via custom token claims (JWT), validated inside serverless functions, and rigidly enforced at the storage tier using declarative database rules (`firestore.rules`). Operators can never access or accidentally read telemetry belonging to another stadium.
+- **Decisions:** Tenant boundaries are governed using a single key (`tenantId`). See [ADR-0002](adr/0002-netlify-postgres-blobs-data-layer.md).
+- **Enforcement:** Security boundaries are applied at the network edge via RS256 JWT claims (ADR-0003), validated inside Netlify Functions, and enforced at the storage tier using imperative `tenant_id` column checks in Postgres queries. Operators can never access or accidentally read telemetry belonging to another stadium.
 
 ### B. Serverless Cognitive Telemetry Extraction
 
 Field operations use asynchronous radio voice/text dispatches that lack structured tracking formats.
 
-- **Decisions:** A serverless gateway endpoint utilizes upstream LLM cognitive models (Gemini) to execute real-time, structured JSON payload extractions.
+- **Decisions:** A serverless gateway endpoint utilizes upstream LLM cognitive models (Gemini) to execute real-time, structured JSON payload extractions. See [ADR-0006](adr/0006-whisper-gemini-voice-pipeline.md).
 - **Enforcement:** The gateway takes noisy radio inputs and maps them into rigid coordinate coordinates $(x, y)$, emergency classification zones, severity indices, and structured operational action descriptions.
 
 ### C. Hardware-Accelerated Dynamic Map Canvas
@@ -33,13 +39,13 @@ Rendering dozens of moving security assets and live incoming emergency vectors c
 
 To protect historical records against internal administrative tampering or database intrusions, security event timelines require forensic verify-at-will guarantees.
 
-- **Decisions:** An append-only ledger system applies cryptographic constraints to every single event mutation.
-- **Enforcement:** Each log entry captures state differences (`before` and `after` deltas), computes a deterministic SHA-256 hash of the payload, and signs it against the hash of the preceding block log. A separate validation engine can instantly trace the historical chain to identify the exact block entry where data corruption or tampering occurred.
+- **Decisions:** An append-only ledger system applies cryptographic constraints to every single event mutation. See [ADR-0005](adr/0005-tamper-evident-audit-chain.md).
+- **Enforcement:** Each log entry captures state differences (`before` and `after` deltas), computes a deterministic SHA-256 hash **server-side** of the payload, and signs it against the hash of the preceding block log. The chain is stored in the Postgres `audit_ledger` table, which is append-only (WORM-enforced via triggers that reject UPDATE/DELETE). A separate validation engine can instantly trace the historical chain to identify the exact block entry where data corruption or tampering occurred. _Note: this is tamper-evident (detectable), not tamper-proof (preventable)._
 
-### E. Fully Custom Client Domain Integration & Ingress Redirection
+### E. Fully Custom Client Domain Integration & Ingress Redirection — DEFERRED
 
-- **Decisions**: Supported dynamic hostname resolution to facilitate white-labeled application deployment. Avoided building costly isolated infrastructure clusters for individual customers by implementing a smart CDN reverse-proxy layer.
-- **Enforcement**: Netlify Edge Functions intercept the `Host` request header, query our dynamic map index database in real time, and pass the resolved `tenantId` parameter downstream. Custom brand variables are dynamically hydrated via CSS properties (`var(--brand-*)`), ensuring individual club identities are isolated without introducing styling compile leaks.
+- **Decisions**: Supported dynamic hostname resolution to facilitate white-labeled application deployment.
+- **Status**: Deferred to a future phase after the core platform ships. See `docs/CUSTOM-DOMAINS.md` for the reference design.
 
 ---
 
@@ -73,30 +79,57 @@ Below is a complete index of all configuration blueprints, logic modules, and UI
 
 | File Pattern Path                                     | Module Subsystem              | Operational Responsibility                                                                                           |
 | :---------------------------------------------------- | :---------------------------- | :------------------------------------------------------------------------------------------------------------------- |
-| `src/types/index.ts`                                  | **Global Typings Core**       | Establishes domain data shapes for coordinate pairs, incidents, users, and audit envelopes.                          |
+| `src/types/index.ts`                                  | **Global Typings Core**       | Establishes domain data shapes for coordinate pairs, incidents, users, JWT claims, triage, poll diffs, and audit envelopes. |
+| `src/lib/permissions.ts`                              | **RBAC Permission Model**     | Declarative permission model — 13 typed permissions mapped to 3 roles. See `src/hooks/usePermissions.ts`. |
+| `src/lib/geo-client.ts`                               | **Client Grid Math**          | ClientToGrid / gridToClient projection math, distance, clamp helpers.                                               |
+| `src/lib/offline-db.ts`                               | **Offline Store**             | IndexedDB-backed mutation queue (idb). Drains FIFO on reconnect, preserving original client timestamps.             |
+| `src/lib/mockData.ts`                                 | **Seed Fixtures**             | Test/dev seed data for local development and integration tests.                                                      |
 | `src/context/AuthContext.tsx`                         | **Identity Management**       | Validates session bootstraps, manages authorization web tokens, and extracts tenant claims.                          |
-| `src/context/ActiveMatchContext.tsx`                  | **Data Streaming Layer**      | Handles live datastore subscription channels matching the authenticated operator's workspace domain.                 |
-| `src/hooks/useTenantMutations.ts`                     | **State Interception**        | Acts as a proxy guard for incident updates, forcing a linked cryptographic logging trail on mutation writes.         |
-| `src/utils/auditLogger.ts`                            | **SHA-256 Block Ledger**      | Generates deterministic hash structures to append signed, chained records to the immutable audit timeline.           |
-| `src/utils/ledgerVerifier.ts`                         | **Forensic Scanner**          | Performs a linear walk across historical logs to find integrity breaks or signature mismatches.                      |
+| `src/context/ActiveOpsContext.tsx`                    | **Data Streaming Layer**      | Diff-poll orchestrator — merges server diffs into refs consumed by the canvas and queues.                            |
+| `src/hooks/usePollingState.ts`                        | **Diff-Poll Engine**          | 2s interval diff-poll hook (ADR-0004).                                                                               |
+| `src/hooks/usePermissions.ts`                         | **RBAC Hook**                 | Client-side permission checking (`can()`, `hasPermission()`).                                                        |
+| `src/hooks/useGeolocationTracking.ts`                 | **GPS Tracking**              | `navigator.geolocation.watchPosition` with 3m haversine debounce + 500ms throttle.                                  |
+| `src/hooks/useOfflineQueue.ts`                        | **Offline Queue**             | IndexedDB mutation buffer + auto-drain on reconnect.                                                                |
 | `src/components/shared/OptimizedStadiumMapCanvas.tsx` | **Tactical Canvas Map**       | Renders high-performance asset updates, grids, and event hotspots using double-buffered 2D canvas steps.             |
 | `src/components/mobile/VoiceIngest.tsx`               | **Radio Transceiver**         | Emulates Push-To-Talk radio captures, sending audio telemetry metadata out to edge extractions.                      |
-| `src/components/dashboard/OperationalDashboard.tsx`   | **Unified Command Shell**     | The central interface matrix linking the canvas view, administrative controls, tenant selectors, and logs.           |
-| `netlify/edge-functions/ai-orchestrator.ts`           | **Serverless AI Gateway**     | Decodes bearer configurations, extracts structured telemetry variables, and locks reports into tenant spaces.        |
-| `netlify/edge-functions/telemetry-monitor.ts`         | **System Diagnostics**        | Collects error telemetry, catching environment issues and system delays before they cascade.                         |
-| `firestore.rules`                                     | **Storage Sandbox Gates**     | Server-side declarative code restricting database reads, creates, and updates strictly within a user's token claims. |
+| `src/components/control-room/OperationalDashboard.tsx`| **Unified Command Shell**     | The central interface matrix linking the canvas view, administrative controls, tenant selectors, and logs.           |
+| `src/components/control-room/AuditTimelineInspector.tsx`| **Forensic Timeline Viewer**| Renders the SHA-256 audit chain and verifies integrity — green badge on success.                                     |
+| `netlify/functions/auth-request-otp.ts`               | **OTP Request**               | Twilio SMS dispatch (or dev-mode console) + rate limiting.                                                          |
+| `netlify/functions/auth-verify-otp.ts`                | **OTP Verify + JWT Mint**     | Validates OTP, looks up staff roster, mints RS256 JWT (ADR-0003).                                                    |
+| `netlify/functions/state-poll.ts`                     | **Diff Polling Endpoint**     | Returns incidents/staff/dispatches changed since `sinceTimestamp` (ADR-0004).                                       |
+| `netlify/functions/mutations.ts`                      | **Mutation + Authz Layer**    | Unified mutation endpoint: `create_incident`, `transition_incident`, `create_dispatch`, `update_dispatch`. Server-side tenant-guarded CRUD + audit hook. |
+| `netlify/functions/ai-triage.ts`                      | **Serverless AI Gateway**     | Whisper transcription + Gemini structured extraction pipeline (ADR-0006).                                            |
+| `netlify/functions/staff-location.ts`                 | **GPS Position Update**       | Accepts staff GPS coordinates, projects to grid, persists for live tracking.                                         |
+| `netlify/functions/audit-ledger.ts`                   | **Audit Chain Viewer + Verifier** | Chain viewer endpoint + SHA-256 integrity scan (ADR-0005).                                                      |
+| `netlify/lib/auditLogger.ts`                          | **SHA-256 Chain Logger**      | Computes chained SHA-256 hashes for append-only audit entries (ADR-0005).                                            |
+| `netlify/lib/geo.ts`                                  | **GPS-to-Grid Projection**    | Haversine distance + per-tenant bounding box → 0–1000 grid mapping.                                                 |
+| `netlify/lib/operational-window.ts`                   | **Time-Window Guard**         | "The switch" — rejects writes outside configured match hours (superadmins bypass).                                  |
+| `netlify/lib/db.ts`                                   | **Postgres Pool**             | Connection pool (pg) shared across functions.                                                                        |
+| `netlify/lib/jwt.ts`                                  | **JWT Crypto**                | RS256 sign/verify (jose).                                                                                            |
+| `netlify/lib/http.ts`                                 | **HTTP Helpers**              | Shared response builders, Bearer JWT extraction.                                                                     |
+| `scripts/matchday-simulator.ts`                       | **Stress Test Harness**       | Seeds 250 staff + 50 incidents, measures query latency. Run via `npm run simulate`.                                  |
+| `scripts/verify-deploy.ts`                            | **Deploy Verification**       | Pre-flight check: env vars, DB connectivity, migrations, endpoints, JWT keypair. Run via `npm run verify:deploy`.     |
+| `scripts/dev.ts`                                      | **Dev Orchestrator**          | Full-stack local boot: .env → Docker → migrate → netlify dev. Run via `npm run dev`.                                 |
+| `scripts/setup-env.ts`                                | **Env Bootstrapper**          | Generates `.env` with Docker Postgres URL + RSA keypair if missing.                                                  |
+| `database/migrations/0001_init.sql`                   | **Schema Bootstrap**          | Core tables: tenants, staff_roster, incidents, dispatches, otp_sessions, config, sectors + seed data.                |
+| `database/migrations/0002_gps_tracking.sql`           | **GPS Tracking Schema**       | Staff position columns + indexes for live tracking.                                                                  |
+| `database/migrations/0003_audit_ledger.sql`           | **Audit Ledger Schema**       | `audit_chain` table + append-only trigger (WORM, ADR-0005).                                                          |
 | `package.json`                                        | **System Manifest**           | Standardizes structural framework versions, tool build targets, and lint dependencies.                               |
-| `tailwind.config.js`                                  | **HUD Styling Theme**         | Configures dark slate styles, console grid themes, and tactical color palettes across the UI layout.                 |
+| `vite.config.ts` (`@tailwindcss/vite`)                 | **HUD Styling Theme**         | Tailwind v4 CSS-first config (`@theme` directive); dark slate styles and tactical color palettes.                    |
 | `netlify.toml`                                        | **Edge Ingress Controller**   | Provisions proxy routes, secure CSP headers, and edge execution pathways.                                            |
-| `src/utils/runSimulation.ts`                          | **Lifecycle Testing Harness** | A sandbox execution engine that validates token handling, AI extractions, and ledger immutability out-of-the-box.    |
 
 ---
 
 ## 4. Current Platform State & Readiness Vector
 
-- **Type Safety:** 100% strict TypeScript domain modeling ensures clear interfaces across the system.
-- **Security Posture:** Data separation is completely sandboxed at the root database line via declarative matching path queries.
-- **Audit Capability:** The cryptographic ledger guarantees that data tampering can be caught immediately on the client dashboard.
+> The architectural decisions are recorded in [`docs/adr/`](adr/). The reference
+> implementations in `docs/*.md` are written against Firebase + shadcn/ui and
+> must be treated as **reference pseudo-code** — they will be rewritten against
+> HeroUI v3 + Netlify during implementation.
+
+- **Type Safety:** Strict TypeScript domain modeling ensures clear interfaces across the system (see `docs/STRUCTURAL-TYPES.md`).
+- **Security Posture:** Data separation is enforced via `tenant_id` checks in Netlify Functions + RS256 JWT claims (ADR-0003).
+- **Audit Capability:** The tamper-evident SHA-256 chain guarantees that data tampering can be detected immediately (ADR-0005).
 - **UI Layout:** The architecture is fully prepped for heavy multi-asset testing thanks to the hardware-accelerated canvas implementation.
 
 ```
